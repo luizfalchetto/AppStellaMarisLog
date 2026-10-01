@@ -1,0 +1,300 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Taxímetro</title>
+<meta name="theme-color" content="#121417">
+<link rel="icon" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMAAAADABAMAAACg8nE0AAAAMFBMVEX1swHsrQLdogOYcgr/Sj3OSi/SQTh9OiR0MC4qMDhQKSopIh0bHyQbGhYWFxcSFBdodR9qAAADa0lEQVR42u3aUWsTWRTA8f9M0lhWYQZFEfZlqBUFWQ1UX3xpcL9AXPYDpIv4AdQH8cG6IqIvfoAqNl9AjK+Cth+gS7M+CLLbdtjHdWEnRlCmzRwfJupDR725uSMVz31pScj55Zxz752ZSzyh3OGjgAIKKKCAAgoooIACCiiggAIKKLBzgGrhq73QJpYYZ2AXH88YCC3LERoCPdt69wyB0LqjoRHQs58yvZ2xDsIxwoW6VbgHAslHAsyKtAFvSVLguEg9EPlix2Tb+CTwUOQVOVSHh7IZbgOC7dHMAe9/kT7ADyLPqIi8wgAYoQd+CJMAb2OOMglX7bfrj+P1SVZ43WAAu4BqFEPWWp6oB2Qds0388yUCRPId4IRsitTf12hJ+jguUcjbmGvDGh1r8ATHGSzJn/P5NGJWRCQyyqBq3uMGi6tMALCSp+F2JXuwvD6cFG8SeOx6q5gki/+lGgFkXZh3DUyTJlvQBKg04HfXQJMtspg5gIPAmXHui4pGgz0CTAGcA3ZHsdNp6g/ffZP//1Kk43ahTQz/1vId6Rb87LYHB95/IIJTZA+usTtyWqJZ2ZyZmTkt0sbfkD4/irRxcD34AMxLP6/+P+wSeURFpO8S8DbybWhJ+pwYXtEGkUOgItLJt7mU/Jr8k0jbAPDE7C7ccATJd3FflIwRLtkRGQRj9NisB4nDChUCgcMEinuQuEugGAjshMIHcU9/9qCAAgpY3vymbbtg500zsIxf+LmizW6BGav4g26tZZaBXXwqdbMSpRXbhlZSI6A9xpxpG5Wobh2/ritZAQXGOqvIroC/9xJAeuN6SRlk/y2WXaK/ygS8WxfJEnhxP70bl5PB/ogum4sxa/dLKlECrJU9TTv8VjsXuZ+mAIRJRNiLmJ4uJ4OXsR+NepYxQgZyGaYhydrl9aD6CzRZT++VBWTAIeDvxVIW2s0oW4aJuZFW9CgZ+E1WgSMXfLKklBLtYwsgrDbolgJUGeTfPCqpyV7IMrefJnTMidFmUZNVgsd30sQvCZjKmwCHy1poDJJf98Khs+Zl3f4AsvClx4NPX5MHz1t6X/RVgNp1LdE3D3Sto3WNgNYY39foKKE2sA0/qBn24A/L+F3D0xYWLDMoOGwpzqDlrAN6OK6AAgoooIACCiiggAIKKKCAAgrsLOAdvIB+EJDRlIUAAAAASUVORK5CYII=">
+<link rel="apple-touch-icon" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAALQAAAC0BAMAAADP4xsBAAAAMFBMVEX1swHgpAOSbQv/Sj2eSiLuRzvBPjZkPBx1MC4qMDhQKicjIBgbHyQbGhYXFxcSFBd3tliaAAADGElEQVR42u3Yv2sTcRjH8fddmrahQ04pdqjI0SK4NaAibrFD51ZxPx10ELTg5NTDv6AdBC0iGe2gtmuDbUZFlEyCvyC4iFjxWpTExNzjEEVo0/ab67ekyHPTUcKLp5/v8/11jrBfj4vSSiuttNJKK6200korrbTSSneF7mn3x3WvU0YMq+5cxjGjE8ht7Ta0lyhZr7sdsp4MWu9u1V5CydOJflDprLQeYECkAAyL+HBMml5WqpaqHoQp4BPMwSV+RAZr1uZnm6pnRDYAZqSKK1Jgc9XZLdCO9ECxKPKlWARWRRr8SWRAxNsrDYhMA7giIl7rZWlMquxOm2adplEiAOKQiUWWLTbfELUWzX36fW5YpA8hBUZo9Qi1ikU65MkaaVqJ8NZswzQaRkfE75PYAxgT8bE3jA5EdRwPYBbmLK4hGRqRlAgBNw8TFulB0iJ5poCjQL9vjw7+HQnmqJklYkjn/+aCO8mt0CwRow5xRd4Vi09FPIal6Q2L+LbWkD4RD1yRaWZkA1dkyVbzHaERQVwi74asEBslYkYfpgZQYjwD0/DApEccMTl0mjzZqJvbbpRQirp6WMgmjNpgGBOOo5g0X2Sn6HZVJ7rMiNmUyUY25LZV6yFYaaUPyleceqFz54pR1Ulk5o3WkPlUrnP6ZW+we9V1Esjk6iaBpJKMWcok60IuUT/kCjpllN5numq8DPQY/erXNRj9fnu/qv7wOezs3NZJIGvA8uyb+5FdOn3vJjHUHlXiF4u2qz6OwOoed5ltPy5Axb3+7OxD21U3cSBK+c6J0HqH4AKx/UAaV+EUeJVCxn7WnAnAL5fd+LL1vn4FnIP4eclyX9+hUYb+C8Bjy1X3TLIITIQj1G0HMs43AG8o59qmU/xsvVTEOu07cHeF2HOsT/QoLuVlYQH6rDdfQLn1ct76lBnlPRdTXz+ezhv+m1vGZP7kznvjQtB+9Xod6DnEMp0JNJD/mC4b0EE5mW1wb6SZBG72GlTdS4Kym2Wji3SiO/rWe3S7QHoDG0nrJ0SllVZaaaWVVlpppZVWWmmlu0b/BvZozroaq7t1AAAAAElFTkSuQmCC">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@600;700&family=Share+Tech+Mono&display=swap">
+<style>
+/* Layout: one-screen meter — status + LED display up top, readings grid, big actions pinned at the bottom for one-thumb use while driving */
+:root{
+  --bg:#121417; --panel:#1B1F24; --panel2:#22272E; --line:#2E353E;
+  --fg:#E8EAED; --muted:#8B939D;
+  --led:#FF4A3D; --led-dim:#3A1715;
+  --taxi:#F5B301; --taxi-ink:#17130A;
+  --free:#3DD68C; --wait:#F5B301; --run:#FF4A3D;
+  --f-ui:"Barlow",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --f-cond:"Barlow Condensed","Barlow",system-ui,sans-serif;
+  --f-led:"Share Tech Mono",ui-monospace,"Roboto Mono",monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.4 var(--f-ui);-webkit-tap-highlight-color:transparent;
+  padding:env(safe-area-inset-top,0px) 0 env(safe-area-inset-bottom,0px)}
+button,input,select{font:inherit;color:inherit}
+[hidden]{display:none!important}
+.app{max-width:520px;margin:0 auto;min-height:100%;display:flex;flex-direction:column;padding:12px 16px 16px;gap:14px}
+header{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.brand{font:700 22px/1 var(--f-cond);letter-spacing:.04em;text-transform:uppercase;display:flex;align-items:center;gap:10px}
+.brand i{display:inline-block;width:30px;height:16px;border-radius:4px;background:var(--taxi)}
+.iconbtn{background:var(--panel);border:1px solid var(--line);border-radius:12px;height:44px;min-width:44px;padding:0 12px;font:600 14px var(--f-ui);cursor:pointer}
+.iconbtn:focus-visible,.btn:focus-visible,.seg button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--taxi);outline-offset:2px}
+
+/* meter */
+.meter{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:16px;display:flex;flex-direction:column;gap:14px}
+.status{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.chip{display:inline-flex;align-items:center;gap:8px;font:700 15px/1 var(--f-cond);letter-spacing:.12em;text-transform:uppercase;padding:8px 12px;border-radius:999px;background:var(--panel2);border:1px solid var(--line)}
+.chip b{width:10px;height:10px;border-radius:50%;background:var(--free);box-shadow:0 0 10px var(--free)}
+.chip[data-s="espera"] b,.chip[data-s="indo"] b{background:var(--wait);box-shadow:0 0 10px var(--wait)}
+.chip[data-s="corrida"] b{background:var(--run);box-shadow:0 0 10px var(--run);animation:pulse 1.2s infinite}
+.chip[data-s="fim"] b{background:var(--muted);box-shadow:none}
+@keyframes pulse{50%{opacity:.35}}
+.client{font-size:14px;color:var(--muted);text-align:right;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.display{background:#0A0B0C;border-radius:12px;padding:14px 14px 10px;border:1px solid #000;box-shadow:inset 0 2px 10px rgba(0,0,0,.6)}
+.display small{display:block;font:600 12px var(--f-cond);letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.total{font:400 clamp(52px,17vw,84px)/1.05 var(--f-led);color:var(--led);text-shadow:0 0 14px rgba(255,74,61,.45);text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.total span{font-size:.42em;margin-right:.2em;vertical-align:.55em}
+.readings{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.rd{background:var(--panel2);border-radius:12px;padding:10px;min-width:0}
+.rd small{display:block;font:600 11px var(--f-cond);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.rd strong{display:block;font:400 22px/1.2 var(--f-led);font-variant-numeric:tabular-nums;white-space:nowrap}
+.rd em{display:block;font-style:normal;font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.note{font-size:13px;color:var(--muted);display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.note .dot{width:8px;height:8px;border-radius:50%;background:var(--muted)}
+.note .dot.ok{background:var(--free)} .note .dot.bad{background:var(--led)}
+.banner{background:rgba(245,179,1,.1);border:1px solid rgba(245,179,1,.35);color:var(--fg);border-radius:12px;padding:10px 12px;font-size:14px}
+
+/* actions */
+.actions{margin-top:auto;display:grid;gap:10px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.btn{border:0;border-radius:14px;min-height:60px;padding:12px 16px;font:700 20px/1.1 var(--f-cond);letter-spacing:.06em;text-transform:uppercase;cursor:pointer;background:var(--panel2);border:1px solid var(--line)}
+.btn.primary{background:var(--taxi);color:var(--taxi-ink);border-color:var(--taxi)}
+.btn.danger{background:var(--led);color:#fff;border-color:var(--led)}
+.btn.ghost{background:transparent}
+.btn.wa{background:#1FA855;border-color:#1FA855;color:#fff}
+.btn:active{transform:translateY(1px)}
+.btn[disabled]{opacity:.4}
+
+/* sheets */
+.sheet{position:fixed;inset:0;background:var(--bg);z-index:10;overflow-y:auto;padding:env(safe-area-inset-top,0px) 0 env(safe-area-inset-bottom,0px)}
+.sheet .app{min-height:auto}
+h2{font:700 26px/1.1 var(--f-cond);letter-spacing:.03em;text-transform:uppercase;margin:0;text-wrap:balance}
+h3{font:700 15px var(--f-cond);letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:8px 0 0}
+.field{display:grid;gap:6px}
+.field label{font-size:14px;color:var(--muted)}
+.field input,.field select{background:var(--panel);border:1px solid var(--line);border-radius:12px;height:52px;padding:0 14px;font-size:18px;width:100%}
+.money{position:relative}
+.money input{padding-left:44px;font-family:var(--f-led);font-size:20px}
+.money::before{content:"R$";position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--muted);font:16px var(--f-led)}
+.hint{font-size:13px;color:var(--muted);margin:0}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.seg{display:grid;grid-template-columns:1fr 1fr;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:4px;gap:4px}
+.seg button{border:0;border-radius:9px;min-height:44px;background:transparent;font:600 16px var(--f-ui);cursor:pointer;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--taxi);color:var(--taxi-ink)}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px}
+.lines{display:grid;gap:6px;font-size:15px}
+.lines div{display:flex;justify-content:space-between;gap:12px}
+.lines div span:last-child{font-family:var(--f-led);font-variant-numeric:tabular-nums;white-space:nowrap}
+.lines .tot{border-top:1px solid var(--line);padding-top:8px;margin-top:4px;font-weight:700;font-size:18px}
+.lines .tot span:last-child{color:var(--led);font-size:22px}
+.hist{display:grid;gap:8px}
+.day{display:flex;justify-content:space-between;align-items:baseline;margin-top:10px}
+.day b{font:700 16px var(--f-cond);letter-spacing:.08em;text-transform:uppercase}
+.day span{font:18px var(--f-led);color:var(--taxi)}
+.hi{display:grid;grid-template-columns:1fr auto;gap:2px 12px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 12px;cursor:pointer;text-align:left;width:100%}
+.hi small{color:var(--muted);font-size:13px}
+.hi strong{font:18px var(--f-led);grid-row:span 2;align-self:center}
+.empty{color:var(--muted);text-align:center;padding:30px 0}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:10px 16px;border-radius:10px;font-weight:600;z-index:20;max-width:90%}
+@media (prefers-reduced-motion:reduce){.chip[data-s="corrida"] b{animation:none}}
+</style>
+</head>
+<body>
+
+<!-- ===== MAIN METER ===== -->
+<div class="app" id="main">
+  <header>
+    <div class="brand"><i aria-hidden="true"></i>Taxímetro</div>
+    <div style="display:flex;gap:8px">
+      <button class="iconbtn" id="bHist" type="button">Histórico</button>
+      <button class="iconbtn" id="bCfg" type="button">Tarifas</button>
+    </div>
+  </header>
+
+  <div class="banner" id="cfgWarn" hidden>Configure suas tarifas antes da primeira corrida. <button class="iconbtn" id="bCfg2" type="button" style="height:34px;margin-left:6px">Abrir tarifas</button></div>
+
+  <section class="meter" aria-live="polite">
+    <div class="status">
+      <span class="chip" id="chip" data-s="livre"><b></b><span id="chipTxt">Livre</span></span>
+      <span class="client" id="cliTxt"></span>
+    </div>
+    <div class="display">
+      <small id="totLbl">Valor</small>
+      <div class="total" id="total"><span>R$</span>0,00</div>
+    </div>
+    <div class="readings">
+      <div class="rd"><small>Distância</small><strong id="rKm">0,00</strong><em>km</em></div>
+      <div class="rd"><small>Tempo</small><strong id="rMin">00:00</strong><em>de corrida</em></div>
+      <div class="rd"><small>Espera</small><strong id="rEsp">00:00</strong><em id="rEspSub">cobrável</em></div>
+    </div>
+    <div class="note" id="note"><span class="dot" id="gpsDot"></span><span id="noteTxt">GPS desligado</span></div>
+  </section>
+
+  <div class="banner" id="schedInfo" hidden></div>
+
+  <div class="actions" id="actions"></div>
+</div>
+
+<!-- ===== NEW RIDE ===== -->
+<div class="sheet" id="sNew" hidden>
+  <form class="app" id="fNew">
+    <header><h2>Nova corrida</h2><button class="iconbtn" type="button" data-close>Fechar</button></header>
+    <div class="seg" role="group" aria-label="Tipo de corrida">
+      <button type="button" id="tAv" aria-pressed="true">Avulsa</button>
+      <button type="button" id="tAg" aria-pressed="false">Hora marcada</button>
+    </div>
+    <p class="hint" id="tipoHint">A espera é cobrada a partir do momento em que você toca em “Cheguei”.</p>
+    <div class="field" id="fHora" hidden>
+      <label for="nHora">Horário marcado</label>
+      <input id="nHora" type="time">
+    </div>
+    <div class="field">
+      <label for="nCli">Nome do cliente (opcional)</label>
+      <input id="nCli" type="text" autocomplete="off" placeholder="Ex.: Dona Marta">
+    </div>
+    <div class="field">
+      <label for="nFone">WhatsApp do cliente (opcional)</label>
+      <input id="nFone" type="tel" inputmode="tel" placeholder="(22) 99999-9999">
+    </div>
+    <p class="hint">Sem número, o WhatsApp pede para você escolher o contato na hora de enviar o recibo.</p>
+    <div class="actions" style="margin-top:8px">
+      <button class="btn primary" type="submit">Indo buscar o cliente</button>
+      <button class="btn" type="button" id="bDireto">Cliente já embarcou</button>
+    </div>
+  </form>
+</div>
+
+<!-- ===== SETTINGS ===== -->
+<div class="sheet" id="sCfg" hidden>
+  <form class="app" id="fCfg">
+    <header><h2>Tarifas</h2><button class="iconbtn" type="button" data-close>Fechar</button></header>
+    <h3>Motorista</h3>
+    <div class="grid2">
+      <div class="field"><label for="cNome">Seu nome</label><input id="cNome" type="text" autocomplete="name"></div>
+      <div class="field"><label for="cPlaca">Placa / veículo</label><input id="cPlaca" type="text" autocapitalize="characters"></div>
+    </div>
+    <h3>Valores</h3>
+    <div class="field"><label for="cBand">Bandeirada</label><div class="money"><input id="cBand" type="text" inputmode="decimal" placeholder="0,00"></div></div>
+    <div class="field">
+      <label>Como a bandeirada entra na conta</label>
+      <div class="seg" role="group" aria-label="Modo da bandeirada">
+        <button type="button" id="mMin" aria-pressed="true">Valor mínimo</button>
+        <button type="button" id="mSoma" aria-pressed="false">Soma ao valor</button>
+      </div>
+      <p class="hint" id="modoHint"></p>
+    </div>
+    <div class="grid2">
+      <div class="field"><label for="cKm">Por km</label><div class="money"><input id="cKm" type="text" inputmode="decimal" placeholder="0,00"></div></div>
+      <div class="field"><label for="cMin">Por minuto de corrida</label><div class="money"><input id="cMin" type="text" inputmode="decimal" placeholder="0,00"></div></div>
+    </div>
+    <div class="field"><label for="cEsp">Por minuto de espera</label><div class="money"><input id="cEsp" type="text" inputmode="decimal" placeholder="0,00"></div></div>
+    <div class="field">
+      <label for="cArr">Arredondar o total</label>
+      <select id="cArr">
+        <option value="0">Não arredondar</option>
+        <option value="0.5">Para cima, de R$ 0,50 em R$ 0,50</option>
+        <option value="1">Para cima, para o real inteiro</option>
+      </select>
+    </div>
+    <h3>Recibo</h3>
+    <div class="field"><label for="cMsg">Mensagem final do recibo</label><input id="cMsg" type="text" placeholder="Obrigado pela preferência!"></div>
+    <div class="actions" style="margin-top:8px"><button class="btn primary" type="submit">Salvar tarifas</button></div>
+  </form>
+</div>
+
+<!-- ===== SUMMARY ===== -->
+<div class="sheet" id="sFim" hidden>
+  <div class="app">
+    <header><h2>Corrida encerrada</h2><button class="iconbtn" type="button" id="bFimClose">Fechar</button></header>
+    <div class="card"><div class="lines" id="fimLines"></div></div>
+    <div class="field">
+      <label for="fKm">Corrigir distância (km), se o GPS falhou</label>
+      <input id="fKm" type="text" inputmode="decimal">
+    </div>
+    <div class="actions">
+      <a class="btn wa" id="bWa" href="#" target="_blank" rel="noopener" style="display:flex;align-items:center;justify-content:center;text-decoration:none">Enviar recibo no WhatsApp</a>
+      <button class="btn" type="button" id="bCopy">Copiar recibo</button>
+      <button class="btn primary" type="button" id="bNova">Nova corrida</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== HISTORY ===== -->
+<div class="sheet" id="sHist" hidden>
+  <div class="app">
+    <header><h2>Histórico</h2><button class="iconbtn" type="button" data-close>Fechar</button></header>
+    <div class="hist" id="histList"></div>
+    <button class="btn ghost" type="button" id="bClear">Apagar histórico</button>
+  </div>
+</div>
+
+<div class="toast" id="toast" hidden></div>
+
+<script>
+(() => {
+'use strict';
+const $ = id => document.getElementById(id);
+const store = {
+  get(k, d){ try{ const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; }catch(e){ return d; } },
+  set(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
+};
+const brl = n => (Math.round(n*100)/100).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+const num = s => { const v = parseFloat(String(s||'').replace(/\s/g,'').replace(/\./g,'').replace(',','.')); return isFinite(v) ? v : 0; };
+const numIn = s => { // accepts "2,50" or "2.50"
+  s = String(s||'').trim(); if(!s) return 0;
+  if(s.includes(',')) return num(s);
+  const v = parseFloat(s); return isFinite(v) ? v : 0;
+};
+const pad = n => String(n).padStart(2,'0');
+const mmss = ms => { const s = Math.max(0, Math.floor(ms/1000)); const h = Math.floor(s/3600); const m = Math.floor(s%3600/60); return h ? `${h}:${pad(m)}:${pad(s%60)}` : `${pad(m)}:${pad(s%60)}`; };
+const hhmm = t => { const d = new Date(t); return `${pad(d.getHours())}:${pad(d.getMinutes())}`; };
+const dia = t => new Date(t).toLocaleDateString('pt-BR');
+const minTxt = ms => { const m = ms/60000; return m < 10 ? m.toLocaleString('pt-BR',{maximumFractionDigits:1}) : String(Math.round(m)); };
+
+/* ---------- config ---------- */
+const DEF = {nome:'', placa:'', band:0, modo:'minimo', km:0, min:0, esp:0, arred:0, msg:'Obrigado pela preferência!'};
+let cfg = Object.assign({}, DEF, store.get('tx_cfg', {}));
+const cfgOk = () => cfg.band>0 || cfg.km>0 || cfg.min>0;
+
+/* ---------- ride ---------- */
+let ride = store.get('tx_ride', null);
+const save = () => store.set('tx_ride', ride);
+
+function calc(r, now){
+  const c = r.cfg, t = now || Date.now();
+  const km = (r.kmManual != null ? r.kmManual : r.m/1000);
+  const corrMs = r.inicio ? ((r.fim || t) - r.inicio) : 0;
+  let espMs = 0, espTotal = 0, espStart = null;
+  if(r.chegada){
+    const until = r.inicio || r.fim || t;
+    espStart = (r.tipo === 'agendada' && r.agendado && r.agendado > r.chegada) ? r.agendado : r.chegada;
+    espMs = Math.max(0, until - espStart);
+    espTotal = Math.max(0, until - r.chegada);
+  }
+  const vKm = km*c.km, vMin = corrMs/60000*c.min, vEsp = espMs/60000*c.esp;
+  const variavel = vKm + vMin;
+  let corrida = 0, minimoAplicado = false;
+  if(r.inicio){
+    if(c.modo === 'soma') corrida = c.band + variavel;
+    else { corrida = Math.max(c.band, variavel); minimoAplicado = c.band > variavel; }
+  }
+  let total = corrida + vEsp;
+  const arr = Number(c.arred)||0;
+  if(arr > 0 && total > 0) total = Math.ceil(total/arr - 1e-9)*arr;
+  return {km, corrMs, espMs, espTotal, espStart, vKm, vMin, vEsp, corrida, minimoAplicado, total};
+}
+
+/* ---------- GPS ---------- */
+let watchId = null, lastAcc = null, gpsErr = '';
+function hav(a, b){
+  const R = 6371000, r = x => x*Math.PI/180;
+  const dLa = r(b.lat-a.lat), dLo = r(b.lng-a.lng);
+  const h = Math.sin(dLa/2)**2 + Math.cos(r(a.lat))*Math.cos(r(b.lat))*Math.sin(dLo/2)**2;
+  return 2*R*Math.asin(Math.sqrt(h));
+}
