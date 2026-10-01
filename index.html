@@ -298,3 +298,281 @@ function hav(a, b){
   const h = Math.sin(dLa/2)**2 + Math.cos(r(a.lat))*Math.cos(r(b.lat))*Math.sin(dLo/2)**2;
   return 2*R*Math.asin(Math.sqrt(h));
 }
+function onPos(p){
+  gpsErr = ''; lastAcc = p.coords.accuracy;
+  if(!ride || ride.fase !== 'corrida') return;
+  if(p.coords.accuracy > 35) return render();
+  const pt = {lat:p.coords.latitude, lng:p.coords.longitude, t:p.timestamp};
+  const last = ride.last;
+  if(!last){ ride.last = pt; save(); return render(); }
+  const d = hav(last, pt), dt = (pt.t - last.t)/1000;
+  if(dt <= 0) return;
+  if(d/dt > 55){ ride.last = pt; save(); return render(); } // salto impossível (>200 km/h): descarta
+  if(d < 8) return render();                                // ruído parado
+  ride.m += d; ride.last = pt; save(); render();
+}
+function onErr(e){
+  gpsErr = e.code === 1 ? 'Permissão de localização negada' : 'Sem sinal de GPS';
+  render();
+}
+function startGps(){
+  if(watchId != null || !('geolocation' in navigator)) { if(!('geolocation' in navigator)) gpsErr='Este navegador não tem GPS'; return; }
+  watchId = navigator.geolocation.watchPosition(onPos, onErr, {enableHighAccuracy:true, maximumAge:0, timeout:20000});
+}
+function stopGps(){ if(watchId != null){ navigator.geolocation.clearWatch(watchId); watchId = null; } lastAcc = null; }
+
+/* ---------- wake lock ---------- */
+let wl = null;
+async function keepAwake(on){
+  try{
+    if(on && !wl && 'wakeLock' in navigator){ wl = await navigator.wakeLock.request('screen'); wl.addEventListener('release', () => { wl = null; }); }
+    if(!on && wl){ await wl.release(); wl = null; }
+  }catch(e){}
+}
+document.addEventListener('visibilitychange', () => { if(document.visibilityState === 'visible' && ride && ride.fase !== 'fim') keepAwake(true); });
+
+/* ---------- actions ---------- */
+function newRide(tipo, agendado, cliente, fone, direto){
+  const now = Date.now();
+  ride = {id: now, tipo, agendado, cliente, fone, cfg: Object.assign({}, cfg), fase: direto ? 'corrida' : 'indo',
+          criado: now, chegada: null, inicio: direto ? now : null, fim: null, m: 0, last: null, kmManual: null};
+  save(); keepAwake(true); if(direto) startGps(); render();
+}
+function cheguei(){ ride.chegada = Date.now(); ride.fase = 'espera'; save(); render(); }
+function iniciar(){ ride.inicio = Date.now(); ride.fase = 'corrida'; ride.last = null; save(); startGps(); render(); }
+function finalizar(){
+  ride.fim = Date.now(); ride.fase = 'fim'; save(); stopGps(); keepAwake(false);
+  saveHist(); render(); openFim();
+}
+function cancelar(){
+  if(ride.chegada && ride.cfg.esp > 0){
+    if(!confirm('Cancelar a corrida? A espera já contada fica registrada e você pode mandar o recibo dela.')) return;
+    ride.fim = Date.now(); ride.fase = 'fim'; ride.cancelada = true; save(); stopGps(); keepAwake(false); saveHist(); render(); openFim();
+  } else {
+    if(!confirm('Cancelar esta corrida?')) return;
+    ride = null; save(); stopGps(); keepAwake(false); render();
+  }
+}
+
+/* ---------- history ---------- */
+function saveHist(){
+  const h = store.get('tx_hist', []);
+  const c = calc(ride);
+  const item = {id: ride.id, cliente: ride.cliente, tipo: ride.tipo, chegada: ride.chegada, inicio: ride.inicio, fim: ride.fim,
+                km: c.km, corrMs: c.corrMs, espMs: c.espMs, total: c.total, cancelada: !!ride.cancelada, ride};
+  const i = h.findIndex(x => x.id === ride.id);
+  if(i >= 0) h[i] = item; else h.unshift(item);
+  store.set('tx_hist', h.slice(0, 500));
+}
+
+/* ---------- receipt ---------- */
+function receipt(r){
+  const c = calc(r), k = r.cfg, L = [];
+  L.push(r.cancelada ? '*Recibo de espera*' : '*Recibo de corrida*');
+  if(k.nome || k.placa) L.push([k.nome, k.placa].filter(Boolean).join(' · '));
+  L.push(`Data: ${dia(r.fim || Date.now())}`);
+  if(r.cliente) L.push(`Cliente: ${r.cliente}`);
+  if(r.tipo === 'agendada' && r.agendado) L.push(`Horário marcado: ${hhmm(r.agendado)}`);
+  if(r.inicio) L.push(`Embarque ${hhmm(r.inicio)} · Desembarque ${hhmm(r.fim)}`);
+  L.push('');
+  if(r.inicio){
+    L.push(`Distância: ${c.km.toLocaleString('pt-BR',{maximumFractionDigits:2})} km × R$ ${brl(k.km)} = R$ ${brl(c.vKm)}`);
+    L.push(`Tempo: ${minTxt(c.corrMs)} min × R$ ${brl(k.min)} = R$ ${brl(c.vMin)}`);
+    if(k.modo === 'soma') L.push(`Bandeirada: R$ ${brl(k.band)}`);
+    else if(c.minimoAplicado) L.push(`Valor mínimo aplicado: R$ ${brl(k.band)}`);
+  }
+  if(c.espMs > 0) L.push(`Espera: ${minTxt(c.espMs)} min × R$ ${brl(k.esp)} = R$ ${brl(c.vEsp)}`);
+  L.push('');
+  L.push(`*Total: R$ ${brl(c.total)}*`);
+  if(k.msg) { L.push(''); L.push(k.msg); }
+  return L.join('\n');
+}
+function waLink(r){
+  let d = String(r.fone||'').replace(/\D/g,'');
+  if(d && (d.length === 10 || d.length === 11)) d = '55' + d;
+  return `https://wa.me/${d}?text=${encodeURIComponent(receipt(r))}`;
+}
+
+/* ---------- render ---------- */
+const chipTxt = {livre:'Livre', indo:'A caminho', espera:'Aguardando cliente', corrida:'Ocupado', fim:'Encerrada'};
+function btn(txt, cls, fn){ const b = document.createElement('button'); b.type='button'; b.className='btn '+(cls||''); b.textContent=txt; b.onclick=fn; return b; }
+function render(){
+  $('cfgWarn').hidden = cfgOk();
+  const fase = ride ? ride.fase : 'livre';
+  $('chip').dataset.s = fase; $('chipTxt').textContent = chipTxt[fase];
+  $('cliTxt').textContent = ride && ride.cliente ? ride.cliente : '';
+  const c = ride ? calc(ride) : null;
+  $('total').innerHTML = '<span>R$</span>' + brl(c ? c.total : 0);
+  $('totLbl').textContent = fase === 'espera' || fase === 'indo' ? 'Espera acumulada' : fase === 'fim' ? 'Total da corrida' : 'Valor';
+  $('rKm').textContent = (c ? c.km : 0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+  $('rMin').textContent = mmss(c ? c.corrMs : 0);
+  $('rEsp').textContent = mmss(c ? c.espMs : 0);
+  $('rEspSub').textContent = c && c.espTotal > c.espMs + 999 ? `de ${mmss(c.espTotal)} parado` : 'cobrável';
+
+  // gps note
+  const dot = $('gpsDot');
+  if(fase === 'corrida'){
+    if(gpsErr){ dot.className='dot bad'; $('noteTxt').textContent = gpsErr + '. Mantenha a localização ligada.'; }
+    else if(lastAcc == null){ dot.className='dot'; $('noteTxt').textContent = 'Procurando sinal de GPS…'; }
+    else { dot.className = lastAcc <= 35 ? 'dot ok' : 'dot bad'; $('noteTxt').textContent = `GPS ±${Math.round(lastAcc)} m · deixe a tela ligada e o app aberto`; }
+  } else { dot.className='dot'; $('noteTxt').textContent = fase === 'livre' ? 'Pronto para a próxima corrida' : fase === 'fim' ? 'Corrida encerrada' : 'GPS liga ao iniciar a corrida'; }
+
+  // scheduled info
+  const si = $('schedInfo');
+  if(ride && ride.tipo === 'agendada' && ride.agendado && (fase === 'indo' || fase === 'espera')){
+    si.hidden = false;
+    const falta = ride.agendado - Date.now();
+    si.textContent = falta > 0
+      ? `Hora marcada ${hhmm(ride.agendado)}. A espera só começa a contar em ${mmss(falta)}.`
+      : `Hora marcada ${hhmm(ride.agendado)}. Espera cobrando desde ${hhmm(Math.max(ride.agendado, ride.chegada || ride.agendado))}` + (ride.chegada ? '.' : ' assim que você chegar.');
+    if(falta <= 0 && !ride.chegada) si.textContent = `Hora marcada ${hhmm(ride.agendado)}. A espera conta a partir da sua chegada.`;
+  } else si.hidden = true;
+
+  // actions
+  const a = $('actions'); a.replaceChildren();
+  if(fase === 'livre') a.append(btn('Nova corrida', 'primary', openNew));
+  if(fase === 'indo'){
+    a.append(btn('Cheguei', 'primary', cheguei));
+    const r2 = document.createElement('div'); r2.className='row2';
+    r2.append(btn('Cancelar', 'ghost', cancelar), btn('Já embarcou', '', iniciar)); a.append(r2);
+  }
+  if(fase === 'espera'){
+    a.append(btn('Iniciar corrida', 'primary', iniciar));
+    a.append(btn('Cliente não veio / cancelar', 'ghost', cancelar));
+  }
+  if(fase === 'corrida') a.append(btn('Finalizar corrida', 'danger', () => { if(confirm('Finalizar a corrida agora?')) finalizar(); }));
+  if(fase === 'fim'){
+    a.append(btn('Ver recibo', 'primary', openFim));
+    a.append(btn('Nova corrida', '', () => { ride = null; save(); openNew(); render(); }));
+  }
+}
+setInterval(() => { if(ride && ride.fase !== 'fim') render(); }, 1000);
+
+/* ---------- sheets ---------- */
+const show = (id, on) => { $(id).hidden = !on; if(on) $(id).scrollTop = 0; };
+document.querySelectorAll('[data-close]').forEach(b => b.onclick = () => b.closest('.sheet').hidden = true);
+
+let tipo = 'avulsa';
+function setTipo(t){
+  tipo = t; $('tAv').setAttribute('aria-pressed', t==='avulsa'); $('tAg').setAttribute('aria-pressed', t==='agendada');
+  $('fHora').hidden = t !== 'agendada'; $('bDireto').hidden = t === 'agendada';
+  $('tipoHint').textContent = t === 'avulsa'
+    ? 'A espera é cobrada a partir do momento em que você toca em “Cheguei”.'
+    : 'Se chegar antes, a espera só é cobrada depois do horário marcado. Se chegar depois, conta da sua chegada.';
+}
+$('tAv').onclick = () => setTipo('avulsa'); $('tAg').onclick = () => setTipo('agendada');
+function openNew(){
+  if(!cfgOk()){ toast('Configure as tarifas primeiro'); return openCfg(); }
+  $('fNew').reset(); setTipo('avulsa');
+  const d = new Date(Date.now() + 30*60000); $('nHora').value = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  show('sNew', true);
+}
+function horaToTs(v){
+  const [h, m] = v.split(':').map(Number); const d = new Date(); d.setHours(h, m, 0, 0);
+  if(d.getTime() < Date.now() - 6*3600000) d.setDate(d.getDate() + 1); // horário de madrugada marcado para amanhã
+  return d.getTime();
+}
+$('fNew').onsubmit = e => {
+  e.preventDefault();
+  if(tipo === 'agendada' && !$('nHora').value){ toast('Informe o horário marcado'); return; }
+  newRide(tipo, tipo === 'agendada' ? horaToTs($('nHora').value) : null, $('nCli').value.trim(), $('nFone').value.trim(), false);
+  show('sNew', false);
+};
+$('bDireto').onclick = () => { newRide('avulsa', null, $('nCli').value.trim(), $('nFone').value.trim(), true); show('sNew', false); };
+
+let modo = cfg.modo;
+function setModo(m){
+  modo = m; $('mMin').setAttribute('aria-pressed', m==='minimo'); $('mSoma').setAttribute('aria-pressed', m==='soma');
+  $('modoHint').textContent = m === 'minimo'
+    ? 'A corrida nunca sai por menos que a bandeirada. Se km + minutos passarem dela, vale o maior.'
+    : 'A bandeirada é somada ao valor de km + minutos, como no taxímetro tradicional.';
+}
+$('mMin').onclick = () => setModo('minimo'); $('mSoma').onclick = () => setModo('soma');
+const fmtIn = v => v ? brl(v) : '';
+function openCfg(){
+  $('cNome').value = cfg.nome; $('cPlaca').value = cfg.placa;
+  $('cBand').value = fmtIn(cfg.band); $('cKm').value = fmtIn(cfg.km); $('cMin').value = fmtIn(cfg.min); $('cEsp').value = fmtIn(cfg.esp);
+  $('cArr').value = String(cfg.arred); $('cMsg').value = cfg.msg; setModo(cfg.modo);
+  show('sCfg', true);
+}
+$('fCfg').onsubmit = e => {
+  e.preventDefault();
+  cfg = {nome:$('cNome').value.trim(), placa:$('cPlaca').value.trim().toUpperCase(), band:numIn($('cBand').value), modo,
+         km:numIn($('cKm').value), min:numIn($('cMin').value), esp:numIn($('cEsp').value), arred:Number($('cArr').value), msg:$('cMsg').value.trim()};
+  store.set('tx_cfg', cfg); show('sCfg', false); render();
+  toast(ride && ride.fase !== 'fim' ? 'Tarifas salvas. Valem a partir da próxima corrida.' : 'Tarifas salvas');
+};
+$('bCfg').onclick = openCfg; $('bCfg2').onclick = openCfg;
+
+function fillFim(r){
+  const c = calc(r), k = r.cfg, rows = [];
+  if(r.inicio){
+    rows.push([`Distância ${c.km.toLocaleString('pt-BR',{maximumFractionDigits:2})} km`, 'R$ '+brl(c.vKm)]);
+    rows.push([`Tempo ${minTxt(c.corrMs)} min`, 'R$ '+brl(c.vMin)]);
+    if(k.modo === 'soma') rows.push(['Bandeirada', 'R$ '+brl(k.band)]);
+    else if(c.minimoAplicado) rows.push(['Valor mínimo aplicado', 'R$ '+brl(k.band)]);
+  }
+  rows.push([`Espera ${minTxt(c.espMs)} min`, 'R$ '+brl(c.vEsp)]);
+  $('fimLines').innerHTML = rows.map(([a,b]) => `<div><span>${a}</span><span>${b}</span></div>`).join('')
+    + `<div class="tot"><span>Total</span><span>R$ ${brl(c.total)}</span></div>`;
+  $('bWa').href = waLink(r);
+}
+let fimRide = null;
+function openFim(r){
+  fimRide = (r && r.id) ? r : ride; if(!fimRide) return;
+  $('fKm').value = calc(fimRide).km.toLocaleString('pt-BR',{maximumFractionDigits:2});
+  $('fKm').parentElement.hidden = !fimRide.inicio;
+  fillFim(fimRide); show('sFim', true);
+}
+$('fKm').oninput = () => {
+  fimRide.kmManual = numIn($('fKm').value);
+  if(ride && ride.id === fimRide.id){ ride = fimRide; save(); saveHist(); render(); }
+  else { const h = store.get('tx_hist', []); const i = h.findIndex(x => x.id === fimRide.id); if(i>=0){ const c = calc(fimRide); Object.assign(h[i], {km:c.km,total:c.total,ride:fimRide}); store.set('tx_hist', h); } }
+  fillFim(fimRide);
+};
+$('bFimClose').onclick = () => show('sFim', false);
+$('bNova').onclick = () => { show('sFim', false); if(ride && ride.fase === 'fim'){ ride = null; save(); } render(); openNew(); };
+$('bCopy').onclick = async () => {
+  const t = receipt(fimRide);
+  try{ await navigator.clipboard.writeText(t); toast('Recibo copiado'); }catch(e){ toast('Não foi possível copiar'); }
+};
+
+function openHist(){
+  const h = store.get('tx_hist', []), el = $('histList');
+  if(!h.length){ el.innerHTML = '<p class="empty">Nenhuma corrida registrada ainda.</p>'; show('sHist', true); return; }
+  const groups = {};
+  h.forEach(x => { const d = dia(x.fim || x.id); (groups[d] = groups[d] || []).push(x); });
+  el.replaceChildren();
+  Object.entries(groups).forEach(([d, list]) => {
+    const tot = list.reduce((s, x) => s + x.total, 0);
+    const kmT = list.reduce((s, x) => s + (x.km||0), 0);
+    const hd = document.createElement('div'); hd.className = 'day';
+    hd.innerHTML = `<b>${d === dia(Date.now()) ? 'Hoje' : d} · ${list.length} corrida${list.length>1?'s':''} · ${kmT.toLocaleString('pt-BR',{maximumFractionDigits:1})} km</b><span>R$ ${brl(tot)}</span>`;
+    el.append(hd);
+    list.forEach(x => {
+      const b = document.createElement('button'); b.type='button'; b.className='hi';
+      const nome = x.cliente || (x.tipo === 'agendada' ? 'Hora marcada' : 'Corrida avulsa');
+      b.innerHTML = `<span>${escapeHtml(nome)}${x.cancelada ? ' · cancelada' : ''}</span><strong>R$ ${brl(x.total)}</strong>
+        <small>${hhmm(x.inicio || x.chegada || x.id)} · ${(x.km||0).toLocaleString('pt-BR',{maximumFractionDigits:1})} km · ${minTxt(x.corrMs)} min</small>`;
+      b.onclick = () => { show('sHist', false); openFim(x.ride); };
+      el.append(b);
+    });
+  });
+  show('sHist', true);
+}
+function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+$('bHist').onclick = openHist;
+$('bClear').onclick = () => { if(confirm('Apagar todo o histórico de corridas?')){ store.set('tx_hist', []); openHist(); } };
+
+let tt; function toast(m){ const t = $('toast'); t.textContent = m; t.hidden = false; clearTimeout(tt); tt = setTimeout(() => t.hidden = true, 2600); }
+
+/* ---------- boot ---------- */
+if(ride && ride.fase === 'corrida'){ startGps(); keepAwake(true); }
+else if(ride && ride.fase !== 'fim') keepAwake(true);
+render();
+if(!cfgOk()) openCfg();
+window.addEventListener('beforeunload', e => { if(ride && ride.fase === 'corrida'){ e.preventDefault(); e.returnValue = ''; } });
+})();
+</script>
+</body>
+</html>
