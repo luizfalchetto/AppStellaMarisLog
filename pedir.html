@@ -105,6 +105,27 @@ async function geoFwd(t){
     return j[0] ? {la:+j[0].lat, lo:+j[0].lon} : null;
   }catch(e){ return null; }
 }
+const norm = t => String(t || '').normalize('NFD').replace(/[^\x20-\x7E]/g, '').toLowerCase();
+async function photon(q, cid){
+  try{
+    const c = norm(cid).trim(); if(!c) return null;
+    const j = await (await fetch(`https://photon.komoot.io/api/?limit=6&lat=-22.37&lon=-41.79&q=${encodeURIComponent(q)}`)).json();
+    const f = (j.features || []).find(x => { const p = x.properties || {}; return [p.city, p.county, p.locality, p.district].some(v => norm(v).includes(c)); });
+    return f ? {la:f.geometry.coordinates[1], lo:f.geometry.coordinates[0]} : null;
+  }catch(e){ return null; }
+}
+async function achar(p){
+  const g = id => $(p + id).value.trim(), cid = g('Cid'), rua = g('Rua'), num = g('Num'), bai = g('Bai');
+  const tries = [
+    () => photon([rua + (num ? ' ' + num : ''), bai, cid].filter(Boolean).join(', '), cid),
+    () => photon([rua, cid].join(', '), cid),
+    () => geoFwd(addrQ(p)),
+    () => geoFwd(addrQ(p, true))
+  ];
+  for(const t of tries){ const r = await t(); if(r) return r; }
+  if(bai){ const r = await photon(bai + ', ' + cid, cid); if(r) return Object.assign(r, {aprox:true}); }
+  return null;
+}
 $('loc').onclick = () => {
   const b = $('loc'); if(!navigator.geolocation){ b.textContent = 'Sem GPS'; return; }
   b.disabled = true; b.textContent = 'Localizando…';
@@ -117,10 +138,10 @@ $('loc').onclick = () => {
 function hav(a, b){ const r = x => x*Math.PI/180, dLa = r(b.la - a.la), dLo = r(b.lo - a.lo), h = Math.sin(dLa/2)**2 + Math.cos(r(a.la))*Math.cos(r(b.la))*Math.sin(dLo/2)**2; return 2*6371*Math.asin(Math.sqrt(h)); }
 async function calcular(){
   if(!$('oRua').value.trim() || !$('dRua').value.trim()) throw new Error('Preencha a rua de partida e a de destino.');
-  if(!pO) pO = await geoFwd(addrQ('o')) || await geoFwd(addrQ('o', true));
-  if(!pD) pD = await geoFwd(addrQ('d')) || await geoFwd(addrQ('d', true));
-  if(!pO || !pD) throw new Error('Não encontrei um dos endereços. Confira o nome da rua e a cidade.');
-  let km, min, aprox = false;
+  if(!pO) pO = await achar('o');
+  if(!pD) pD = await achar('d');
+  if(!pO || !pD) throw new Error('Não achei um dos endereços no mapa. Confira a rua e o bairro. Se preferir, envie assim mesmo: o motorista confirma o valor.');
+  let km, min, aprox = !!(pO.aprox || pD.aprox);
   try{
     const j = await (await fetch(`https://router.project-osrm.org/route/v1/driving/${pO.lo},${pO.la};${pD.lo},${pD.la}?overview=false`)).json();
     const r = j.routes && j.routes[0]; if(!r) throw new Error('x');
@@ -133,9 +154,9 @@ async function calcular(){
   return est;
 }
 async function estimar(){
-  const eb = $('bEst'); eb.disabled = true; eb.textContent = 'Calculando…'; $('est').hidden = true;
+  const eb = $('bEst'); eb.disabled = true; eb.textContent = 'Calculando…'; $('est').hidden = true; $('err').hidden = true;
   try{ await calcular(); }
-  catch(e){ $('err').hidden = false; $('err').textContent = e.message || 'Falha ao calcular. Tente de novo.'; setTimeout(() => $('err').hidden = true, 5000); }
+  catch(e){ $('err').hidden = false; $('err').textContent = e.message || 'Falha ao calcular. Tente de novo.'; }
   eb.disabled = false; eb.textContent = 'Calcular estimativa de valor';
 }
 $('bEst').onclick = estimar;
