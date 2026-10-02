@@ -102,6 +102,30 @@ h3{font:700 15px var(--f-cond);letter-spacing:.12em;text-transform:uppercase;col
 .hi strong{font:18px var(--f-led);grid-row:span 2;align-self:center}
 .empty{color:var(--muted);text-align:center;padding:30px 0}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:10px 16px;border-radius:10px;font-weight:600;z-index:20;max-width:90%}
+/* relatorio */
+.tabs{display:grid;grid-template-columns:repeat(3,1fr);background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:4px;gap:4px}
+.tabs button{border:0;border-radius:9px;min-height:44px;background:transparent;font:700 16px var(--f-cond);letter-spacing:.08em;text-transform:uppercase;cursor:pointer;color:var(--muted)}
+.tabs button[aria-pressed="true"]{background:var(--taxi);color:var(--taxi-ink)}
+.pnav{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.pnav b{font:700 18px var(--f-cond);letter-spacing:.06em;text-transform:uppercase;text-align:center;flex:1}
+.pnav button{width:48px}
+.hero{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px}
+.hero small{display:block;font:600 12px var(--f-cond);letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.hero strong{display:block;font:400 44px/1.1 var(--f-led);color:var(--taxi);font-variant-numeric:tabular-nums}
+.hero em{font-style:normal;font-size:13px;color:var(--muted)}
+.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.kpi{background:var(--panel2);border-radius:12px;padding:10px;min-width:0}
+.kpi small{display:block;font:600 11px var(--f-cond);letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.kpi strong{display:block;font:400 19px/1.25 var(--f-led);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums}
+.chart{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px 12px 8px}
+.chart .cap{font-size:13px;color:var(--muted);min-height:18px}
+.bars{display:flex;align-items:flex-end;gap:2px;height:120px;border-bottom:1px solid var(--line);margin-top:6px}
+.bars button{flex:1;min-width:0;height:100%;border:0;background:transparent;padding:0;display:flex;align-items:flex-end;cursor:pointer}
+.bars i{display:block;width:100%;background:var(--taxi);border-radius:4px 4px 0 0;min-height:0}
+.bars button[aria-pressed="true"] i{background:var(--fg)}
+.bars button.zero i{background:var(--line);height:2px!important}
+.blabels{display:flex;gap:2px;margin-top:4px}
+.blabels span{flex:1;min-width:0;text-align:center;font-size:10px;color:var(--muted);overflow:hidden;white-space:nowrap}
 @media (prefers-reduced-motion:reduce){.chip[data-s="corrida"] b{animation:none}}
 </style>
 </head>
@@ -112,7 +136,7 @@ h3{font:700 15px var(--f-cond);letter-spacing:.12em;text-transform:uppercase;col
   <header>
     <div class="brand"><i aria-hidden="true"></i>Taxímetro</div>
     <div style="display:flex;gap:8px">
-      <button class="iconbtn" id="bHist" type="button">Histórico</button>
+      <button class="iconbtn" id="bHist" type="button">Relatório</button>
       <button class="iconbtn" id="bCfg" type="button">Tarifas</button>
     </div>
   </header>
@@ -196,6 +220,13 @@ h3{font:700 15px var(--f-cond);letter-spacing:.12em;text-transform:uppercase;col
       </select>
     </div>
     <h3>Recibo</h3>
+    <div class="grid2">
+      <div class="field"><label for="cEmp">Empresa</label><input id="cEmp" type="text" placeholder="Stella Maris Logistics"></div>
+      <div class="field"><label for="cCnpj">CNPJ</label><input id="cCnpj" type="text" inputmode="numeric" placeholder="00.000.000/0000-00"></div>
+    </div>
+    <h3>Pedidos de clientes</h3>
+    <div class="field"><label for="cWhats">Seu WhatsApp para receber pedidos (com DDD)</label><input id="cWhats" type="tel" inputmode="tel" placeholder="22999999999"></div>
+    <div class="actions" style="margin:4px 0 8px"><button class="btn" type="button" id="bLink">Copiar link para o cliente</button></div>
     <div class="field"><label for="cMsg">Mensagem final do recibo</label><input id="cMsg" type="text" placeholder="Obrigado pela preferência!"></div>
     <div class="actions" style="margin-top:8px"><button class="btn primary" type="submit">Salvar tarifas</button></div>
   </form>
@@ -206,12 +237,15 @@ h3{font:700 15px var(--f-cond);letter-spacing:.12em;text-transform:uppercase;col
   <div class="app">
     <header><h2>Corrida encerrada</h2><button class="iconbtn" type="button" id="bFimClose">Fechar</button></header>
     <div class="card"><div class="lines" id="fimLines"></div></div>
+    <div class="field"><label for="fOrig">Endereço de partida</label><input id="fOrig" type="text" autocomplete="off" placeholder="Preenchido pelo GPS — você pode editar"></div>
+    <div class="field"><label for="fDest">Endereço de destino</label><input id="fDest" type="text" autocomplete="off" placeholder="Preenchido pelo GPS — você pode editar"></div>
     <div class="field">
       <label for="fKm">Corrigir distância (km), se o GPS falhou</label>
       <input id="fKm" type="text" inputmode="decimal">
     </div>
     <div class="actions">
-      <a class="btn wa" id="bWa" href="#" target="_blank" rel="noopener" style="display:flex;align-items:center;justify-content:center;text-decoration:none">Enviar recibo no WhatsApp</a>
+      <button class="btn primary" type="button" id="bPdf">Enviar recibo em PDF</button>
+      <a class="btn wa" id="bWa" href="#" target="_blank" rel="noopener" style="display:flex;align-items:center;justify-content:center;text-decoration:none">Enviar recibo em texto (WhatsApp)</a>
       <button class="btn" type="button" id="bCopy">Copiar recibo</button>
       <button class="btn primary" type="button" id="bNova">Nova corrida</button>
     </div>
@@ -221,9 +255,30 @@ h3{font:700 15px var(--f-cond);letter-spacing:.12em;text-transform:uppercase;col
 <!-- ===== HISTORY ===== -->
 <div class="sheet" id="sHist" hidden>
   <div class="app">
-    <header><h2>Histórico</h2><button class="iconbtn" type="button" data-close>Fechar</button></header>
+    <header><h2>Relatório</h2><button class="iconbtn" type="button" data-close>Fechar</button></header>
+    <div class="tabs" role="group" aria-label="Período">
+      <button type="button" data-p="dia" aria-pressed="true">Dia</button>
+      <button type="button" data-p="semana" aria-pressed="false">Semana</button>
+      <button type="button" data-p="mes" aria-pressed="false">Mês</button>
+    </div>
+    <div class="pnav"><button class="iconbtn" type="button" id="pPrev" aria-label="Período anterior">‹</button><b id="pLbl"></b><button class="iconbtn" type="button" id="pNext" aria-label="Próximo período">›</button></div>
+    <div class="hero"><small>Faturamento</small><strong id="rTot">R$ 0,00</strong><em id="rSub"></em></div>
+    <div class="kpis">
+      <div class="kpi"><small>Corridas</small><strong id="kN">0</strong></div>
+      <div class="kpi"><small>Km rodados</small><strong id="kKm">0</strong></div>
+      <div class="kpi"><small>Tempo ocupado</small><strong id="kT">0h00</strong></div>
+      <div class="kpi"><small>Ticket médio</small><strong id="kAvg">—</strong></div>
+      <div class="kpi"><small>Ganho por km</small><strong id="kPkm">—</strong></div>
+      <div class="kpi"><small>Ganho por hora</small><strong id="kPh">—</strong></div>
+      <div class="kpi"><small>Espera cobrada</small><strong id="kEsp">R$ 0,00</strong></div>
+      <div class="kpi"><small>Canceladas</small><strong id="kCan">0</strong></div>
+      <div class="kpi"><small>Melhor corrida</small><strong id="kBest">—</strong></div>
+    </div>
+    <div class="chart" id="chartBox" hidden><div class="cap" id="cCap"></div><div class="bars" id="bars"></div><div class="blabels" id="blabels"></div></div>
+    <button class="btn wa" type="button" id="bShareRep">Enviar relatório no WhatsApp</button>
+    <h3>Corridas do período</h3>
     <div class="hist" id="histList"></div>
-    <button class="btn ghost" type="button" id="bClear">Apagar histórico</button>
+    <button class="btn ghost" type="button" id="bClear">Apagar todo o histórico</button>
   </div>
 </div>
 
@@ -251,7 +306,7 @@ const dia = t => new Date(t).toLocaleDateString('pt-BR');
 const minTxt = ms => { const m = ms/60000; return m < 10 ? m.toLocaleString('pt-BR',{maximumFractionDigits:1}) : String(Math.round(m)); };
 
 /* ---------- config ---------- */
-const DEF = {nome:'', placa:'', band:0, km:0, min:0, esp:0, arred:0, msg:'Obrigado pela preferência!'};
+const DEF = {nome:'', placa:'', band:0, km:0, min:0, esp:0, arred:0, msg:'Obrigado pela preferência!', empresa:'Stella Maris Logistics', cnpj:'64.842.411/0001-07'};
 let cfg = Object.assign({}, DEF, store.get('tx_cfg', {}));
 const cfgOk = () => cfg.band>0 || cfg.km>0 || cfg.min>0;
 
@@ -320,18 +375,40 @@ async function keepAwake(on){
 }
 document.addEventListener('visibilitychange', () => { if(document.visibilityState === 'visible' && ride && ride.fase !== 'fim') keepAwake(true); });
 
+/* ---------- endereços (GPS + OpenStreetMap) ---------- */
+function curPos(){ return new Promise(ok => { if(!('geolocation' in navigator)) return ok(null); navigator.geolocation.getCurrentPosition(p => ok(p.coords), () => ok(null), {enableHighAccuracy:true, maximumAge:15000, timeout:12000}); }); }
+async function revGeo(c){
+  try{
+    const u = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=18&addressdetails=1&accept-language=pt-BR&lat=${c.latitude}&lon=${c.longitude}`;
+    const j = await (await fetch(u)).json(), a = j.address || {};
+    const via = a.road || a.pedestrian || a.footway || a.path || '';
+    const rua = [via, a.house_number].filter(Boolean).join(', ');
+    const bairro = a.suburb || a.neighbourhood || a.quarter || '';
+    const cid = a.city || a.town || a.village || a.municipality || '';
+    const t = [rua, bairro, cid].filter(Boolean).join(' - ');
+    return t || (j.display_name || '').split(',').slice(0,3).join(',').trim();
+  }catch(e){ return ''; }
+}
+async function capEnd(r, campo){
+  const c = await curPos(); if(!c) return;
+  const t = await revGeo(c); if(!t || r[campo]) return;
+  r[campo] = t; r.auto = r.auto || {}; r.auto[campo] = 1;
+  if(ride && ride.id === r.id){ ride[campo] = t; save(); saveHist(); }
+  if(typeof fimRide !== 'undefined' && fimRide && fimRide.id === r.id){ fimRide[campo] = t; const el = $(campo === 'orig' ? 'fOrig' : 'fDest'); if(el && !el.value) el.value = t; }
+}
+
 /* ---------- actions ---------- */
 function newRide(tipo, agendado, cliente, fone, direto){
   const now = Date.now();
   ride = {id: now, tipo, agendado, cliente, fone, cfg: Object.assign({}, cfg), fase: direto ? 'corrida' : 'indo',
           criado: now, chegada: null, inicio: direto ? now : null, fim: null, m: 0, last: null, kmManual: null};
-  save(); keepAwake(true); if(direto) startGps(); render();
+  save(); keepAwake(true); if(direto){ startGps(); capEnd(ride, 'orig'); } render();
 }
 function cheguei(){ ride.chegada = Date.now(); ride.fase = 'espera'; save(); render(); }
-function iniciar(){ ride.inicio = Date.now(); ride.fase = 'corrida'; ride.last = null; save(); startGps(); render(); }
+function iniciar(){ ride.inicio = Date.now(); ride.fase = 'corrida'; ride.last = null; save(); startGps(); capEnd(ride, 'orig'); render(); }
 function finalizar(){
   ride.fim = Date.now(); ride.fase = 'fim'; save(); stopGps(); keepAwake(false);
-  saveHist(); render(); openFim();
+  saveHist(); render(); openFim(); if(ride.inicio) capEnd(ride, 'dest');
 }
 function cancelar(){
   if(ride.chegada && ride.cfg.esp > 0){
@@ -358,11 +435,14 @@ function saveHist(){
 function receipt(r){
   const c = calc(r), k = r.cfg, L = [];
   L.push(r.cancelada ? '*Recibo de espera*' : '*Recibo de corrida*');
+  if(cfg.empresa || cfg.cnpj) L.push([cfg.empresa, cfg.cnpj ? 'CNPJ ' + cfg.cnpj : ''].filter(Boolean).join(' · '));
   if(k.nome || k.placa) L.push([k.nome, k.placa].filter(Boolean).join(' · '));
   L.push(`Data: ${dia(r.fim || Date.now())}`);
   if(r.cliente) L.push(`Cliente: ${r.cliente}`);
   if(r.tipo === 'agendada' && r.agendado) L.push(`Horário marcado: ${hhmm(r.agendado)}`);
   if(r.inicio) L.push(`Embarque ${hhmm(r.inicio)} · Desembarque ${hhmm(r.fim)}`);
+  if(r.orig) L.push(`Partida: ${r.orig}`);
+  if(r.dest) L.push(`Destino: ${r.dest}`);
   L.push('');
   if(r.inicio){
     if(c.minimoAplicado) L.push(`Bandeirada: R$ ${brl(k.band)} (${c.km.toLocaleString('pt-BR',{maximumFractionDigits:2})} km)`);
@@ -472,26 +552,38 @@ const fmtIn = v => v ? brl(v) : '';
 function openCfg(){
   $('cNome').value = cfg.nome; $('cPlaca').value = cfg.placa;
   $('cBand').value = fmtIn(cfg.band); $('cKm').value = fmtIn(cfg.km); $('cMin').value = fmtIn(cfg.min); $('cEsp').value = fmtIn(cfg.esp);
-  $('cArr').value = String(cfg.arred); $('cMsg').value = cfg.msg;
+  $('cArr').value = String(cfg.arred); $('cMsg').value = cfg.msg; $('cEmp').value = cfg.empresa || ''; $('cCnpj').value = cfg.cnpj || ''; $('cWhats').value = cfg.whats || '';
   show('sCfg', true);
 }
 $('fCfg').onsubmit = e => {
   e.preventDefault();
   cfg = {nome:$('cNome').value.trim(), placa:$('cPlaca').value.trim().toUpperCase(), band:numIn($('cBand').value),
-         km:numIn($('cKm').value), min:numIn($('cMin').value), esp:numIn($('cEsp').value), arred:Number($('cArr').value), msg:$('cMsg').value.trim()};
+         km:numIn($('cKm').value), min:numIn($('cMin').value), esp:numIn($('cEsp').value), arred:Number($('cArr').value), msg:$('cMsg').value.trim(), empresa:$('cEmp').value.trim(), cnpj:$('cCnpj').value.trim(), whats:$('cWhats').value.replace(/\D/g,'')};
   store.set('tx_cfg', cfg); show('sCfg', false); render();
   toast(ride && ride.fase !== 'fim' ? 'Tarifas salvas. Valem a partir da próxima corrida.' : 'Tarifas salvas');
 };
+$('bLink').onclick = async () => {
+  let w = $('cWhats').value.replace(/\D/g,''); if(!w){ toast('Informe seu WhatsApp primeiro'); return; }
+  if(w.length <= 11) w = '55' + w;
+  const n = s => String(s || '').replace('.', ',');
+  const u = new URL('pedir.html', location.href);
+  u.search = new URLSearchParams({w, n:($('cEmp').value.trim() || 'Stella Maris Logistics'), b:n(numIn($('cBand').value)), k:n(numIn($('cKm').value)), m:n(numIn($('cMin').value))}).toString();
+  try{ await navigator.clipboard.writeText(u.href); toast('Link copiado. Mande ao cliente.'); }catch(e){ prompt('Copie o link:', u.href); }
+};
 $('bCfg').onclick = openCfg; $('bCfg2').onclick = openCfg;
 
-function fillFim(r){
+function linhas(r){
   const c = calc(r), k = r.cfg, rows = [];
   if(r.inicio){
     if(c.minimoAplicado) rows.push([`Bandeirada (${c.km.toLocaleString('pt-BR',{maximumFractionDigits:2})} km)`, 'R$ '+brl(k.band)]);
-    else rows.push([`Distância ${c.km.toLocaleString('pt-BR',{maximumFractionDigits:2})} km`, 'R$ '+brl(c.vKm)]);
-    rows.push([`Tempo ${minTxt(c.corrMs)} min`, 'R$ '+brl(c.vMin)]);
+    else rows.push([`Distância ${c.km.toLocaleString('pt-BR',{maximumFractionDigits:2})} km × R$ ${brl(k.km)}`, 'R$ '+brl(c.vKm)]);
+    rows.push([`Tempo ${minTxt(c.corrMs)} min × R$ ${brl(k.min)}`, 'R$ '+brl(c.vMin)]);
   }
-  rows.push([`Espera ${minTxt(c.espMs)} min`, 'R$ '+brl(c.vEsp)]);
+  if(c.espMs > 0 || !r.inicio) rows.push([`Espera ${minTxt(c.espMs)} min × R$ ${brl(k.esp)}`, 'R$ '+brl(c.vEsp)]);
+  return {c, k, rows};
+}
+function fillFim(r){
+  const {c, rows} = linhas(r);
   $('fimLines').innerHTML = rows.map(([a,b]) => `<div><span>${a}</span><span>${b}</span></div>`).join('')
     + `<div class="tot"><span>Total</span><span>R$ ${brl(c.total)}</span></div>`;
   $('bWa').href = waLink(r);
@@ -501,7 +593,9 @@ function openFim(r){
   fimRide = (r && r.id) ? r : ride; if(!fimRide) return;
   $('fKm').value = calc(fimRide).km.toLocaleString('pt-BR',{maximumFractionDigits:2});
   $('fKm').parentElement.hidden = !fimRide.inicio;
-  fillFim(fimRide); show('sFim', true);
+  $('fOrig').value = fimRide.orig || ''; $('fDest').value = fimRide.dest || '';
+  $('fOrig').parentElement.hidden = $('fDest').parentElement.hidden = !fimRide.inicio;
+  fillFim(fimRide); show('sFim', true); loadPdfLib().catch(() => {});
 }
 $('fKm').oninput = () => {
   fimRide.kmManual = numIn($('fKm').value);
@@ -509,6 +603,12 @@ $('fKm').oninput = () => {
   else { const h = store.get('tx_hist', []); const i = h.findIndex(x => x.id === fimRide.id); if(i>=0){ const c = calc(fimRide); Object.assign(h[i], {km:c.km,total:c.total,ride:fimRide}); store.set('tx_hist', h); } }
   fillFim(fimRide);
 };
+function persistFim(){
+  if(ride && ride.id === fimRide.id){ ride = fimRide; save(); saveHist(); }
+  else { const h = store.get('tx_hist', []); const i = h.findIndex(x => x.id === fimRide.id); if(i>=0){ h[i].ride = fimRide; store.set('tx_hist', h); } }
+}
+$('fOrig').oninput = () => { fimRide.orig = $('fOrig').value.trim(); persistFim(); fillFim(fimRide); };
+$('fDest').oninput = () => { fimRide.dest = $('fDest').value.trim(); persistFim(); fillFim(fimRide); };
 $('bFimClose').onclick = () => show('sFim', false);
 $('bNova').onclick = () => { show('sFim', false); if(ride && ride.fase === 'fim'){ ride = null; save(); } render(); openNew(); };
 $('bCopy').onclick = async () => {
@@ -516,32 +616,184 @@ $('bCopy').onclick = async () => {
   try{ await navigator.clipboard.writeText(t); toast('Recibo copiado'); }catch(e){ toast('Não foi possível copiar'); }
 };
 
-function openHist(){
-  const h = store.get('tx_hist', []), el = $('histList');
-  if(!h.length){ el.innerHTML = '<p class="empty">Nenhuma corrida registrada ainda.</p>'; show('sHist', true); return; }
-  const groups = {};
-  h.forEach(x => { const d = dia(x.fim || x.id); (groups[d] = groups[d] || []).push(x); });
-  el.replaceChildren();
-  Object.entries(groups).forEach(([d, list]) => {
-    const tot = list.reduce((s, x) => s + x.total, 0);
-    const kmT = list.reduce((s, x) => s + (x.km||0), 0);
-    const hd = document.createElement('div'); hd.className = 'day';
-    hd.innerHTML = `<b>${d === dia(Date.now()) ? 'Hoje' : d} · ${list.length} corrida${list.length>1?'s':''} · ${kmT.toLocaleString('pt-BR',{maximumFractionDigits:1})} km</b><span>R$ ${brl(tot)}</span>`;
-    el.append(hd);
-    list.forEach(x => {
-      const b = document.createElement('button'); b.type='button'; b.className='hi';
-      const nome = x.cliente || (x.tipo === 'agendada' ? 'Hora marcada' : 'Corrida avulsa');
-      b.innerHTML = `<span>${escapeHtml(nome)}${x.cancelada ? ' · cancelada' : ''}</span><strong>R$ ${brl(x.total)}</strong>
-        <small>${hhmm(x.inicio || x.chegada || x.id)} · ${(x.km||0).toLocaleString('pt-BR',{maximumFractionDigits:1})} km · ${minTxt(x.corrMs)} min</small>`;
-      b.onclick = () => { show('sHist', false); openFim(x.ride); };
-      el.append(b);
-    });
-  });
-  show('sHist', true);
+/* ---------- recibo em PDF ---------- */
+let jspdfP = null;
+function loadPdfLib(){
+  if(window.jspdf) return Promise.resolve();
+  if(!jspdfP) jspdfP = new Promise((ok, bad) => { const s = document.createElement('script'); s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js'; s.onload = ok; s.onerror = () => { jspdfP = null; bad(new Error('sem internet')); }; document.head.append(s); });
+  return jspdfP;
 }
+const numRecibo = r => { const d = new Date(r.fim || r.id); return `${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}`; };
+function gerarPdf(r){
+  const {jsPDF} = window.jspdf;
+  const {c, k, rows} = linhas(r);
+  const info = [];
+  info.push(['Data', new Date(r.fim || r.id).toLocaleDateString('pt-BR')]);
+  if(r.cliente) info.push(['Cliente', r.cliente]);
+  if(k.nome) info.push(['Motorista', k.nome]);
+  if(k.placa) info.push(['Veículo', k.placa]);
+  if(r.tipo === 'agendada' && r.agendado) info.push(['Horário marcado', hhmm(r.agendado)]);
+  if(r.inicio) info.push(['Embarque', hhmm(r.inicio)]);
+  if(r.inicio && r.fim) info.push(['Desembarque', hhmm(r.fim)]);
+  if(r.inicio) info.push(['Distância', c.km.toLocaleString('pt-BR',{maximumFractionDigits:2}) + ' km']);
+  const W = 80, M = 6;
+  const addr = [['Partida', r.orig], ['Destino', r.dest]].filter(a => a[1]);
+  const tmp = new jsPDF({unit:'mm', format:[W, 100]}); tmp.setFontSize(8.5);
+  addr.forEach(a => { a[2] = tmp.splitTextToSize(a[1], W - 2*M - 2); });
+  const addrH = addr.reduce((n, a) => n + 5 + a[2].length*4 + 1.5, 0);
+  const H = 62 + info.length*5 + addrH + rows.length*6 + (k.msg ? 10 : 0) + 22;
+  const doc = new jsPDF({unit:'mm', format:[W, H]});
+  const empresa = cfg.empresa || 'Stella Maris Logistics';
+  let y = 10;
+  doc.setFillColor(245,179,1); doc.rect(0, 0, W, 3, 'F');
+  doc.setFont('helvetica','bold'); doc.setFontSize(13); doc.setTextColor(20,20,20);
+  doc.text(empresa, W/2, y+2, {align:'center'}); y += 7;
+  doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(90,90,90);
+  if(cfg.cnpj){ doc.text('CNPJ ' + cfg.cnpj, W/2, y, {align:'center'}); y += 6; }
+  doc.setDrawColor(200,200,200); doc.line(M, y, W-M, y); y += 6;
+  doc.setFont('helvetica','bold'); doc.setFontSize(10); doc.setTextColor(20,20,20);
+  doc.text(r.cancelada ? 'RECIBO DE ESPERA' : 'RECIBO DE CORRIDA', M, y);
+  doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(90,90,90);
+  doc.text('Nº ' + numRecibo(r), W-M, y, {align:'right'}); y += 7;
+  doc.setFontSize(8.5);
+  info.forEach(([a,b]) => { doc.setTextColor(110,110,110); doc.text(a, M, y); doc.setTextColor(20,20,20); doc.text(String(b), W-M, y, {align:'right'}); y += 5; });
+  addr.forEach(a => { doc.setFontSize(8.5); doc.setFont('helvetica','normal'); doc.setTextColor(110,110,110); doc.text(a[0], M, y); y += 4.5; doc.setTextColor(20,20,20); doc.text(a[2], M, y); y += a[2].length*4 + 1.5; });
+  y += 1; doc.line(M, y, W-M, y); y += 6;
+  doc.setFontSize(8.5);
+  rows.forEach(([a,b]) => { doc.setTextColor(40,40,40); doc.text(doc.splitTextToSize(a, 48)[0], M, y); doc.text(b, W-M, y, {align:'right'}); y += 6; });
+  y += 1; doc.setDrawColor(20,20,20); doc.setLineWidth(0.4); doc.line(M, y, W-M, y); y += 8;
+  doc.setFont('helvetica','bold'); doc.setFontSize(11); doc.text('TOTAL', M, y);
+  doc.setFontSize(15); doc.text('R$ ' + brl(c.total), W-M, y, {align:'right'}); y += 9;
+  if(k.msg){ doc.setFont('helvetica','italic'); doc.setFontSize(8.5); doc.setTextColor(90,90,90); doc.text(doc.splitTextToSize(k.msg, W-2*M), W/2, y, {align:'center'}); y += 10; }
+  doc.setLineWidth(0.2); doc.setDrawColor(200,200,200); doc.line(M, H-12, W-M, H-12);
+  doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(60,60,60);
+  doc.text(empresa, W/2, H-7, {align:'center'});
+  doc.setFillColor(245,179,1); doc.rect(0, H-3, W, 3, 'F');
+  return new File([doc.output('blob')], `recibo-${numRecibo(r)}.pdf`, {type:'application/pdf'});
+}
+$('bPdf').onclick = async () => {
+  const b = $('bPdf'); b.disabled = true; b.textContent = 'Gerando PDF…';
+  try{
+    await loadPdfLib();
+    const f = gerarPdf(fimRide);
+    if(navigator.canShare && navigator.canShare({files:[f]})){
+      try{ await navigator.share({files:[f], title:'Recibo', text:'Recibo da corrida'}); }
+      catch(e){ if(e.name !== 'AbortError') throw e; }
+    } else {
+      const a = document.createElement('a'); a.href = URL.createObjectURL(f); a.download = f.name; document.body.append(a); a.click(); a.remove();
+      toast('PDF salvo nos downloads');
+    }
+  }catch(e){ toast(e.message === 'sem internet' ? 'Precisa de internet para gerar o PDF' : 'Não foi possível gerar o PDF'); }
+  b.disabled = false; b.textContent = 'Enviar recibo em PDF';
+};
+
+/* ---------- relatório ---------- */
+let rp = 'dia', rOff = 0, rSel = null;
+const MES = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+const DS = ['dom','seg','ter','qua','qui','sex','sáb'];
+function dayStart(d){ const x = new Date(d); x.setHours(0,0,0,0); return x; }
+function periodo(){
+  const now = new Date(); let a, b, lbl;
+  if(rp === 'dia'){
+    a = dayStart(now); a.setDate(a.getDate() + rOff); b = new Date(a); b.setDate(b.getDate() + 1);
+    lbl = rOff === 0 ? 'Hoje' : rOff === -1 ? 'Ontem' : `${DS[a.getDay()]} ${a.toLocaleDateString('pt-BR')}`;
+  } else if(rp === 'semana'){
+    a = dayStart(now); a.setDate(a.getDate() - ((a.getDay() + 6) % 7) + 7*rOff); b = new Date(a); b.setDate(b.getDate() + 7);
+    const f = new Date(b - 1);
+    lbl = rOff === 0 ? 'Esta semana' : `${pad(a.getDate())}/${pad(a.getMonth()+1)} a ${pad(f.getDate())}/${pad(f.getMonth()+1)}`;
+  } else {
+    a = new Date(now.getFullYear(), now.getMonth() + rOff, 1); b = new Date(a.getFullYear(), a.getMonth() + 1, 1);
+    lbl = `${MES[a.getMonth()]} ${a.getFullYear()}`;
+  }
+  return {a: a.getTime(), b: b.getTime(), lbl};
+}
+const hm = ms => { const m = Math.round(ms/60000); return `${Math.floor(m/60)}h${pad(m%60)}`; };
+const kmTxt = k => (k||0).toLocaleString('pt-BR',{maximumFractionDigits:1});
+function resumo(list){
+  const ok = list.filter(x => !x.cancelada);
+  const tot = list.reduce((s, x) => s + (x.total||0), 0);
+  const km = ok.reduce((s, x) => s + (x.km||0), 0);
+  const ms = ok.reduce((s, x) => s + (x.corrMs||0) + (x.espMs||0), 0);
+  const esp = list.reduce((s, x) => { try{ return s + (x.ride ? calc(x.ride).vEsp : 0); }catch(e){ return s; } }, 0);
+  const best = ok.reduce((m, x) => Math.max(m, x.total||0), 0);
+  return {n: ok.length, can: list.length - ok.length, tot, km, ms, esp, best,
+    avg: ok.length ? tot/ok.length : 0, pkm: km > 0.05 ? tot/km : 0, ph: ms > 60000 ? tot/(ms/3600000) : 0};
+}
+function rideItem(x){
+  const b = document.createElement('button'); b.type='button'; b.className='hi';
+  const nome = x.cliente || (x.tipo === 'agendada' ? 'Hora marcada' : 'Corrida avulsa');
+  const quando = rp === 'dia' ? hhmm(x.inicio || x.chegada || x.id) : `${new Date(x.fim || x.id).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})} ${hhmm(x.inicio || x.chegada || x.id)}`;
+  b.innerHTML = `<span>${escapeHtml(nome)}${x.cancelada ? ' · cancelada' : ''}</span><strong>R$ ${brl(x.total)}</strong>
+    <small>${quando} · ${kmTxt(x.km)} km · ${minTxt(x.corrMs)} min</small>`;
+  b.onclick = () => { show('sHist', false); openFim(x.ride); };
+  return b;
+}
+function openHist(){ renderRep(); show('sHist', true); }
+function renderRep(){
+  document.querySelectorAll('.tabs button').forEach(b => b.setAttribute('aria-pressed', b.dataset.p === rp));
+  const P = periodo(), all = store.get('tx_hist', []);
+  const list = all.filter(x => { const t = x.fim || x.id; return t >= P.a && t < P.b; });
+  const R = resumo(list);
+  $('pLbl').textContent = P.lbl; $('pNext').disabled = rOff >= 0; $('pNext').style.opacity = rOff >= 0 ? .35 : 1;
+  $('rTot').textContent = 'R$ ' + brl(R.tot);
+  $('rSub').textContent = R.n ? `${R.n} corrida${R.n>1?'s':''} · ${kmTxt(R.km)} km · ${hm(R.ms)} ocupado` : 'Nenhuma corrida neste período';
+  $('kN').textContent = R.n; $('kKm').textContent = kmTxt(R.km); $('kT').textContent = hm(R.ms);
+  $('kAvg').textContent = R.n ? 'R$ ' + brl(R.avg) : '—';
+  $('kPkm').textContent = R.pkm ? 'R$ ' + brl(R.pkm) : '—';
+  $('kPh').textContent = R.ph ? 'R$ ' + brl(R.ph) : '—';
+  $('kEsp').textContent = 'R$ ' + brl(R.esp); $('kCan').textContent = R.can;
+  $('kBest').textContent = R.best ? 'R$ ' + brl(R.best) : '—';
+  // gráfico: semana e mês por dia
+  const box = $('chartBox');
+  if(rp === 'dia'){ box.hidden = true; }
+  else {
+    box.hidden = false;
+    const days = []; for(let t = P.a; t < P.b; ){ const d = new Date(t); const n = new Date(d); n.setDate(n.getDate()+1); days.push({a: t, b: n.getTime(), d}); t = n.getTime(); }
+    days.forEach(D => { D.v = list.filter(x => { const t = x.fim || x.id; return t >= D.a && t < D.b; }).reduce((s, x) => s + (x.total||0), 0); D.n = list.filter(x => !x.cancelada && (x.fim||x.id) >= D.a && (x.fim||x.id) < D.b).length; });
+    const max = Math.max(1, ...days.map(D => D.v));
+    const bars = $('bars'), lab = $('blabels'); bars.replaceChildren(); lab.replaceChildren();
+    const cap = D => `${DS[D.d.getDay()]} ${D.d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})}: R$ ${brl(D.v)} · ${D.n} corrida${D.n===1?'':'s'}`;
+    const melhor = days.reduce((m, D) => D.v > m.v ? D : m, days[0]);
+    $('cCap').textContent = melhor.v > 0 ? 'Melhor dia: ' + cap(melhor) : 'Toque numa barra para ver o dia';
+    days.forEach((D, i) => {
+      const b = document.createElement('button'); b.type = 'button'; b.setAttribute('aria-label', cap(D)); b.setAttribute('aria-pressed', 'false');
+      if(!D.v) b.className = 'zero';
+      const bar = document.createElement('i'); bar.style.height = (D.v/max*100) + '%'; b.append(bar);
+      b.onclick = () => { bars.querySelectorAll('button').forEach(o => o.setAttribute('aria-pressed','false')); b.setAttribute('aria-pressed','true'); $('cCap').textContent = cap(D); };
+      bars.append(b);
+      const s = document.createElement('span');
+      s.textContent = rp === 'semana' ? DS[D.d.getDay()] : ((i === 0 || (i+1) % 5 === 0) ? String(D.d.getDate()) : '');
+      lab.append(s);
+    });
+  }
+  const el = $('histList'); el.replaceChildren();
+  if(!list.length) el.innerHTML = '<p class="empty">Nenhuma corrida neste período.</p>';
+  else list.slice().sort((x, y) => (y.fim||y.id) - (x.fim||x.id)).forEach(x => el.append(rideItem(x)));
+  $('bShareRep').hidden = !list.length;
+  window.__rep = {P, R};
+}
+function repTexto(){
+  const {P, R} = window.__rep, L = [];
+  L.push(`*Relatório – ${P.lbl}*`);
+  if(cfg.nome || cfg.placa) L.push([cfg.nome, cfg.placa].filter(Boolean).join(' · '));
+  L.push('');
+  L.push(`Faturamento: *R$ ${brl(R.tot)}*`);
+  L.push(`Corridas: ${R.n}${R.can ? ` (+${R.can} cancelada${R.can>1?'s':''})` : ''}`);
+  L.push(`Km rodados: ${kmTxt(R.km)} km`);
+  L.push(`Tempo ocupado: ${hm(R.ms)}`);
+  if(R.n) L.push(`Ticket médio: R$ ${brl(R.avg)}`);
+  if(R.pkm) L.push(`Ganho por km: R$ ${brl(R.pkm)}`);
+  if(R.ph) L.push(`Ganho por hora: R$ ${brl(R.ph)}`);
+  if(R.esp) L.push(`Espera cobrada: R$ ${brl(R.esp)}`);
+  return L.join('\n');
+}
+document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => { rp = b.dataset.p; rOff = 0; renderRep(); });
+$('pPrev').onclick = () => { rOff--; renderRep(); };
+$('pNext').onclick = () => { if(rOff < 0){ rOff++; renderRep(); } };
+$('bShareRep').onclick = () => { window.open('https://wa.me/?text=' + encodeURIComponent(repTexto()), '_blank'); };
 function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 $('bHist').onclick = openHist;
-$('bClear').onclick = () => { if(confirm('Apagar todo o histórico de corridas?')){ store.set('tx_hist', []); openHist(); } };
+$('bClear').onclick = () => { if(confirm('Apagar TODO o histórico de corridas? Isso não pode ser desfeito.')){ store.set('tx_hist', []); renderRep(); } };
 
 let tt; function toast(m){ const t = $('toast'); t.textContent = m; t.hidden = false; clearTimeout(tt); tt = setTimeout(() => t.hidden = true, 2600); }
 

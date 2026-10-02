@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Solicitar corrida</title>
+<meta name="theme-color" content="#121417">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@600;700&display=swap">
+<style>
+:root{--bg:#121417;--panel:#1B1F24;--line:#2E353E;--fg:#E8EAED;--muted:#8B939D;--taxi:#F5B301;--ink:#17130A;--ok:#3DD68C;color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.4 "Barlow",system-ui,sans-serif;padding:env(safe-area-inset-top,0) 0 env(safe-area-inset-bottom,0)}
+.app{max-width:520px;margin:0 auto;padding:20px 16px 40px;display:grid;gap:16px}
+h1{margin:0;font:700 30px/1 "Barlow Condensed",sans-serif;letter-spacing:.04em;text-transform:uppercase}
+h1 span{color:var(--taxi)}
+.sub{color:var(--muted);margin:4px 0 0}
+.field{display:grid;gap:6px}
+label{font-size:14px;color:var(--muted)}
+input,textarea{background:var(--panel);border:1px solid var(--line);border-radius:12px;min-height:52px;padding:0 14px;font:inherit;font-size:18px;color:var(--fg);width:100%}
+textarea{padding:12px 14px;min-height:72px;resize:vertical}
+input:focus,textarea:focus{outline:2px solid var(--taxi);outline-offset:1px}
+.row{display:flex;gap:8px}.row input{flex:1}
+.mini{border:1px solid var(--line);background:var(--panel);color:var(--fg);border-radius:12px;padding:0 14px;min-height:52px;font:600 14px "Barlow",sans-serif;cursor:pointer;white-space:nowrap}
+.seg{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.seg button{min-height:52px;border-radius:12px;border:1px solid var(--line);background:var(--panel);color:var(--fg);font:700 16px "Barlow Condensed",sans-serif;letter-spacing:.06em;text-transform:uppercase;cursor:pointer}
+.seg button[aria-pressed=true]{background:var(--taxi);color:var(--ink);border-color:var(--taxi)}
+.go{border:0;border-radius:14px;min-height:60px;background:var(--ok);color:#06210F;font:700 20px "Barlow Condensed",sans-serif;letter-spacing:.06em;text-transform:uppercase;cursor:pointer}
+.go:disabled{opacity:.6}
+.est{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px;display:grid;gap:4px}
+.est b{font:700 28px "Barlow Condensed",sans-serif;color:var(--taxi)}
+.est small{color:var(--muted)}
+.hint{color:var(--muted);font-size:13px;margin:0}
+.err{color:#ff8a80;font-size:14px;margin:0}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>Solicitar <span>corrida</span></h1>
+    <p class="sub" id="sub">Informe partida e destino e envie o pedido pelo WhatsApp.</p>
+  </header>
+  <form id="f" class="app" style="padding:0" autocomplete="off" novalidate>
+    <div class="field"><label for="nome">Seu nome</label><input id="nome" required placeholder="Ex.: Dona Marta"></div>
+    <div class="field"><label for="fone">Seu telefone (opcional)</label><input id="fone" type="tel" inputmode="tel" placeholder="(22) 99999-9999"></div>
+    <div class="field"><label for="orig">Endereço de partida</label>
+      <div class="row"><input id="orig" required placeholder="Rua, número, bairro"><button class="mini" type="button" id="loc">📍 Usar minha localização</button></div>
+    </div>
+    <div class="field"><label for="dest">Endereço de destino</label><input id="dest" required placeholder="Rua, número, bairro"></div>
+    <div class="field"><label>Quando?</label>
+      <div class="seg"><button type="button" id="bAgora" aria-pressed="true">Agora</button><button type="button" id="bAgend" aria-pressed="false">Agendar</button></div>
+    </div>
+    <div class="field" id="fQuando" hidden><label for="quando">Data e hora</label><input id="quando" type="datetime-local"></div>
+    <div class="field"><label for="obs">Observações (opcional)</label><textarea id="obs" placeholder="Ponto de referência, nº de passageiros, bagagem…"></textarea></div>
+    <div class="est" id="est" hidden></div>
+    <button class="mini" type="button" id="bEst" hidden>Calcular estimativa de valor</button>
+    <p class="err" id="err" hidden></p>
+    <button class="go" type="submit" id="go">Enviar pedido pelo WhatsApp</button>
+    <p class="hint">O motorista confirma o pedido e o valor final pelo WhatsApp. A estimativa é aproximada: o valor final é o do taxímetro.</p>
+  </form>
+</div>
+<script>
+(() => {
+'use strict';
+const $ = id => document.getElementById(id);
+const q = new URLSearchParams(location.search);
+const W = (q.get('w') || '').replace(/\D/g, '');
+const nm = q.get('n') || '';
+const num = k => { const v = parseFloat(String(q.get(k) || '').replace(',', '.')); return isFinite(v) ? v : 0; };
+const T = {band: num('b'), km: num('k'), min: num('m')};
+const temTarifa = T.band > 0 || T.km > 0 || T.min > 0;
+if(nm) $('sub').textContent = `Pedido para ${nm}. Informe partida e destino e envie pelo WhatsApp.`;
+if(!W){ $('err').hidden = false; $('err').textContent = 'Link incompleto: peça ao motorista um novo link.'; }
+let agendar = false, pO = null, pD = null, est = null;
+const brl = v => v.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
+function setQuando(a){ agendar = a; $('bAgora').setAttribute('aria-pressed', !a); $('bAgend').setAttribute('aria-pressed', a); $('fQuando').hidden = !a; }
+$('bAgora').onclick = () => setQuando(false); $('bAgend').onclick = () => setQuando(true);
+if(temTarifa) $('bEst').hidden = false;
+$('orig').oninput = () => { pO = null; est = null; $('est').hidden = true; };
+$('dest').oninput = () => { pD = null; est = null; $('est').hidden = true; };
+
+async function geoReverse(la, lo){
+  try{
+    const j = await (await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=18&addressdetails=1&accept-language=pt-BR&lat=${la}&lon=${lo}`)).json(), a = j.address || {};
+    const rua = [a.road || a.pedestrian || a.footway || '', a.house_number].filter(Boolean).join(', ');
+    return [rua, a.suburb || a.neighbourhood || '', a.city || a.town || a.village || a.municipality || ''].filter(Boolean).join(' - ');
+  }catch(e){ return ''; }
+}
+async function geoFwd(t){
+  try{
+    const j = await (await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&countrycodes=br&accept-language=pt-BR&q=${encodeURIComponent(t)}`)).json();
+    return j[0] ? {la:+j[0].lat, lo:+j[0].lon} : null;
+  }catch(e){ return null; }
+}
+$('loc').onclick = () => {
+  const b = $('loc'); if(!navigator.geolocation){ b.textContent = 'Sem GPS'; return; }
+  b.disabled = true; b.textContent = 'Localizando…';
+  navigator.geolocation.getCurrentPosition(async p => {
+    pO = {la:p.coords.latitude, lo:p.coords.longitude}; est = null; $('est').hidden = true;
+    const t = await geoReverse(pO.la, pO.lo); if(t) $('orig').value = t;
+    b.disabled = false; b.textContent = '📍 Usar minha localização';
+  }, () => { b.disabled = false; b.textContent = '📍 Usar minha localização'; alert('Não consegui acessar a localização. Digite o endereço.'); }, {enableHighAccuracy:true, timeout:15000});
+};
+async function estimar(){
+  const eb = $('bEst'); eb.disabled = true; eb.textContent = 'Calculando…'; $('est').hidden = true;
+  try{
+    const o = $('orig').value.trim(), d = $('dest').value.trim();
+    if(!o || !d) throw new Error('Preencha partida e destino.');
+    if(!pO) pO = await geoFwd(o); if(!pD) pD = await geoFwd(d);
+    if(!pO || !pD) throw new Error('Não encontrei um dos endereços. Confira o nome da rua e a cidade.');
+    const j = await (await fetch(`https://router.project-osrm.org/route/v1/driving/${pO.lo},${pO.la};${pD.lo},${pD.la}?overview=false`)).json();
+    const r = j.routes && j.routes[0]; if(!r) throw new Error('Não consegui traçar a rota.');
+    const km = r.distance/1000, min = r.duration/60;
+    const v = Math.max(T.band, km*T.km) + min*T.min;
+    est = {km, min, v};
+    $('est').hidden = false;
+    $('est').innerHTML = `<small>Estimativa</small><b>≈ R$ ${brl(v)}</b><small>${km.toLocaleString('pt-BR',{maximumFractionDigits:1})} km · cerca de ${Math.round(min)} min</small>`;
+  }catch(e){ $('err').hidden = false; $('err').textContent = e.message || 'Falha ao calcular. Tente de novo.'; setTimeout(() => $('err').hidden = true, 5000); }
+  eb.disabled = false; eb.textContent = 'Calcular estimativa de valor';
+}
+$('bEst').onclick = estimar;
+
+$('f').onsubmit = e => {
+  e.preventDefault();
+  const nome = $('nome').value.trim(), o = $('orig').value.trim(), d = $('dest').value.trim();
+  if(!W){ return; }
+  if(!nome || !o || !d){ $('err').hidden = false; $('err').textContent = 'Preencha nome, partida e destino.'; return; }
+  $('err').hidden = true;
+  let quando = 'Agora';
+  if(agendar){
+    const v = $('quando').value; if(!v){ $('err').hidden = false; $('err').textContent = 'Escolha a data e a hora.'; return; }
+    quando = new Date(v).toLocaleString('pt-BR', {dateStyle:'short', timeStyle:'short'});
+  }
+  const org = pO ? `${pO.la},${pO.lo}` : o, dst = pD ? `${pD.la},${pD.lo}` : d;
+  const mapa = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(org)}&destination=${encodeURIComponent(dst)}&travelmode=driving`;
+  const L = ['*Pedido de corrida*', `Nome: ${nome}`];
+  const fone = $('fone').value.trim(); if(fone) L.push(`Telefone: ${fone}`);
+  L.push(`Quando: ${quando}`, `Partida: ${o}`, `Destino: ${d}`);
+  if(est) L.push(`Estimativa: ≈ R$ ${brl(est.v)} (${est.km.toLocaleString('pt-BR',{maximumFractionDigits:1})} km)`);
+  const obs = $('obs').value.trim(); if(obs) L.push(`Obs.: ${obs}`);
+  L.push(`Rota: ${mapa}`);
+  location.href = `https://wa.me/${W}?text=${encodeURIComponent(L.join('\n'))}`;
+};
+})();
+</script>
+</body>
+</html>
