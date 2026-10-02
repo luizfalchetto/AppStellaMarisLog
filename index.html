@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Taxímetro</title>
 <meta name="theme-color" content="#121417">
+<link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMAAAADABAMAAACg8nE0AAAAMFBMVEX1swHsrQLdogOYcgr/Sj3OSi/SQTh9OiR0MC4qMDhQKSopIh0bHyQbGhYWFxcSFBdodR9qAAADa0lEQVR42u3aUWsTWRTA8f9M0lhWYQZFEfZlqBUFWQ1UX3xpcL9AXPYDpIv4AdQH8cG6IqIvfoAqNl9AjK+Cth+gS7M+CLLbdtjHdWEnRlCmzRwfJupDR725uSMVz31pScj55Zxz752ZSzyh3OGjgAIKKKCAAgoooIACCiiggAIKKLBzgGrhq73QJpYYZ2AXH88YCC3LERoCPdt69wyB0LqjoRHQs58yvZ2xDsIxwoW6VbgHAslHAsyKtAFvSVLguEg9EPlix2Tb+CTwUOQVOVSHh7IZbgOC7dHMAe9/kT7ADyLPqIi8wgAYoQd+CJMAb2OOMglX7bfrj+P1SVZ43WAAu4BqFEPWWp6oB2Qds0388yUCRPId4IRsitTf12hJ+jguUcjbmGvDGh1r8ATHGSzJn/P5NGJWRCQyyqBq3uMGi6tMALCSp+F2JXuwvD6cFG8SeOx6q5gki/+lGgFkXZh3DUyTJlvQBKg04HfXQJMtspg5gIPAmXHui4pGgz0CTAGcA3ZHsdNp6g/ffZP//1Kk43ahTQz/1vId6Rb87LYHB95/IIJTZA+usTtyWqJZ2ZyZmTkt0sbfkD4/irRxcD34AMxLP6/+P+wSeURFpO8S8DbybWhJ+pwYXtEGkUOgItLJt7mU/Jr8k0jbAPDE7C7ccATJd3FflIwRLtkRGQRj9NisB4nDChUCgcMEinuQuEugGAjshMIHcU9/9qCAAgpY3vymbbtg500zsIxf+LmizW6BGav4g26tZZaBXXwqdbMSpRXbhlZSI6A9xpxpG5Wobh2/ritZAQXGOqvIroC/9xJAeuN6SRlk/y2WXaK/ygS8WxfJEnhxP70bl5PB/ogum4sxa/dLKlECrJU9TTv8VjsXuZ+mAIRJRNiLmJ4uJ4OXsR+NepYxQgZyGaYhydrl9aD6CzRZT++VBWTAIeDvxVIW2s0oW4aJuZFW9CgZ+E1WgSMXfLKklBLtYwsgrDbolgJUGeTfPCqpyV7IMrefJnTMidFmUZNVgsd30sQvCZjKmwCHy1poDJJf98Khs+Zl3f4AsvClx4NPX5MHz1t6X/RVgNp1LdE3D3Sto3WNgNYY39foKKE2sA0/qBn24A/L+F3D0xYWLDMoOGwpzqDlrAN6OK6AAgoooIACCiiggAIKKKCAAgrsLOAdvIB+EJDRlIUAAAAASUVORK5CYII=">
 <link rel="apple-touch-icon" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAALQAAAC0BAMAAADP4xsBAAAAMFBMVEX1swHgpAOSbQv/Sj2eSiLuRzvBPjZkPBx1MC4qMDhQKicjIBgbHyQbGhYXFxcSFBd3tliaAAADGElEQVR42u3Yv2sTcRjH8fddmrahQ04pdqjI0SK4NaAibrFD51ZxPx10ELTg5NTDv6AdBC0iGe2gtmuDbUZFlEyCvyC4iFjxWpTExNzjEEVo0/ab67ekyHPTUcKLp5/v8/11jrBfj4vSSiuttNJKK6200korrbTSSneF7mn3x3WvU0YMq+5cxjGjE8ht7Ta0lyhZr7sdsp4MWu9u1V5CydOJflDprLQeYECkAAyL+HBMml5WqpaqHoQp4BPMwSV+RAZr1uZnm6pnRDYAZqSKK1Jgc9XZLdCO9ECxKPKlWARWRRr8SWRAxNsrDYhMA7giIl7rZWlMquxOm2adplEiAOKQiUWWLTbfELUWzX36fW5YpA8hBUZo9Qi1ikU65MkaaVqJ8NZswzQaRkfE75PYAxgT8bE3jA5EdRwPYBbmLK4hGRqRlAgBNw8TFulB0iJ5poCjQL9vjw7+HQnmqJklYkjn/+aCO8mt0CwRow5xRd4Vi09FPIal6Q2L+LbWkD4RD1yRaWZkA1dkyVbzHaERQVwi74asEBslYkYfpgZQYjwD0/DApEccMTl0mjzZqJvbbpRQirp6WMgmjNpgGBOOo5g0X2Sn6HZVJ7rMiNmUyUY25LZV6yFYaaUPyleceqFz54pR1Ulk5o3WkPlUrnP6ZW+we9V1Esjk6iaBpJKMWcok60IuUT/kCjpllN5numq8DPQY/erXNRj9fnu/qv7wOezs3NZJIGvA8uyb+5FdOn3vJjHUHlXiF4u2qz6OwOoed5ltPy5Axb3+7OxD21U3cSBK+c6J0HqH4AKx/UAaV+EUeJVCxn7WnAnAL5fd+LL1vn4FnIP4eclyX9+hUYb+C8Bjy1X3TLIITIQj1G0HMs43AG8o59qmU/xsvVTEOu07cHeF2HOsT/QoLuVlYQH6rDdfQLn1ct76lBnlPRdTXz+ezhv+m1vGZP7kznvjQtB+9Xod6DnEMp0JNJD/mC4b0EE5mW1wb6SZBG72GlTdS4Kym2Wji3SiO/rWe3S7QHoDG0nrJ0SllVZaaaWVVlpppZVWWmmlu0b/BvZozroaq7t1AAAAAElFTkSuQmCC">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -186,7 +187,7 @@ h3{font:700 15px var(--f-cond);letter-spacing:.12em;text-transform:uppercase;col
     </div>
     <div class="field">
       <label for="nCli">Nome do cliente (opcional)</label>
-      <input id="nCli" type="text" autocomplete="off" placeholder="Ex.: Dona Marta">
+      <input id="nCli" type="text" autocomplete="off" list="cliList" placeholder="Ex.: Dona Marta"><datalist id="cliList"></datalist>
     </div>
     <div class="field">
       <label for="nFone">WhatsApp do cliente (opcional)</label>
@@ -436,6 +437,17 @@ async function capEnd(r, campo){
   if(typeof fimRide !== 'undefined' && fimRide && fimRide.id === r.id){ fimRide[campo] = t; const el = $(campo === 'orig' ? 'fOrig' : 'fDest'); if(el && !el.value) el.value = t; }
 }
 
+/* ---------- clientes frequentes ---------- */
+const cliList = () => store.get('tx_cli', []);
+function loadCli(){ $('cliList').innerHTML = cliList().sort((a, b) => (b.n || 0) - (a.n || 0)).map(c => `<option value="${escapeHtml(c.nome)}"></option>`).join(''); }
+function lembrarCli(r){
+  if(!r || !r.cliente) return;
+  const l = cliList(), k = r.cliente.trim().toLowerCase(); let c = l.find(x => x.nome.toLowerCase() === k);
+  if(!c){ c = {nome:r.cliente.trim(), fone:'', n:0}; l.push(c); }
+  if(r.fone) c.fone = r.fone; c.n = (c.n || 0) + 1; store.set('tx_cli', l.slice(-300));
+}
+$('nCli').oninput = () => { const c = cliList().find(x => x.nome.toLowerCase() === $('nCli').value.trim().toLowerCase()); if(c && c.fone && !$('nFone').value) $('nFone').value = c.fone; };
+
 /* ---------- actions ---------- */
 function newRide(tipo, agendado, cliente, fone, direto){
   const now = Date.now();
@@ -452,7 +464,7 @@ function avisar(){
 function iniciar(){ ride.inicio = Date.now(); ride.fase = 'corrida'; ride.last = null; save(); startGps(); capEnd(ride, 'orig'); render(); }
 function finalizar(){
   ride.fim = Date.now(); ride.fase = 'fim'; save(); stopGps(); keepAwake(false);
-  saveHist(); render(); openFim(); if(ride.inicio) capEnd(ride, 'dest');
+  lembrarCli(ride); saveHist(); render(); openFim(); if(ride.inicio) capEnd(ride, 'dest');
 }
 function cancelar(){
   if(ride.chegada && ride.cfg.esp > 0){
@@ -577,6 +589,7 @@ function setTipo(t){
 }
 $('tAv').onclick = () => setTipo('avulsa'); $('tAg').onclick = () => setTipo('agendada');
 function openNew(){
+  loadCli();
   if(!cfgOk()){ toast('Configure as tarifas primeiro'); return openCfg(); }
   $('fNew').reset(); setTipo('avulsa');
   const d = new Date(Date.now() + 30*60000); $('nHora').value = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
@@ -896,14 +909,14 @@ function baixar(nome, texto, tipo){
   if(navigator.canShare && navigator.canShare({files:[f]})) return navigator.share({files:[f], title:nome}).catch(e => { if(e.name !== 'AbortError') toast('Não foi possível enviar o arquivo'); });
   const a = document.createElement('a'); a.href = URL.createObjectURL(f); a.download = nome; document.body.append(a); a.click(); a.remove(); toast('Arquivo salvo nos downloads');
 }
-$('bBkp').onclick = () => baixar(`backup-taximetro-${new Date().toISOString().slice(0, 10)}.json`, JSON.stringify({v:1, cfg, hist:store.get('tx_hist', []), desp:store.get('tx_desp', [])}), 'application/json');
+$('bBkp').onclick = () => baixar(`backup-taximetro-${new Date().toISOString().slice(0, 10)}.json`, JSON.stringify({v:1, cfg, hist:store.get('tx_hist', []), desp:store.get('tx_desp', []), cli:store.get('tx_cli', [])}), 'application/json');
 $('bRest').onclick = () => $('fRest').click();
 $('fRest').onchange = async () => {
   const f = $('fRest').files[0]; if(!f) return;
   try{
     const d = JSON.parse(await f.text()); if(!Array.isArray(d.hist)) throw new Error('x');
     if(!confirm(`Restaurar backup com ${d.hist.length} corridas? Isso substitui o histórico atual.`)){ $('fRest').value = ''; return; }
-    store.set('tx_hist', d.hist); store.set('tx_desp', d.desp || []); if(d.cfg){ cfg = Object.assign({}, DEF, d.cfg); store.set('tx_cfg', cfg); }
+    store.set('tx_hist', d.hist); store.set('tx_desp', d.desp || []); store.set('tx_cli', d.cli || cliList()); if(d.cfg){ cfg = Object.assign({}, DEF, d.cfg); store.set('tx_cfg', cfg); }
     renderRep(); render(); toast('Backup restaurado');
   }catch(e){ toast('Arquivo de backup inválido'); }
   $('fRest').value = '';
@@ -924,6 +937,7 @@ if(ride && ride.fase === 'corrida'){ startGps(); keepAwake(true); }
 else if(ride && ride.fase !== 'fim') keepAwake(true);
 render();
 if(!cfgOk()) openCfg();
+if('serviceWorker' in navigator && location.protocol.indexOf('http') === 0) navigator.serviceWorker.register('sw.js').catch(() => {});
 window.addEventListener('beforeunload', e => { if(ride && ride.fase === 'corrida'){ e.preventDefault(); e.returnValue = ''; } });
 })();
 </script>
