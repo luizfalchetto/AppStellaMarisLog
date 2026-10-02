@@ -74,10 +74,10 @@ legend{padding:0;margin-bottom:6px;font:700 16px "Barlow Condensed",sans-serif;l
 'use strict';
 const $ = id => document.getElementById(id);
 const q = new URLSearchParams(location.search);
-const W = (q.get('w') || '').replace(/\D/g, '');
+const W = (q.get('w') || '5522999299851').replace(/\D/g, '');
 const nm = q.get('n') || '';
 const num = k => { const v = parseFloat(String(q.get(k) || '').replace(',', '.')); return isFinite(v) ? v : 0; };
-const T = {band: num('b'), km: num('k'), min: num('m')};
+const T = (q.has('b') || q.has('k') || q.has('m')) ? {band: num('b'), km: num('k'), min: num('m')} : {band: 5.5, km: 5, min: 0.4};
 const temTarifa = T.band > 0 || T.km > 0 || T.min > 0;
 if(nm) $('sub').textContent = `Pedido para ${nm}. Informe partida e destino e envie pelo WhatsApp.`;
 if(!W){ $('err').hidden = false; $('err').textContent = 'Link incompleto: peça ao motorista um novo link.'; }
@@ -88,8 +88,10 @@ $('bAgora').onclick = () => setQuando(false); $('bAgend').onclick = () => setQua
 if(temTarifa) $('bEst').hidden = false;
 const addr = p => { const g = id => $(p + id).value.trim(); return [[g('Rua'), g('Num')].filter(Boolean).join(', '), g('Bai'), g('Cid')].filter(Boolean).join(' - '); };
 const addrQ = (p, simples) => { const g = id => $(p + id).value.trim(); return [[g('Rua'), simples ? '' : g('Num')].filter(Boolean).join(' '), simples ? '' : g('Bai'), g('Cid'), 'Brasil'].filter(Boolean).join(', '); };
-['oRua', 'oNum', 'oBai', 'oCid'].forEach(id => $(id).oninput = () => { pO = null; est = null; $('est').hidden = true; });
-['dRua', 'dNum', 'dBai', 'dCid'].forEach(id => $(id).oninput = () => { pD = null; est = null; $('est').hidden = true; });
+let tmr;
+const auto = () => { clearTimeout(tmr); tmr = setTimeout(() => { if(temTarifa && $('oRua').value.trim() && $('dRua').value.trim() && !est) calcular().catch(() => {}); }, 2000); };
+['oRua', 'oNum', 'oBai', 'oCid'].forEach(id => $(id).oninput = () => { pO = null; est = null; $('est').hidden = true; auto(); });
+['dRua', 'dNum', 'dBai', 'dCid'].forEach(id => $(id).oninput = () => { pD = null; est = null; $('est').hidden = true; auto(); });
 
 async function geoReverse(la, lo){
   try{
@@ -112,26 +114,33 @@ $('loc').onclick = () => {
     b.disabled = false; b.textContent = '📍 Usar minha localização';
   }, () => { b.disabled = false; b.textContent = '📍 Usar minha localização'; alert('Não consegui acessar a localização. Digite o endereço.'); }, {enableHighAccuracy:true, timeout:15000});
 };
+function hav(a, b){ const r = x => x*Math.PI/180, dLa = r(b.la - a.la), dLo = r(b.lo - a.lo), h = Math.sin(dLa/2)**2 + Math.cos(r(a.la))*Math.cos(r(b.la))*Math.sin(dLo/2)**2; return 2*6371*Math.asin(Math.sqrt(h)); }
+async function calcular(){
+  if(!$('oRua').value.trim() || !$('dRua').value.trim()) throw new Error('Preencha a rua de partida e a de destino.');
+  if(!pO) pO = await geoFwd(addrQ('o')) || await geoFwd(addrQ('o', true));
+  if(!pD) pD = await geoFwd(addrQ('d')) || await geoFwd(addrQ('d', true));
+  if(!pO || !pD) throw new Error('Não encontrei um dos endereços. Confira o nome da rua e a cidade.');
+  let km, min, aprox = false;
+  try{
+    const j = await (await fetch(`https://router.project-osrm.org/route/v1/driving/${pO.lo},${pO.la};${pD.lo},${pD.la}?overview=false`)).json();
+    const r = j.routes && j.routes[0]; if(!r) throw new Error('x');
+    km = r.distance/1000; min = r.duration/60;
+  }catch(e){ km = hav(pO, pD)*1.3; min = km/25*60; aprox = true; }
+  const v = Math.max(T.band, km*T.km) + min*T.min;
+  est = {km, min, v, aprox};
+  $('est').hidden = false;
+  $('est').innerHTML = `<small>Estimativa${aprox ? ' aproximada' : ''}</small><b>≈ R$ ${brl(v)}</b><small>${km.toLocaleString('pt-BR',{maximumFractionDigits:1})} km · cerca de ${Math.round(min)} min</small>`;
+  return est;
+}
 async function estimar(){
   const eb = $('bEst'); eb.disabled = true; eb.textContent = 'Calculando…'; $('est').hidden = true;
-  try{
-    if(!$('oRua').value.trim() || !$('dRua').value.trim()) throw new Error('Preencha a rua de partida e a de destino.');
-    if(!pO) pO = await geoFwd(addrQ('o')) || await geoFwd(addrQ('o', true));
-    if(!pD) pD = await geoFwd(addrQ('d')) || await geoFwd(addrQ('d', true));
-    if(!pO || !pD) throw new Error('Não encontrei um dos endereços. Confira o nome da rua e a cidade.');
-    const j = await (await fetch(`https://router.project-osrm.org/route/v1/driving/${pO.lo},${pO.la};${pD.lo},${pD.la}?overview=false`)).json();
-    const r = j.routes && j.routes[0]; if(!r) throw new Error('Não consegui traçar a rota.');
-    const km = r.distance/1000, min = r.duration/60;
-    const v = Math.max(T.band, km*T.km) + min*T.min;
-    est = {km, min, v};
-    $('est').hidden = false;
-    $('est').innerHTML = `<small>Estimativa</small><b>≈ R$ ${brl(v)}</b><small>${km.toLocaleString('pt-BR',{maximumFractionDigits:1})} km · cerca de ${Math.round(min)} min</small>`;
-  }catch(e){ $('err').hidden = false; $('err').textContent = e.message || 'Falha ao calcular. Tente de novo.'; setTimeout(() => $('err').hidden = true, 5000); }
+  try{ await calcular(); }
+  catch(e){ $('err').hidden = false; $('err').textContent = e.message || 'Falha ao calcular. Tente de novo.'; setTimeout(() => $('err').hidden = true, 5000); }
   eb.disabled = false; eb.textContent = 'Calcular estimativa de valor';
 }
 $('bEst').onclick = estimar;
 
-$('f').onsubmit = e => {
+$('f').onsubmit = async e => {
   e.preventDefault();
   const nome = $('nome').value.trim(), o = addr('o'), d = addr('d');
   if(!W){ return; }
@@ -142,12 +151,14 @@ $('f').onsubmit = e => {
     const v = $('quando').value; if(!v){ $('err').hidden = false; $('err').textContent = 'Escolha a data e a hora.'; return; }
     quando = new Date(v).toLocaleString('pt-BR', {dateStyle:'short', timeStyle:'short'});
   }
+  if(temTarifa && !est){ const g = $('go'); g.disabled = true; g.textContent = 'Calculando valor…'; try{ await calcular(); }catch(x){} g.disabled = false; g.textContent = 'Enviar pedido pelo WhatsApp'; }
   const org = pO ? `${pO.la},${pO.lo}` : o, dst = pD ? `${pD.la},${pD.lo}` : d;
   const mapa = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(org)}&destination=${encodeURIComponent(dst)}&travelmode=driving`;
   const L = ['*Pedido de corrida*', `Nome: ${nome}`];
   const fone = $('fone').value.trim(); if(fone) L.push(`Telefone: ${fone}`);
   L.push(`Quando: ${quando}`, `Partida: ${o}`, `Destino: ${d}`);
-  if(est) L.push(`Estimativa: ≈ R$ ${brl(est.v)} (${est.km.toLocaleString('pt-BR',{maximumFractionDigits:1})} km)`);
+  if(est) L.push(`Estimativa: ≈ R$ ${brl(est.v)} (${est.km.toLocaleString('pt-BR',{maximumFractionDigits:1})} km${est.aprox ? ', aproximada' : ''})`);
+  else if(temTarifa) L.push('Estimativa: a confirmar');
   const obs = $('obs').value.trim(); if(obs) L.push(`Obs.: ${obs}`);
   L.push(`Rota: ${mapa}`);
   location.href = `https://wa.me/${W}?text=${encodeURIComponent(L.join('\n'))}`;
