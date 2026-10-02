@@ -31,6 +31,9 @@ input:focus,textarea:focus{outline:2px solid var(--taxi);outline-offset:1px}
 .est small{color:var(--muted)}
 .hint{color:var(--muted);font-size:13px;margin:0}
 .err{color:#ff8a80;font-size:14px;margin:0}
+fieldset{border:0;padding:0;margin:0;display:grid;gap:10px}
+legend{padding:0;margin-bottom:6px;font:700 16px "Barlow Condensed",sans-serif;letter-spacing:.08em;text-transform:uppercase;color:var(--taxi)}
+.g2{display:grid;grid-template-columns:100px 1fr;gap:8px}
 [hidden]{display:none!important}
 </style>
 </head>
@@ -43,10 +46,17 @@ input:focus,textarea:focus{outline:2px solid var(--taxi);outline-offset:1px}
   <form id="f" class="app" style="padding:0" autocomplete="off" novalidate>
     <div class="field"><label for="nome">Seu nome</label><input id="nome" required placeholder="Ex.: Dona Marta"></div>
     <div class="field"><label for="fone">Seu telefone (opcional)</label><input id="fone" type="tel" inputmode="tel" placeholder="(22) 99999-9999"></div>
-    <div class="field"><label for="orig">Endereço de partida</label>
-      <div class="row"><input id="orig" required placeholder="Rua, número, bairro"><button class="mini" type="button" id="loc">📍 Usar minha localização</button></div>
-    </div>
-    <div class="field"><label for="dest">Endereço de destino</label><input id="dest" required placeholder="Rua, número, bairro"></div>
+    <fieldset><legend>Partida</legend>
+      <button class="mini" type="button" id="loc">📍 Usar minha localização</button>
+      <div class="field"><label for="oRua">Rua</label><input id="oRua" placeholder="Nome da rua" autocomplete="off"></div>
+      <div class="g2"><div class="field"><label for="oNum">Número</label><input id="oNum" inputmode="numeric" placeholder="123" autocomplete="off"></div><div class="field"><label for="oBai">Bairro</label><input id="oBai" placeholder="Bairro" autocomplete="off"></div></div>
+      <div class="field"><label for="oCid">Cidade</label><input id="oCid" value="Macaé" autocomplete="off"></div>
+    </fieldset>
+    <fieldset><legend>Destino</legend>
+      <div class="field"><label for="dRua">Rua</label><input id="dRua" placeholder="Nome da rua" autocomplete="off"></div>
+      <div class="g2"><div class="field"><label for="dNum">Número</label><input id="dNum" inputmode="numeric" placeholder="123" autocomplete="off"></div><div class="field"><label for="dBai">Bairro</label><input id="dBai" placeholder="Bairro" autocomplete="off"></div></div>
+      <div class="field"><label for="dCid">Cidade</label><input id="dCid" value="Macaé" autocomplete="off"></div>
+    </fieldset>
     <div class="field"><label>Quando?</label>
       <div class="seg"><button type="button" id="bAgora" aria-pressed="true">Agora</button><button type="button" id="bAgend" aria-pressed="false">Agendar</button></div>
     </div>
@@ -76,15 +86,16 @@ const brl = v => v.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFrac
 function setQuando(a){ agendar = a; $('bAgora').setAttribute('aria-pressed', !a); $('bAgend').setAttribute('aria-pressed', a); $('fQuando').hidden = !a; }
 $('bAgora').onclick = () => setQuando(false); $('bAgend').onclick = () => setQuando(true);
 if(temTarifa) $('bEst').hidden = false;
-$('orig').oninput = () => { pO = null; est = null; $('est').hidden = true; };
-$('dest').oninput = () => { pD = null; est = null; $('est').hidden = true; };
+const addr = p => { const g = id => $(p + id).value.trim(); return [[g('Rua'), g('Num')].filter(Boolean).join(', '), g('Bai'), g('Cid')].filter(Boolean).join(' - '); };
+const addrQ = (p, simples) => { const g = id => $(p + id).value.trim(); return [[g('Rua'), simples ? '' : g('Num')].filter(Boolean).join(' '), simples ? '' : g('Bai'), g('Cid'), 'Brasil'].filter(Boolean).join(', '); };
+['oRua', 'oNum', 'oBai', 'oCid'].forEach(id => $(id).oninput = () => { pO = null; est = null; $('est').hidden = true; });
+['dRua', 'dNum', 'dBai', 'dCid'].forEach(id => $(id).oninput = () => { pD = null; est = null; $('est').hidden = true; });
 
 async function geoReverse(la, lo){
   try{
     const j = await (await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=18&addressdetails=1&accept-language=pt-BR&lat=${la}&lon=${lo}`)).json(), a = j.address || {};
-    const rua = [a.road || a.pedestrian || a.footway || '', a.house_number].filter(Boolean).join(', ');
-    return [rua, a.suburb || a.neighbourhood || '', a.city || a.town || a.village || a.municipality || ''].filter(Boolean).join(' - ');
-  }catch(e){ return ''; }
+    return {rua: a.road || a.pedestrian || a.footway || '', num: a.house_number || '', bai: a.suburb || a.neighbourhood || '', cid: a.city || a.town || a.village || a.municipality || ''};
+  }catch(e){ return null; }
 }
 async function geoFwd(t){
   try{
@@ -97,16 +108,16 @@ $('loc').onclick = () => {
   b.disabled = true; b.textContent = 'Localizando…';
   navigator.geolocation.getCurrentPosition(async p => {
     pO = {la:p.coords.latitude, lo:p.coords.longitude}; est = null; $('est').hidden = true;
-    const t = await geoReverse(pO.la, pO.lo); if(t) $('orig').value = t;
+    const t = await geoReverse(pO.la, pO.lo); if(t){ $('oRua').value = t.rua; $('oNum').value = t.num; $('oBai').value = t.bai; if(t.cid) $('oCid').value = t.cid; }
     b.disabled = false; b.textContent = '📍 Usar minha localização';
   }, () => { b.disabled = false; b.textContent = '📍 Usar minha localização'; alert('Não consegui acessar a localização. Digite o endereço.'); }, {enableHighAccuracy:true, timeout:15000});
 };
 async function estimar(){
   const eb = $('bEst'); eb.disabled = true; eb.textContent = 'Calculando…'; $('est').hidden = true;
   try{
-    const o = $('orig').value.trim(), d = $('dest').value.trim();
-    if(!o || !d) throw new Error('Preencha partida e destino.');
-    if(!pO) pO = await geoFwd(o); if(!pD) pD = await geoFwd(d);
+    if(!$('oRua').value.trim() || !$('dRua').value.trim()) throw new Error('Preencha a rua de partida e a de destino.');
+    if(!pO) pO = await geoFwd(addrQ('o')) || await geoFwd(addrQ('o', true));
+    if(!pD) pD = await geoFwd(addrQ('d')) || await geoFwd(addrQ('d', true));
     if(!pO || !pD) throw new Error('Não encontrei um dos endereços. Confira o nome da rua e a cidade.');
     const j = await (await fetch(`https://router.project-osrm.org/route/v1/driving/${pO.lo},${pO.la};${pD.lo},${pD.la}?overview=false`)).json();
     const r = j.routes && j.routes[0]; if(!r) throw new Error('Não consegui traçar a rota.');
@@ -122,9 +133,9 @@ $('bEst').onclick = estimar;
 
 $('f').onsubmit = e => {
   e.preventDefault();
-  const nome = $('nome').value.trim(), o = $('orig').value.trim(), d = $('dest').value.trim();
+  const nome = $('nome').value.trim(), o = addr('o'), d = addr('d');
   if(!W){ return; }
-  if(!nome || !o || !d){ $('err').hidden = false; $('err').textContent = 'Preencha nome, partida e destino.'; return; }
+  if(!nome || !$('oRua').value.trim() || !$('dRua').value.trim()){ $('err').hidden = false; $('err').textContent = 'Preencha nome, rua de partida e rua de destino.'; return; }
   $('err').hidden = true;
   let quando = 'Agora';
   if(agendar){
