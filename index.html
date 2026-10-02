@@ -59,6 +59,9 @@ header{display:flex;align-items:center;justify-content:space-between;gap:8px}
 .note{font-size:13px;color:var(--muted);display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .note .dot{width:8px;height:8px;border-radius:50%;background:var(--muted)}
 .note .dot.ok{background:var(--free)} .note .dot.bad{background:var(--led)}
+.dynsel{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:10px}
+.dynsel button{border:1px solid var(--line);background:var(--panel2);color:var(--muted);border-radius:10px;padding:8px 4px;font:700 13px/1.15 var(--f-cond);letter-spacing:.04em;text-transform:uppercase;cursor:pointer;min-height:44px}
+.dynsel button[aria-pressed="true"]{background:var(--taxi);color:var(--taxi-ink);border-color:var(--taxi)}
 .banner{background:rgba(245,179,1,.1);border:1px solid rgba(245,179,1,.35);color:var(--fg);border-radius:12px;padding:10px 12px;font-size:14px}
 
 /* actions */
@@ -158,6 +161,7 @@ h3{font:700 15px var(--f-cond);letter-spacing:.12em;text-transform:uppercase;col
     <div class="display">
       <small id="totLbl">Valor</small>
       <div class="total" id="total"><span>R$</span>0,00</div>
+      <div class="dynsel" id="dynMain" hidden></div>
     </div>
     <div class="readings">
       <div class="rd"><small>Distância</small><strong id="rKm">0,00</strong><em>km</em></div>
@@ -237,6 +241,7 @@ h3{font:700 15px var(--f-cond);letter-spacing:.12em;text-transform:uppercase;col
       <div class="field"><label for="cTc">Taxa crédito (%)</label><input id="cTc" type="text" inputmode="decimal" placeholder="3,09"></div>
     </div>
     <div class="field"><label for="cPix">Chave Pix</label><input id="cPix" type="text" autocomplete="off"></div>
+    <div class="field"><label for="cDyn">Tarifa dinâmica (feriado / chuva forte): acréscimo (%)</label><input id="cDyn" type="text" inputmode="decimal" placeholder="50"></div>
     <div class="field"><label for="cMeta">Meta diária (R$)</label><div class="money"><input id="cMeta" type="text" inputmode="decimal" placeholder="0,00"></div></div>
     <h3>Pedidos de clientes</h3>
     <div class="field"><label for="cWhats">Seu WhatsApp para receber pedidos (com DDD)</label><input id="cWhats" type="tel" inputmode="tel" placeholder="22999999999"></div>
@@ -251,6 +256,7 @@ h3{font:700 15px var(--f-cond);letter-spacing:.12em;text-transform:uppercase;col
   <div class="app">
     <header><h2>Corrida encerrada</h2><button class="iconbtn" type="button" id="bFimClose">Fechar</button></header>
     <div class="card"><div class="lines" id="fimLines"></div></div>
+    <div class="field"><label>Tarifa dinâmica</label><div class="dynsel" id="dynFim" hidden></div></div>
     <div class="field"><label>Forma de pagamento</label><div class="seg4" id="fPag" role="group" aria-label="Forma de pagamento"><button type="button" data-p="din">Dinheiro</button><button type="button" data-p="pix">Pix</button><button type="button" data-p="deb">Débito</button><button type="button" data-p="cre">Crédito</button></div></div>
     <div class="card pixbox" id="pixBox" hidden><div id="pixQr"></div><p class="hint" id="pixVal"></p><button class="btn" type="button" id="bPixCopy">Copiar Pix copia e cola</button></div>
     <div class="field"><label for="fOrig">Endereço de partida</label><input id="fOrig" type="text" autocomplete="off" placeholder="Preenchido pelo GPS — você pode editar"></div>
@@ -342,7 +348,15 @@ const dia = t => new Date(t).toLocaleDateString('pt-BR');
 const minTxt = ms => { const m = ms/60000; return m < 10 ? m.toLocaleString('pt-BR',{maximumFractionDigits:1}) : String(Math.round(m)); };
 
 /* ---------- config ---------- */
-const DEF = {nome:'', placa:'', band:0, km:0, min:0, esp:0, arred:0, msg:'Obrigado pela preferência!', empresa:'Stella Maris Logistics', cnpj:'64.842.411/0001-07', taxaDeb:0.89, taxaCre:3.09, pix:'70e9320f-2100-485f-8ad4-62dd0a868e90', meta:0};
+const DEF = {nome:'', placa:'', band:0, km:0, min:0, esp:0, arred:0, msg:'Obrigado pela preferência!', empresa:'Stella Maris Logistics', cnpj:'64.842.411/0001-07', taxaDeb:0.89, taxaCre:3.09, dyn:50, pix:'70e9320f-2100-485f-8ad4-62dd0a868e90', meta:0};
+const DYN = {fer:'Feriado', chu:'Chuva forte'};
+const dynPc = r => r && r.cfg && r.cfg.dyn != null ? Number(r.cfg.dyn) : 50;
+function drawDyn(el, r, fn){
+  const pc = dynPc(r); el.hidden = !r || pc <= 0; if(el.hidden) return;
+  const key = (r.dyn || '') + '|' + pc + '|' + r.id; if(el.dataset.k === key) return; el.dataset.k = key; el.replaceChildren();
+  const p = pc.toLocaleString('pt-BR');
+  [['', 'Normal'], ['fer', 'Feriado +' + p + '%'], ['chu', 'Chuva forte +' + p + '%']].forEach(([k, t]) => { const b = document.createElement('button'); b.type = 'button'; b.textContent = t; b.setAttribute('aria-pressed', (r.dyn || '') === k); b.onclick = () => fn(k); el.append(b); });
+}
 const PAGN = {din:'Dinheiro', pix:'Pix', deb:'Débito', cre:'Crédito'};
 let cfg = Object.assign({}, DEF, store.get('tx_cfg', {}));
 const cfgOk = () => cfg.band>0 || cfg.km>0 || cfg.min>0;
@@ -366,12 +380,14 @@ function calc(r, now){
   let corrida = 0, minimoAplicado = false;
   if(r.inicio){ minimoAplicado = c.band > vKm; corrida = Math.max(c.band, vKm) + vMin; }
   let sub = corrida + vEsp;
+  const dynPct = r.dyn ? (c.dyn != null ? Number(c.dyn) : 50) : 0;
+  const vDyn = Math.round(sub*dynPct)/100; sub += vDyn;
   const arr = Number(c.arred)||0;
   if(arr > 0 && sub > 0) sub = Math.ceil(sub/arr - 1e-9)*arr;
   const pct = r.pag === 'deb' ? (c.taxaDeb != null ? c.taxaDeb : cfg.taxaDeb) : r.pag === 'cre' ? (c.taxaCre != null ? c.taxaCre : cfg.taxaCre) : 0;
   const taxa = Math.round(sub*(pct||0))/100;
   const total = Math.round((sub + taxa)*100)/100;
-  return {km, corrMs, espMs, espTotal, espStart, vKm, vMin, vEsp, corrida, minimoAplicado, sub, taxa, pct: pct||0, total};
+  return {dynPct, vDyn, km, corrMs, espMs, espTotal, espStart, vKm, vMin, vEsp, corrida, minimoAplicado, sub, taxa, pct: pct||0, total};
 }
 
 /* ---------- GPS ---------- */
@@ -506,6 +522,7 @@ function receipt(r){
     L.push(`Tempo: ${minTxt(c.corrMs)} min × R$ ${brl(k.min)} = R$ ${brl(c.vMin)}`);
   }
   if(c.espMs > 0) L.push(`Espera: ${minTxt(c.espMs)} min × R$ ${brl(k.esp)} = R$ ${brl(c.vEsp)}`);
+  if(c.vDyn > 0) L.push(`Tarifa dinâmica (${DYN[r.dyn] || 'especial'}) +${c.dynPct.toLocaleString('pt-BR')}%: R$ ${brl(c.vDyn)}`);
   if(c.taxa > 0) L.push(`Taxa ${r.pag === 'deb' ? 'débito' : 'crédito'} ${c.pct.toLocaleString('pt-BR')}%: R$ ${brl(c.taxa)}`);
   L.push('');
   L.push(`*Total: R$ ${brl(c.total)}*`);
@@ -528,6 +545,7 @@ function render(){
   $('chip').dataset.s = fase; $('chipTxt').textContent = chipTxt[fase];
   $('cliTxt').textContent = ride && ride.cliente ? ride.cliente : '';
   const c = ride ? calc(ride) : null;
+  drawDyn($('dynMain'), ride, k => { ride.dyn = k || null; save(); if(ride.fase === 'fim'){ fimRide = ride; saveHist(); } render(); });
   $('total').innerHTML = '<span>R$</span>' + brl(c ? c.total : 0);
   $('totLbl').textContent = fase === 'espera' || fase === 'indo' ? 'Espera acumulada' : fase === 'fim' ? 'Total da corrida' : 'Valor';
   $('rKm').textContent = (c ? c.km : 0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -612,13 +630,13 @@ const fmtIn = v => v ? brl(v) : '';
 function openCfg(){
   $('cNome').value = cfg.nome; $('cPlaca').value = cfg.placa;
   $('cBand').value = fmtIn(cfg.band); $('cKm').value = fmtIn(cfg.km); $('cMin').value = fmtIn(cfg.min); $('cEsp').value = fmtIn(cfg.esp);
-  $('cArr').value = String(cfg.arred); $('cMsg').value = cfg.msg; $('cEmp').value = cfg.empresa || ''; $('cCnpj').value = cfg.cnpj || ''; $('cWhats').value = cfg.whats || ''; $('cTd').value = String(cfg.taxaDeb).replace('.', ','); $('cTc').value = String(cfg.taxaCre).replace('.', ','); $('cPix').value = cfg.pix || ''; $('cMeta').value = fmtIn(cfg.meta);
+  $('cArr').value = String(cfg.arred); $('cMsg').value = cfg.msg; $('cEmp').value = cfg.empresa || ''; $('cCnpj').value = cfg.cnpj || ''; $('cWhats').value = cfg.whats || ''; $('cTd').value = String(cfg.taxaDeb).replace('.', ','); $('cTc').value = String(cfg.taxaCre).replace('.', ','); $('cPix').value = cfg.pix || ''; $('cMeta').value = fmtIn(cfg.meta); $('cDyn').value = String(cfg.dyn != null ? cfg.dyn : 50).replace('.', ',');
   show('sCfg', true);
 }
 $('fCfg').onsubmit = e => {
   e.preventDefault();
   cfg = {nome:$('cNome').value.trim(), placa:$('cPlaca').value.trim().toUpperCase(), band:numIn($('cBand').value),
-         km:numIn($('cKm').value), min:numIn($('cMin').value), esp:numIn($('cEsp').value), arred:Number($('cArr').value), msg:$('cMsg').value.trim(), empresa:$('cEmp').value.trim(), cnpj:$('cCnpj').value.trim(), whats:$('cWhats').value.replace(/\D/g,''), taxaDeb:numIn($('cTd').value), taxaCre:numIn($('cTc').value), pix:$('cPix').value.trim(), meta:numIn($('cMeta').value)};
+         km:numIn($('cKm').value), min:numIn($('cMin').value), esp:numIn($('cEsp').value), arred:Number($('cArr').value), msg:$('cMsg').value.trim(), empresa:$('cEmp').value.trim(), cnpj:$('cCnpj').value.trim(), whats:$('cWhats').value.replace(/\D/g,''), taxaDeb:numIn($('cTd').value), taxaCre:numIn($('cTc').value), pix:$('cPix').value.trim(), meta:numIn($('cMeta').value), dyn:numIn($('cDyn').value)};
   store.set('tx_cfg', cfg); show('sCfg', false); render();
   toast(ride && ride.fase !== 'fim' ? 'Tarifas salvas. Valem a partir da próxima corrida.' : 'Tarifas salvas');
 };
@@ -640,6 +658,7 @@ function linhas(r){
     rows.push([`Tempo ${minTxt(c.corrMs)} min × R$ ${brl(k.min)}`, 'R$ '+brl(c.vMin)]);
   }
   if(c.espMs > 0 || !r.inicio) rows.push([`Espera ${minTxt(c.espMs)} min × R$ ${brl(k.esp)}`, 'R$ '+brl(c.vEsp)]);
+  if(c.vDyn > 0) rows.push([`Tarifa dinâmica (${DYN[r.dyn] || 'especial'}) +${c.dynPct.toLocaleString('pt-BR')}%`, 'R$ '+brl(c.vDyn)]);
   if(c.taxa > 0) rows.push([`Taxa ${r.pag === 'deb' ? 'débito' : 'crédito'} ${c.pct.toLocaleString('pt-BR')}%`, 'R$ '+brl(c.taxa)]);
   return {c, k, rows};
 }
@@ -670,7 +689,7 @@ function persistFim(){
 }
 $('fOrig').oninput = () => { fimRide.orig = $('fOrig').value.trim(); persistFim(); fillFim(fimRide); };
 $('fDest').oninput = () => { fimRide.dest = $('fDest').value.trim(); persistFim(); fillFim(fimRide); };
-function syncPag(){ document.querySelectorAll('#fPag button').forEach(b => b.setAttribute('aria-pressed', b.dataset.p === (fimRide.pag || 'din'))); }
+function syncPag(){ drawDyn($('dynFim'), fimRide, k => { fimRide.dyn = k || null; syncPag(); persistFim(); fillFim(fimRide); if(ride) render(); }); document.querySelectorAll('#fPag button').forEach(b => b.setAttribute('aria-pressed', b.dataset.p === (fimRide.pag || 'din'))); }
 function setPag(p){ fimRide.pag = p; syncPag(); persistFim(); fillFim(fimRide); if(ride) render(); }
 document.querySelectorAll('#fPag button').forEach(b => b.onclick = () => setPag(b.dataset.p));
 function crc16(s){ let c = 0xFFFF; for(let i = 0; i < s.length; i++){ c ^= s.charCodeAt(i) << 8; for(let j = 0; j < 8; j++) c = (c & 0x8000) ? ((c << 1) ^ 0x1021) & 0xFFFF : (c << 1) & 0xFFFF; } return c.toString(16).toUpperCase().padStart(4, '0'); }
