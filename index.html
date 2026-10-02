@@ -455,7 +455,7 @@ function newRide(tipo, agendado, cliente, fone, direto){
           criado: now, chegada: null, inicio: direto ? now : null, fim: null, m: 0, last: null, kmManual: null};
   save(); keepAwake(true); if(direto){ startGps(); capEnd(ride, 'orig'); } render();
 }
-function cheguei(){ ride.chegada = Date.now(); ride.fase = 'espera'; save(); render(); }
+function cheguei(){ ride.chegada = Date.now(); ride.fase = 'espera'; save(); render(); if(ride.fone) avisar(); }
 function avisar(){
   let d = String(ride.fone || '').replace(/\D/g, ''); if(d.length === 10 || d.length === 11) d = '55' + d;
   const t = `Olá${ride.cliente ? ', ' + ride.cliente : ''}! Cheguei para buscar você. ${[ride.cfg.nome, ride.cfg.placa].filter(Boolean).join(' · ')}`.trim();
