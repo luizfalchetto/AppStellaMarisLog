@@ -102,6 +102,12 @@ h3{font:700 15px var(--f-cond);letter-spacing:.12em;text-transform:uppercase;col
 .hi strong{font:18px var(--f-led);grid-row:span 2;align-self:center}
 .empty{color:var(--muted);text-align:center;padding:30px 0}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:10px 16px;border-radius:10px;font-weight:600;z-index:20;max-width:90%}
+/* pagamento */
+.seg4{display:grid;grid-template-columns:repeat(4,1fr);background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:4px;gap:4px}
+.seg4 button{border:0;border-radius:9px;min-height:44px;background:transparent;font:600 14px var(--f-ui);cursor:pointer;color:var(--muted)}
+.seg4 button[aria-pressed="true"]{background:var(--taxi);color:var(--taxi-ink)}
+.pixbox{display:grid;justify-items:center;gap:8px;text-align:center}
+.pixbox svg{width:220px;height:220px;background:#fff;border-radius:8px}
 /* relatorio */
 .tabs{display:grid;grid-template-columns:repeat(3,1fr);background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:4px;gap:4px}
 .tabs button{border:0;border-radius:9px;min-height:44px;background:transparent;font:700 16px var(--f-cond);letter-spacing:.08em;text-transform:uppercase;cursor:pointer;color:var(--muted)}
@@ -224,6 +230,13 @@ h3{font:700 15px var(--f-cond);letter-spacing:.12em;text-transform:uppercase;col
       <div class="field"><label for="cEmp">Empresa</label><input id="cEmp" type="text" placeholder="Stella Maris Logistics"></div>
       <div class="field"><label for="cCnpj">CNPJ</label><input id="cCnpj" type="text" inputmode="numeric" placeholder="00.000.000/0000-00"></div>
     </div>
+    <h3>Pagamento</h3>
+    <div class="grid2">
+      <div class="field"><label for="cTd">Taxa débito (%)</label><input id="cTd" type="text" inputmode="decimal" placeholder="0,89"></div>
+      <div class="field"><label for="cTc">Taxa crédito (%)</label><input id="cTc" type="text" inputmode="decimal" placeholder="3,09"></div>
+    </div>
+    <div class="field"><label for="cPix">Chave Pix</label><input id="cPix" type="text" autocomplete="off"></div>
+    <div class="field"><label for="cMeta">Meta diária (R$)</label><div class="money"><input id="cMeta" type="text" inputmode="decimal" placeholder="0,00"></div></div>
     <h3>Pedidos de clientes</h3>
     <div class="field"><label for="cWhats">Seu WhatsApp para receber pedidos (com DDD)</label><input id="cWhats" type="tel" inputmode="tel" placeholder="22999999999"></div>
     <div class="actions" style="margin:4px 0 8px"><button class="btn" type="button" id="bLink">Copiar link para o cliente</button></div>
@@ -237,6 +250,8 @@ h3{font:700 15px var(--f-cond);letter-spacing:.12em;text-transform:uppercase;col
   <div class="app">
     <header><h2>Corrida encerrada</h2><button class="iconbtn" type="button" id="bFimClose">Fechar</button></header>
     <div class="card"><div class="lines" id="fimLines"></div></div>
+    <div class="field"><label>Forma de pagamento</label><div class="seg4" id="fPag" role="group" aria-label="Forma de pagamento"><button type="button" data-p="din">Dinheiro</button><button type="button" data-p="pix">Pix</button><button type="button" data-p="deb">Débito</button><button type="button" data-p="cre">Crédito</button></div></div>
+    <div class="card pixbox" id="pixBox" hidden><div id="pixQr"></div><p class="hint" id="pixVal"></p><button class="btn" type="button" id="bPixCopy">Copiar Pix copia e cola</button></div>
     <div class="field"><label for="fOrig">Endereço de partida</label><input id="fOrig" type="text" autocomplete="off" placeholder="Preenchido pelo GPS — você pode editar"></div>
     <div class="field"><label for="fDest">Endereço de destino</label><input id="fDest" type="text" autocomplete="off" placeholder="Preenchido pelo GPS — você pode editar"></div>
     <div class="field">
@@ -273,13 +288,33 @@ h3{font:700 15px var(--f-cond);letter-spacing:.12em;text-transform:uppercase;col
       <div class="kpi"><small>Espera cobrada</small><strong id="kEsp">R$ 0,00</strong></div>
       <div class="kpi"><small>Canceladas</small><strong id="kCan">0</strong></div>
       <div class="kpi"><small>Melhor corrida</small><strong id="kBest">—</strong></div>
+      <div class="kpi"><small>Despesas</small><strong id="kDesp">R$ 0,00</strong></div>
+      <div class="kpi"><small>Lucro líquido</small><strong id="kLiq">R$ 0,00</strong></div>
+      <div class="kpi"><small>Meta atingida</small><strong id="kMeta">—</strong></div>
     </div>
     <div class="chart" id="chartBox" hidden><div class="cap" id="cCap"></div><div class="bars" id="bars"></div><div class="blabels" id="blabels"></div></div>
     <button class="btn wa" type="button" id="bShareRep">Enviar relatório no WhatsApp</button>
+    <div class="row2"><button class="btn" type="button" id="bDesp">Lançar despesa</button><button class="btn" type="button" id="bCsv">Planilha (CSV)</button></div>
     <h3>Corridas do período</h3>
     <div class="hist" id="histList"></div>
+    <div class="row2"><button class="btn" type="button" id="bBkp">Salvar backup</button><button class="btn" type="button" id="bRest">Restaurar backup</button></div>
+    <input type="file" id="fRest" accept=".json,application/json" hidden>
     <button class="btn ghost" type="button" id="bClear">Apagar todo o histórico</button>
   </div>
+</div>
+
+<div class="sheet" id="sDesp" hidden>
+  <form class="app" id="fDesp">
+    <header><h2>Despesas</h2><button class="iconbtn" type="button" data-close>Fechar</button></header>
+    <div class="grid2">
+      <div class="field"><label for="dV">Valor</label><div class="money"><input id="dV" type="text" inputmode="decimal" placeholder="0,00"></div></div>
+      <div class="field"><label for="dCat">Tipo</label><select id="dCat"><option>Combustível</option><option>Lavagem</option><option>Manutenção</option><option>Pedágio/Estac.</option><option>Outros</option></select></div>
+    </div>
+    <div class="field"><label for="dNota">Observação (opcional)</label><input id="dNota" type="text" autocomplete="off"></div>
+    <div class="actions"><button class="btn primary" type="submit">Lançar despesa</button></div>
+    <h3>Recentes</h3>
+    <div class="hist" id="dList"></div>
+  </form>
 </div>
 
 <div class="toast" id="toast" hidden></div>
@@ -306,7 +341,8 @@ const dia = t => new Date(t).toLocaleDateString('pt-BR');
 const minTxt = ms => { const m = ms/60000; return m < 10 ? m.toLocaleString('pt-BR',{maximumFractionDigits:1}) : String(Math.round(m)); };
 
 /* ---------- config ---------- */
-const DEF = {nome:'', placa:'', band:0, km:0, min:0, esp:0, arred:0, msg:'Obrigado pela preferência!', empresa:'Stella Maris Logistics', cnpj:'64.842.411/0001-07'};
+const DEF = {nome:'', placa:'', band:0, km:0, min:0, esp:0, arred:0, msg:'Obrigado pela preferência!', empresa:'Stella Maris Logistics', cnpj:'64.842.411/0001-07', taxaDeb:0.89, taxaCre:3.09, pix:'70e9320f-2100-485f-8ad4-62dd0a868e90', meta:0};
+const PAGN = {din:'Dinheiro', pix:'Pix', deb:'Débito', cre:'Crédito'};
 let cfg = Object.assign({}, DEF, store.get('tx_cfg', {}));
 const cfgOk = () => cfg.band>0 || cfg.km>0 || cfg.min>0;
 
@@ -328,10 +364,13 @@ function calc(r, now){
   const vKm = km*c.km, vMin = corrMs/60000*c.min, vEsp = espMs/60000*c.esp;
   let corrida = 0, minimoAplicado = false;
   if(r.inicio){ minimoAplicado = c.band > vKm; corrida = Math.max(c.band, vKm) + vMin; }
-  let total = corrida + vEsp;
+  let sub = corrida + vEsp;
   const arr = Number(c.arred)||0;
-  if(arr > 0 && total > 0) total = Math.ceil(total/arr - 1e-9)*arr;
-  return {km, corrMs, espMs, espTotal, espStart, vKm, vMin, vEsp, corrida, minimoAplicado, total};
+  if(arr > 0 && sub > 0) sub = Math.ceil(sub/arr - 1e-9)*arr;
+  const pct = r.pag === 'deb' ? (c.taxaDeb != null ? c.taxaDeb : cfg.taxaDeb) : r.pag === 'cre' ? (c.taxaCre != null ? c.taxaCre : cfg.taxaCre) : 0;
+  const taxa = Math.round(sub*(pct||0))/100;
+  const total = Math.round((sub + taxa)*100)/100;
+  return {km, corrMs, espMs, espTotal, espStart, vKm, vMin, vEsp, corrida, minimoAplicado, sub, taxa, pct: pct||0, total};
 }
 
 /* ---------- GPS ---------- */
@@ -405,6 +444,11 @@ function newRide(tipo, agendado, cliente, fone, direto){
   save(); keepAwake(true); if(direto){ startGps(); capEnd(ride, 'orig'); } render();
 }
 function cheguei(){ ride.chegada = Date.now(); ride.fase = 'espera'; save(); render(); }
+function avisar(){
+  let d = String(ride.fone || '').replace(/\D/g, ''); if(d.length === 10 || d.length === 11) d = '55' + d;
+  const t = `Olá${ride.cliente ? ', ' + ride.cliente : ''}! Cheguei para buscar você. ${[ride.cfg.nome, ride.cfg.placa].filter(Boolean).join(' · ')}`.trim();
+  window.open(`https://wa.me/${d}?text=${encodeURIComponent(t)}`, '_blank');
+}
 function iniciar(){ ride.inicio = Date.now(); ride.fase = 'corrida'; ride.last = null; save(); startGps(); capEnd(ride, 'orig'); render(); }
 function finalizar(){
   ride.fim = Date.now(); ride.fase = 'fim'; save(); stopGps(); keepAwake(false);
@@ -450,8 +494,10 @@ function receipt(r){
     L.push(`Tempo: ${minTxt(c.corrMs)} min × R$ ${brl(k.min)} = R$ ${brl(c.vMin)}`);
   }
   if(c.espMs > 0) L.push(`Espera: ${minTxt(c.espMs)} min × R$ ${brl(k.esp)} = R$ ${brl(c.vEsp)}`);
+  if(c.taxa > 0) L.push(`Taxa ${r.pag === 'deb' ? 'débito' : 'crédito'} ${c.pct.toLocaleString('pt-BR')}%: R$ ${brl(c.taxa)}`);
   L.push('');
   L.push(`*Total: R$ ${brl(c.total)}*`);
+  if(r.pag) L.push(`Pagamento: ${PAGN[r.pag]}`);
   if(k.msg) { L.push(''); L.push(k.msg); }
   return L.join('\n');
 }
@@ -506,6 +552,7 @@ function render(){
   }
   if(fase === 'espera'){
     a.append(btn('Iniciar corrida', 'primary', iniciar));
+    a.append(btn('Avisar cliente no WhatsApp', '', avisar));
     a.append(btn('Cliente não veio / cancelar', 'ghost', cancelar));
   }
   if(fase === 'corrida') a.append(btn('Finalizar corrida', 'danger', () => { if(confirm('Finalizar a corrida agora?')) finalizar(); }));
@@ -552,13 +599,13 @@ const fmtIn = v => v ? brl(v) : '';
 function openCfg(){
   $('cNome').value = cfg.nome; $('cPlaca').value = cfg.placa;
   $('cBand').value = fmtIn(cfg.band); $('cKm').value = fmtIn(cfg.km); $('cMin').value = fmtIn(cfg.min); $('cEsp').value = fmtIn(cfg.esp);
-  $('cArr').value = String(cfg.arred); $('cMsg').value = cfg.msg; $('cEmp').value = cfg.empresa || ''; $('cCnpj').value = cfg.cnpj || ''; $('cWhats').value = cfg.whats || '';
+  $('cArr').value = String(cfg.arred); $('cMsg').value = cfg.msg; $('cEmp').value = cfg.empresa || ''; $('cCnpj').value = cfg.cnpj || ''; $('cWhats').value = cfg.whats || ''; $('cTd').value = String(cfg.taxaDeb).replace('.', ','); $('cTc').value = String(cfg.taxaCre).replace('.', ','); $('cPix').value = cfg.pix || ''; $('cMeta').value = fmtIn(cfg.meta);
   show('sCfg', true);
 }
 $('fCfg').onsubmit = e => {
   e.preventDefault();
   cfg = {nome:$('cNome').value.trim(), placa:$('cPlaca').value.trim().toUpperCase(), band:numIn($('cBand').value),
-         km:numIn($('cKm').value), min:numIn($('cMin').value), esp:numIn($('cEsp').value), arred:Number($('cArr').value), msg:$('cMsg').value.trim(), empresa:$('cEmp').value.trim(), cnpj:$('cCnpj').value.trim(), whats:$('cWhats').value.replace(/\D/g,'')};
+         km:numIn($('cKm').value), min:numIn($('cMin').value), esp:numIn($('cEsp').value), arred:Number($('cArr').value), msg:$('cMsg').value.trim(), empresa:$('cEmp').value.trim(), cnpj:$('cCnpj').value.trim(), whats:$('cWhats').value.replace(/\D/g,''), taxaDeb:numIn($('cTd').value), taxaCre:numIn($('cTc').value), pix:$('cPix').value.trim(), meta:numIn($('cMeta').value)};
   store.set('tx_cfg', cfg); show('sCfg', false); render();
   toast(ride && ride.fase !== 'fim' ? 'Tarifas salvas. Valem a partir da próxima corrida.' : 'Tarifas salvas');
 };
@@ -580,13 +627,14 @@ function linhas(r){
     rows.push([`Tempo ${minTxt(c.corrMs)} min × R$ ${brl(k.min)}`, 'R$ '+brl(c.vMin)]);
   }
   if(c.espMs > 0 || !r.inicio) rows.push([`Espera ${minTxt(c.espMs)} min × R$ ${brl(k.esp)}`, 'R$ '+brl(c.vEsp)]);
+  if(c.taxa > 0) rows.push([`Taxa ${r.pag === 'deb' ? 'débito' : 'crédito'} ${c.pct.toLocaleString('pt-BR')}%`, 'R$ '+brl(c.taxa)]);
   return {c, k, rows};
 }
 function fillFim(r){
   const {c, rows} = linhas(r);
   $('fimLines').innerHTML = rows.map(([a,b]) => `<div><span>${a}</span><span>${b}</span></div>`).join('')
     + `<div class="tot"><span>Total</span><span>R$ ${brl(c.total)}</span></div>`;
-  $('bWa').href = waLink(r);
+  $('bWa').href = waLink(r); showPix();
 }
 let fimRide = null;
 function openFim(r){
@@ -595,7 +643,7 @@ function openFim(r){
   $('fKm').parentElement.hidden = !fimRide.inicio;
   $('fOrig').value = fimRide.orig || ''; $('fDest').value = fimRide.dest || '';
   $('fOrig').parentElement.hidden = $('fDest').parentElement.hidden = !fimRide.inicio;
-  fillFim(fimRide); show('sFim', true); loadPdfLib().catch(() => {});
+  fillFim(fimRide); syncPag(); show('sFim', true); loadPdfLib().catch(() => {});
 }
 $('fKm').oninput = () => {
   fimRide.kmManual = numIn($('fKm').value);
@@ -605,10 +653,39 @@ $('fKm').oninput = () => {
 };
 function persistFim(){
   if(ride && ride.id === fimRide.id){ ride = fimRide; save(); saveHist(); }
-  else { const h = store.get('tx_hist', []); const i = h.findIndex(x => x.id === fimRide.id); if(i>=0){ h[i].ride = fimRide; store.set('tx_hist', h); } }
+  else { const h = store.get('tx_hist', []); const i = h.findIndex(x => x.id === fimRide.id); if(i>=0){ const c = calc(fimRide); Object.assign(h[i], {km:c.km, total:c.total, ride:fimRide}); store.set('tx_hist', h); } }
 }
 $('fOrig').oninput = () => { fimRide.orig = $('fOrig').value.trim(); persistFim(); fillFim(fimRide); };
 $('fDest').oninput = () => { fimRide.dest = $('fDest').value.trim(); persistFim(); fillFim(fimRide); };
+function syncPag(){ document.querySelectorAll('#fPag button').forEach(b => b.setAttribute('aria-pressed', b.dataset.p === (fimRide.pag || 'din'))); }
+function setPag(p){ fimRide.pag = p; syncPag(); persistFim(); fillFim(fimRide); if(ride) render(); }
+document.querySelectorAll('#fPag button').forEach(b => b.onclick = () => setPag(b.dataset.p));
+function crc16(s){ let c = 0xFFFF; for(let i = 0; i < s.length; i++){ c ^= s.charCodeAt(i) << 8; for(let j = 0; j < 8; j++) c = (c & 0x8000) ? ((c << 1) ^ 0x1021) & 0xFFFF : (c << 1) & 0xFFFF; } return c.toString(16).toUpperCase().padStart(4, '0'); }
+const tlv = (id, v) => id + String(v.length).padStart(2, '0') + v;
+function pixPayload(valor){
+  const nome = String(cfg.empresa || 'Stella Maris Logistics').normalize('NFD').replace(/[^\x20-\x7E]/g, '').replace(/[^A-Za-z0-9 ]/g, '').toUpperCase().slice(0, 25).trim() || 'RECEBEDOR';
+  let p = tlv('00', '01') + tlv('01', '11') + tlv('26', tlv('00', 'br.gov.bcb.pix') + tlv('01', cfg.pix.trim())) + tlv('52', '0000') + tlv('53', '986');
+  if(valor > 0) p += tlv('54', valor.toFixed(2));
+  p += tlv('58', 'BR') + tlv('59', nome) + tlv('60', 'MACAE') + tlv('62', tlv('05', '***')) + '6304';
+  return p + crc16(p);
+}
+let qrP = null;
+function loadQr(){
+  if(window.qrcode) return Promise.resolve();
+  if(!qrP) qrP = new Promise((ok, bad) => { const s = document.createElement('script'); s.src = 'https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js'; s.onload = ok; s.onerror = () => { qrP = null; bad(new Error('sem internet')); }; document.head.append(s); });
+  return qrP;
+}
+async function showPix(){
+  const box = $('pixBox'), r = fimRide;
+  if(!r || r.pag !== 'pix'){ box.hidden = true; return; }
+  box.hidden = false;
+  if(!cfg.pix){ $('pixQr').textContent = 'Informe sua chave Pix em Tarifas.'; $('pixVal').textContent = ''; return; }
+  const v = calc(r).total, code = pixPayload(v);
+  $('pixVal').textContent = 'Pix de R$ ' + brl(v) + ' para ' + (cfg.empresa || 'Stella Maris Logistics');
+  try{ await loadQr(); const q = window.qrcode(0, 'M'); q.addData(code); q.make(); $('pixQr').innerHTML = q.createSvgTag({cellSize:4, margin:2, scalable:true}); }
+  catch(e){ $('pixQr').textContent = 'Sem internet para gerar o QR. Use o botão abaixo.'; }
+}
+$('bPixCopy').onclick = async () => { const code = cfg.pix ? pixPayload(calc(fimRide).total) : ''; if(!code){ toast('Informe sua chave Pix em Tarifas'); return; } try{ await navigator.clipboard.writeText(code); toast('Pix copia e cola copiado'); }catch(e){ prompt('Copie o código Pix:', code); } };
 $('bFimClose').onclick = () => show('sFim', false);
 $('bNova').onclick = () => { show('sFim', false); if(ride && ride.fase === 'fim'){ ride = null; save(); } render(); openNew(); };
 $('bCopy').onclick = async () => {
@@ -636,6 +713,7 @@ function gerarPdf(r){
   if(r.inicio) info.push(['Embarque', hhmm(r.inicio)]);
   if(r.inicio && r.fim) info.push(['Desembarque', hhmm(r.fim)]);
   if(r.inicio) info.push(['Distância', c.km.toLocaleString('pt-BR',{maximumFractionDigits:2}) + ' km']);
+  if(r.pag) info.push(['Pagamento', PAGN[r.pag]]);
   const W = 80, M = 6;
   const addr = [['Partida', r.orig], ['Destino', r.dest]].filter(a => a[1]);
   const tmp = new jsPDF({unit:'mm', format:[W, 100]}); tmp.setFontSize(8.5);
@@ -743,6 +821,9 @@ function renderRep(){
   $('kPh').textContent = R.ph ? 'R$ ' + brl(R.ph) : '—';
   $('kEsp').textContent = 'R$ ' + brl(R.esp); $('kCan').textContent = R.can;
   $('kBest').textContent = R.best ? 'R$ ' + brl(R.best) : '—';
+  const dTot = store.get('tx_desp', []).filter(d => d.t >= P.a && d.t < P.b).reduce((s, d) => s + d.v, 0), nd = Math.round((P.b - P.a)/86400000);
+  $('kDesp').textContent = 'R$ ' + brl(dTot); $('kLiq').textContent = 'R$ ' + brl(R.tot - dTot);
+  $('kMeta').textContent = cfg.meta > 0 ? Math.round(R.tot/(cfg.meta*nd)*100) + '%' : '—';
   // gráfico: semana e mês por dia
   const box = $('chartBox');
   if(rp === 'dia'){ box.hidden = true; }
@@ -770,10 +851,10 @@ function renderRep(){
   if(!list.length) el.innerHTML = '<p class="empty">Nenhuma corrida neste período.</p>';
   else list.slice().sort((x, y) => (y.fim||y.id) - (x.fim||x.id)).forEach(x => el.append(rideItem(x)));
   $('bShareRep').hidden = !list.length;
-  window.__rep = {P, R};
+  window.__rep = {P, R, dTot};
 }
 function repTexto(){
-  const {P, R} = window.__rep, L = [];
+  const {P, R, dTot} = window.__rep, L = [];
   L.push(`*Relatório – ${P.lbl}*`);
   if(cfg.nome || cfg.placa) L.push([cfg.nome, cfg.placa].filter(Boolean).join(' · '));
   L.push('');
@@ -785,6 +866,7 @@ function repTexto(){
   if(R.pkm) L.push(`Ganho por km: R$ ${brl(R.pkm)}`);
   if(R.ph) L.push(`Ganho por hora: R$ ${brl(R.ph)}`);
   if(R.esp) L.push(`Espera cobrada: R$ ${brl(R.esp)}`);
+  if(dTot){ L.push(`Despesas: R$ ${brl(dTot)}`); L.push(`Lucro líquido: *R$ ${brl(R.tot - dTot)}*`); }
   return L.join('\n');
 }
 document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => { rp = b.dataset.p; rOff = 0; renderRep(); });
@@ -793,6 +875,46 @@ $('pNext').onclick = () => { if(rOff < 0){ rOff++; renderRep(); } };
 $('bShareRep').onclick = () => { window.open('https://wa.me/?text=' + encodeURIComponent(repTexto()), '_blank'); };
 function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 $('bHist').onclick = openHist;
+function renderDesp(){
+  const l = store.get('tx_desp', []).slice().sort((a, b) => b.t - a.t).slice(0, 30), el = $('dList'); el.replaceChildren();
+  if(!l.length){ el.innerHTML = '<p class="empty">Nenhuma despesa lançada.</p>'; return; }
+  l.forEach(d => {
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'hi';
+    b.innerHTML = `<span>${escapeHtml(d.cat)}${d.nota ? ' · ' + escapeHtml(d.nota) : ''}</span><strong>R$ ${brl(d.v)}</strong><small>${dia(d.t)} ${hhmm(d.t)} · toque para apagar</small>`;
+    b.onclick = () => { if(confirm('Apagar esta despesa?')){ store.set('tx_desp', store.get('tx_desp', []).filter(x => x.id !== d.id)); renderDesp(); renderRep(); } };
+    el.append(b);
+  });
+}
+$('bDesp').onclick = () => { renderDesp(); show('sDesp', true); };
+$('fDesp').onsubmit = e => {
+  e.preventDefault(); const v = numIn($('dV').value); if(!(v > 0)){ toast('Informe o valor'); return; }
+  const l = store.get('tx_desp', []), t = Date.now(); l.push({id:t, t, v, cat:$('dCat').value, nota:$('dNota').value.trim()}); store.set('tx_desp', l);
+  $('dV').value = ''; $('dNota').value = ''; renderDesp(); renderRep(); toast('Despesa lançada');
+};
+function baixar(nome, texto, tipo){
+  const f = new File([texto], nome, {type: tipo});
+  if(navigator.canShare && navigator.canShare({files:[f]})) return navigator.share({files:[f], title:nome}).catch(e => { if(e.name !== 'AbortError') toast('Não foi possível enviar o arquivo'); });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(f); a.download = nome; document.body.append(a); a.click(); a.remove(); toast('Arquivo salvo nos downloads');
+}
+$('bBkp').onclick = () => baixar(`backup-taximetro-${new Date().toISOString().slice(0, 10)}.json`, JSON.stringify({v:1, cfg, hist:store.get('tx_hist', []), desp:store.get('tx_desp', [])}), 'application/json');
+$('bRest').onclick = () => $('fRest').click();
+$('fRest').onchange = async () => {
+  const f = $('fRest').files[0]; if(!f) return;
+  try{
+    const d = JSON.parse(await f.text()); if(!Array.isArray(d.hist)) throw new Error('x');
+    if(!confirm(`Restaurar backup com ${d.hist.length} corridas? Isso substitui o histórico atual.`)){ $('fRest').value = ''; return; }
+    store.set('tx_hist', d.hist); store.set('tx_desp', d.desp || []); if(d.cfg){ cfg = Object.assign({}, DEF, d.cfg); store.set('tx_cfg', cfg); }
+    renderRep(); render(); toast('Backup restaurado');
+  }catch(e){ toast('Arquivo de backup inválido'); }
+  $('fRest').value = '';
+};
+const csv = v => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
+$('bCsv').onclick = () => {
+  const P = periodo(), l = store.get('tx_hist', []).filter(x => { const t = x.fim || x.id; return t >= P.a && t < P.b; }).sort((a, b) => (a.fim || a.id) - (b.fim || b.id));
+  const head = ['Data', 'Hora', 'Cliente', 'Partida', 'Destino', 'Km', 'Min corrida', 'Min espera', 'Pagamento', 'Taxa cartão', 'Total'];
+  const rows = l.map(x => { const r = x.ride || {}, c = r.cfg ? calc(r) : {taxa:0}, t = x.fim || x.id; return [dia(t), hhmm(t), x.cliente, r.orig, r.dest, (x.km || 0).toFixed(2).replace('.', ','), minTxt(x.corrMs), minTxt(x.espMs), r.pag ? PAGN[r.pag] : 'Dinheiro', brl(c.taxa || 0), brl(x.total || 0)].map(csv).join(';'); });
+  baixar(`corridas-${P.lbl.replace(/[^A-Za-z0-9]+/g, '-')}.csv`, '\ufeff' + [head.map(csv).join(';')].concat(rows).join('\r\n'), 'text/csv');
+};
 $('bClear').onclick = () => { if(confirm('Apagar TODO o histórico de corridas? Isso não pode ser desfeito.')){ store.set('tx_hist', []); renderRep(); } };
 
 let tt; function toast(m){ const t = $('toast'); t.textContent = m; t.hidden = false; clearTimeout(tt); tt = setTimeout(() => t.hidden = true, 2600); }
