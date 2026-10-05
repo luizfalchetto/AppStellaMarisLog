@@ -96,8 +96,17 @@ const auto = () => { clearTimeout(tmr); tmr = setTimeout(() => { if(temTarifa &&
 async function geoReverse(la, lo){
   try{
     const j = await (await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=18&addressdetails=1&accept-language=pt-BR&lat=${la}&lon=${lo}`)).json(), a = j.address || {};
-    return {rua: a.road || a.pedestrian || a.footway || '', num: a.house_number || '', bai: a.suburb || a.neighbourhood || '', cid: a.city || a.town || a.village || a.municipality || ''};
-  }catch(e){ return null; }
+    const r = {rua: a.road || a.pedestrian || a.footway || a.residential || '', num: a.house_number || '', bai: a.suburb || a.neighbourhood || a.city_district || '', cid: a.city || a.town || a.village || a.municipality || ''};
+    if(r.rua && r.bai) return r;
+    const p = await geoRevPhoton(la, lo);
+    return {rua: r.rua || p.rua, num: r.num || p.num, bai: r.bai || p.bai, cid: r.cid || p.cid};
+  }catch(e){ return geoRevPhoton(la, lo); }
+}
+async function geoRevPhoton(la, lo){
+  try{
+    const f = ((await (await fetch(`https://photon.komoot.io/reverse?lat=${la}&lon=${lo}&limit=3`)).json()).features || []).map(x => x.properties || {}).find(p => p.street || p.name) || {};
+    return {rua: f.street || (f.type === 'street' ? f.name : '') || '', num: f.housenumber || '', bai: f.district || f.locality || '', cid: f.city || f.county || ''};
+  }catch(e){ return {rua:'', num:'', bai:'', cid:''}; }
 }
 async function geoFwd(t){
   try{
@@ -131,13 +140,16 @@ $('loc').onclick = () => {
   b.disabled = true; b.textContent = 'Localizando…';
   navigator.geolocation.getCurrentPosition(async p => {
     pO = {la:p.coords.latitude, lo:p.coords.longitude}; est = null; $('est').hidden = true;
-    const t = await geoReverse(pO.la, pO.lo); if(t){ $('oRua').value = t.rua; $('oNum').value = t.num; $('oBai').value = t.bai; if(t.cid) $('oCid').value = t.cid; }
+    const t = await geoReverse(pO.la, pO.lo) || {};
+    $('oRua').value = t.rua || 'Minha localização atual (GPS)'; $('oNum').value = t.num || ''; $('oBai').value = t.bai || ''; if(t.cid) $('oCid').value = t.cid;
+    if(!t.rua) $('oRua').select();
+    if(temTarifa && $('dRua').value.trim()) calcular().catch(() => {});
     b.disabled = false; b.textContent = '📍 Usar minha localização';
   }, () => { b.disabled = false; b.textContent = '📍 Usar minha localização'; alert('Não consegui acessar a localização. Digite o endereço.'); }, {enableHighAccuracy:true, timeout:15000});
 };
 function hav(a, b){ const r = x => x*Math.PI/180, dLa = r(b.la - a.la), dLo = r(b.lo - a.lo), h = Math.sin(dLa/2)**2 + Math.cos(r(a.la))*Math.cos(r(b.la))*Math.sin(dLo/2)**2; return 2*6371*Math.asin(Math.sqrt(h)); }
 async function calcular(){
-  if(!$('oRua').value.trim() || !$('dRua').value.trim()) throw new Error('Preencha a rua de partida e a de destino.');
+  if((!pO && !$('oRua').value.trim()) || !$('dRua').value.trim()) throw new Error('Preencha a rua de partida e a de destino.');
   if(!pO) pO = await achar('o');
   if(!pD) pD = await achar('d');
   if(!pO || !pD) throw new Error('Não achei um dos endereços no mapa. Confira a rua e o bairro. Se preferir, envie assim mesmo: o motorista confirma o valor.');
@@ -165,7 +177,7 @@ $('f').onsubmit = async e => {
   e.preventDefault();
   const nome = $('nome').value.trim(), o = addr('o'), d = addr('d');
   if(!W){ return; }
-  if(!nome || !$('oRua').value.trim() || !$('dRua').value.trim()){ $('err').hidden = false; $('err').textContent = 'Preencha nome, rua de partida e rua de destino.'; return; }
+  if(!nome || (!pO && !$('oRua').value.trim()) || !$('dRua').value.trim()){ $('err').hidden = false; $('err').textContent = 'Preencha nome, rua de partida e rua de destino.'; return; }
   $('err').hidden = true;
   let quando = 'Agora';
   if(agendar){
