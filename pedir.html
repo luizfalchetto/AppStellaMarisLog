@@ -46,6 +46,13 @@ legend{padding:0;margin-bottom:6px;font:700 16px "Barlow Condensed",sans-serif;l
   <form id="f" class="app" style="padding:0" autocomplete="off" novalidate>
     <div class="field"><label for="nome">Seu nome</label><input id="nome" required placeholder="Ex.: Dona Marta"></div>
     <div class="field"><label for="fone">Seu telefone (opcional)</label><input id="fone" type="tel" inputmode="tel" placeholder="(22) 99999-9999"></div>
+    <div class="field"><label>Para quem é a corrida?</label>
+      <div class="seg"><button type="button" id="bMim" aria-pressed="true">Para mim</button><button type="button" id="bOutro" aria-pressed="false">Para outra pessoa</button></div>
+    </div>
+    <fieldset id="fPass" hidden><legend>Quem vai viajar</legend>
+      <div class="field"><label for="pNome">Nome do passageiro</label><input id="pNome" placeholder="Ex.: João"></div>
+      <div class="field"><label for="pFone">Telefone do passageiro (opcional)</label><input id="pFone" type="tel" inputmode="tel" placeholder="(22) 99999-9999"></div>
+    </fieldset>
     <fieldset><legend>Partida</legend>
       <button class="mini" type="button" id="loc">📍 Usar minha localização</button>
       <div class="field"><label for="oRua">Rua</label><input id="oRua" placeholder="Nome da rua" autocomplete="off"></div>
@@ -135,11 +142,19 @@ async function achar(p){
   if(bai){ const r = await photon(bai + ', ' + cid, cid); if(r) return Object.assign(r, {aprox:true}); }
   return null;
 }
+let gps = false, outro = false;
+function setOutro(v){
+  outro = v; $('bMim').setAttribute('aria-pressed', !v); $('bOutro').setAttribute('aria-pressed', v);
+  $('fPass').hidden = !v; $('loc').hidden = v;
+  if(v && gps){ gps = false; pO = null; est = null; $('est').hidden = true; ['oRua', 'oNum', 'oBai'].forEach(id => $(id).value = ''); }
+  $('sub').textContent = v ? 'Informe onde buscar o passageiro e para onde ele vai.' : 'Informe partida e destino e envie o pedido pelo WhatsApp.';
+}
+$('bMim').onclick = () => setOutro(false); $('bOutro').onclick = () => setOutro(true);
 $('loc').onclick = () => {
   const b = $('loc'); if(!navigator.geolocation){ b.textContent = 'Sem GPS'; return; }
   b.disabled = true; b.textContent = 'Localizando…';
   navigator.geolocation.getCurrentPosition(async p => {
-    pO = {la:p.coords.latitude, lo:p.coords.longitude}; est = null; $('est').hidden = true;
+    pO = {la:p.coords.latitude, lo:p.coords.longitude}; gps = true; est = null; $('est').hidden = true;
     const t = await geoReverse(pO.la, pO.lo) || {};
     $('oRua').value = t.rua || 'Minha localização atual (GPS)'; $('oNum').value = t.num || ''; $('oBai').value = t.bai || ''; if(t.cid) $('oCid').value = t.cid;
     if(!t.rua) $('oRua').select();
@@ -178,6 +193,7 @@ $('f').onsubmit = async e => {
   const nome = $('nome').value.trim(), o = addr('o'), d = addr('d');
   if(!W){ return; }
   if(!nome || (!pO && !$('oRua').value.trim()) || !$('dRua').value.trim()){ $('err').hidden = false; $('err').textContent = 'Preencha nome, rua de partida e rua de destino.'; return; }
+  if(outro && !$('pNome').value.trim()){ $('err').hidden = false; $('err').textContent = 'Informe o nome do passageiro.'; return; }
   $('err').hidden = true;
   let quando = 'Agora';
   if(agendar){
@@ -187,8 +203,9 @@ $('f').onsubmit = async e => {
   if(temTarifa && !est){ const g = $('go'); g.disabled = true; g.textContent = 'Calculando valor…'; try{ await calcular(); }catch(x){} g.disabled = false; g.textContent = 'Enviar pedido pelo WhatsApp'; }
   const org = pO ? `${pO.la},${pO.lo}` : o, dst = pD ? `${pD.la},${pD.lo}` : d;
   const mapa = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(org)}&destination=${encodeURIComponent(dst)}&travelmode=driving`;
-  const L = ['*Pedido de corrida*', `Nome: ${nome}`];
-  const fone = $('fone').value.trim(); if(fone) L.push(`Telefone: ${fone}`);
+  const L = ['*Pedido de corrida*', outro ? `Pedido feito por: ${nome}` : `Nome: ${nome}`];
+  const fone = $('fone').value.trim(); if(fone) L.push(outro ? `Telefone de quem pediu: ${fone}` : `Telefone: ${fone}`);
+  if(outro){ L.push(`*Passageiro: ${$('pNome').value.trim()}*`); const pf = $('pFone').value.trim(); if(pf) L.push(`Telefone do passageiro: ${pf}`); }
   L.push(`Quando: ${quando}`, `Partida: ${o}`, `Destino: ${d}`);
   if(est) L.push(`Estimativa: ≈ R$ ${brl(est.v)} (${est.km.toLocaleString('pt-BR',{maximumFractionDigits:1})} km${est.aprox ? ', aproximada' : ''})`);
   else if(temTarifa) L.push('Estimativa: a confirmar');
