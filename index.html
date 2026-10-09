@@ -992,7 +992,7 @@ const FBC = {"apiKey": "AIzaSyAMHd8SJb_Ts5Ji-_MbWDvwcjI_UGRYC4I", "authDomain": 
 const EMAIL = 'luizgustavofalchetto@gmail.com';
 const FATIVO = ['aguardando', 'aceito', 'a_caminho', 'chegou', 'em_corrida'];
 const FLBL = {aguardando: 'Aguardando', aceito: 'Aceito', a_caminho: 'A caminho', chegou: 'No local', em_corrida: 'Em corrida'};
-let fdb = null, fauth = null, fuser = null, fready = false, fp = null, filaData = {}, cancData = {}, fKnown = null, fListen = false;
+let authChk = false, fdb = null, fauth = null, fuser = null, fready = false, fp = null, filaData = {}, cancData = {}, fKnown = null, fListen = false;
 const loadJs = u => new Promise((res, rej) => { const el = document.createElement('script'); el.src = u; el.onload = res; el.onerror = () => rej(new Error('sdk')); document.head.append(el); });
 function fbInit(){
   if(fp) return fp;
@@ -1001,7 +1001,7 @@ function fbInit(){
     await loadJs(b + 'app-compat.js'); await Promise.all([loadJs(b + 'database-compat.js'), loadJs(b + 'auth-compat.js')]);
     firebase.initializeApp(FBC); fauth = firebase.auth(); fdb = firebase.database();
     fauth.onAuthStateChanged(u => {
-      fuser = u; const ok = !!u && u.email === EMAIL && u.emailVerified;
+      fuser = u; authChk = true; const ok = !!u && u.email === EMAIL && u.emailVerified;
       if(ok){ try{ localStorage.setItem('tx_fila_on', '1'); }catch(e){} startFila(); } else stopFila();
       drawFila();
     });
@@ -1084,7 +1084,7 @@ function drawFila(){
   $('fLogin').hidden = logged; $('fSair').hidden = !fuser;
   $('fMsg').textContent = logged ? (ativos.length ? 'Por ordem de chegada. Atualiza sozinha.' : 'Nenhum pedido na fila agora.')
     : fuser ? 'Esta conta (' + fuser.email + ') não é a do motorista. Saia e entre com a conta certa.'
-    : fp ? 'Conectando…' : 'Entre com sua conta Google para ver os pedidos dos clientes.';
+    : authChk || !fp ? 'Entre com sua conta Google para ver os pedidos dos clientes.' : 'Conectando…';
   const L = $('fList');
   L.innerHTML = logged ? ativos.map((x, i) => {
     const meu = ride && ride.fila && ride.fila.sid === x.sid && ride.fase !== 'fim';
