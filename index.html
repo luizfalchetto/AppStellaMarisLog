@@ -108,6 +108,18 @@ h3{font:700 15px var(--f-cond);letter-spacing:.12em;text-transform:uppercase;col
 .hi small{color:var(--muted);font-size:13px}
 .hi strong{font:18px var(--f-led);grid-row:span 2;align-self:center}
 .empty{color:var(--muted);text-align:center;padding:30px 0}
+.filabar{display:flex;align-items:center;justify-content:center;gap:10px;width:100%}
+.filabar b{background:var(--taxi);color:var(--taxi-ink);border-radius:999px;min-width:26px;height:26px;padding:0 8px;display:inline-grid;place-items:center;font:700 15px var(--f-ui)}
+.filabar b[data-n="0"]{background:var(--line);color:var(--muted)}
+.fcard{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px;display:grid;gap:8px;margin-bottom:10px}
+.fcard h3{margin:0;font:700 20px/1.1 var(--f-cond);letter-spacing:.04em;text-transform:uppercase}
+.fcard .pos{color:var(--taxi);margin-right:6px}
+.fcard p{margin:0;font-size:15px}
+.fcard small{color:var(--muted)}
+.fcard .st{font:700 13px var(--f-cond);letter-spacing:.08em;text-transform:uppercase;color:var(--taxi)}
+.fcard .acts{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.fcard .acts .btn{min-height:48px;font-size:16px}
+.fcard .acts .full{grid-column:1/-1}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:10px 16px;border-radius:10px;font-weight:600;z-index:20;max-width:90%}
 /* pagamento */
 .seg4{display:grid;grid-template-columns:repeat(4,1fr);background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:4px;gap:4px}
@@ -156,6 +168,8 @@ h3{font:700 15px var(--f-cond);letter-spacing:.12em;text-transform:uppercase;col
 
   <div class="banner" id="cfgWarn" hidden>Configure suas tarifas antes da primeira corrida. <button class="iconbtn" id="bCfg2" type="button" style="height:34px;margin-left:6px">Abrir tarifas</button></div>
 
+  <button class="btn filabar" id="bFila" type="button">Fila de pedidos <b id="filaN" data-n="0">0</b></button>
+
   <section class="meter" aria-live="polite">
     <div class="status">
       <span class="chip" id="chip" data-s="livre"><b></b><span id="chipTxt">Livre</span></span>
@@ -177,6 +191,17 @@ h3{font:700 15px var(--f-cond);letter-spacing:.12em;text-transform:uppercase;col
   <div class="banner" id="schedInfo" hidden></div>
 
   <div class="actions" id="actions"></div>
+</div>
+
+<!-- ===== FILA ===== -->
+<div class="sheet" id="sFila" hidden>
+  <div class="app">
+    <header><h2>Fila de pedidos</h2><button class="iconbtn" type="button" data-close>Fechar</button></header>
+    <p class="hint" id="fMsg"></p>
+    <div class="actions" id="fLogin"><button class="btn primary" type="button" id="bEntrar">Entrar com Google</button></div>
+    <div class="actions" id="fSair" hidden><button class="btn ghost" type="button" id="bSair">Sair da conta</button></div>
+    <div id="fList"></div>
+  </div>
 </div>
 
 <!-- ===== NEW RIDE ===== -->
@@ -475,24 +500,24 @@ function newRide(tipo, agendado, cliente, fone, direto){
           criado: now, chegada: null, inicio: direto ? now : null, fim: null, m: 0, last: null, kmManual: null};
   save(); keepAwake(true); if(direto){ startGps(); capEnd(ride, 'orig'); } render();
 }
-function cheguei(){ ride.chegada = Date.now(); ride.fase = 'espera'; save(); render(); if(ride.fone) avisar(); }
+function cheguei(){ ride.chegada = Date.now(); ride.fase = 'espera'; save(); qSync('chegou'); render(); if(ride.fone) avisar(); }
 function avisar(){
   let d = String(ride.fone || '').replace(/\D/g, ''); if(d.length === 10 || d.length === 11) d = '55' + d;
   const t = `Olá${ride.cliente ? ', ' + ride.cliente : ''}! Cheguei para buscar você. ${[ride.cfg.nome, ride.cfg.modelo, ride.cfg.placa].filter(Boolean).join(' · ')}`.trim();
   window.open(`https://wa.me/${d}?text=${encodeURIComponent(t)}`, '_blank');
 }
-function iniciar(){ ride.inicio = Date.now(); ride.fase = 'corrida'; ride.last = null; save(); startGps(); capEnd(ride, 'orig'); render(); }
+function iniciar(){ ride.inicio = Date.now(); ride.fase = 'corrida'; ride.last = null; save(); qSync('em_corrida'); startGps(); capEnd(ride, 'orig'); render(); }
 function finalizar(){
-  ride.fim = Date.now(); ride.fase = 'fim'; save(); stopGps(); keepAwake(false);
+  ride.fim = Date.now(); ride.fase = 'fim'; save(); qSync('concluido'); stopGps(); keepAwake(false);
   lembrarCli(ride); saveHist(); render(); openFim(); if(ride.inicio) capEnd(ride, 'dest');
 }
 function cancelar(){
   if(ride.chegada && ride.cfg.esp > 0){
     if(!confirm('Cancelar a corrida? A espera já contada fica registrada e você pode mandar o recibo dela.')) return;
-    ride.fim = Date.now(); ride.fase = 'fim'; ride.cancelada = true; save(); stopGps(); keepAwake(false); saveHist(); render(); openFim();
+    ride.fim = Date.now(); ride.fase = 'fim'; ride.cancelada = true; save(); qSync('cancelado'); stopGps(); keepAwake(false); saveHist(); render(); openFim();
   } else {
     if(!confirm('Cancelar esta corrida?')) return;
-    ride = null; save(); stopGps(); keepAwake(false); render();
+    qSync('cancelado'); ride = null; save(); stopGps(); keepAwake(false); render();
   }
 }
 
@@ -590,6 +615,10 @@ function render(){
     a.append(btn('Cliente não veio / cancelar', 'ghost', cancelar));
   }
   if(fase === 'corrida') a.append(btn('Finalizar corrida', 'danger', () => { if(confirm('Finalizar a corrida agora?')) finalizar(); }));
+  if(ride && ride.fila && fase !== 'fim'){
+    if(fase === 'indo' || fase === 'espera') a.prepend(btn('Ir até o cliente', 'wa', () => irCliente(Object.assign({sid: ride.fila.sid}, ride.fila))));
+    if(ride.fila.destino || ride.fila.dLa != null) a.append(btn('Navegar até o destino', 'ghost', () => irDestino(ride.fila)));
+  }
   if(fase === 'fim'){
     a.append(btn('Ver recibo', 'primary', openFim));
     a.append(btn('Nova corrida', '', () => { ride = null; save(); openNew(); render(); }));
@@ -957,6 +986,141 @@ $('bCsv').onclick = () => {
 $('bClear').onclick = () => { if(confirm('Apagar TODO o histórico de corridas? Isso não pode ser desfeito.')){ store.set('tx_hist', []); renderRep(); } };
 
 let tt; function toast(m){ const t = $('toast'); t.textContent = m; t.hidden = false; clearTimeout(tt); tt = setTimeout(() => t.hidden = true, 2600); }
+
+/* ---------- fila de pedidos (Firebase) ---------- */
+const FBC = {"apiKey": "AIzaSyAMHd8SJb_Ts5Ji-_MbWDvwcjI_UGRYC4I", "authDomain": "stella-maris-ride.firebaseapp.com", "databaseURL": "https://stella-maris-ride-default-rtdb.firebaseio.com", "projectId": "stella-maris-ride", "storageBucket": "stella-maris-ride.firebasestorage.app", "messagingSenderId": "561195291545", "appId": "1:561195291545:web:3b926f9089c3d0ab3fb908"};
+const EMAIL = 'luizgustavofalchetto@gmail.com';
+const FATIVO = ['aguardando', 'aceito', 'a_caminho', 'chegou', 'em_corrida'];
+const FLBL = {aguardando: 'Aguardando', aceito: 'Aceito', a_caminho: 'A caminho', chegou: 'No local', em_corrida: 'Em corrida'};
+let fdb = null, fauth = null, fuser = null, fready = false, fp = null, filaData = {}, cancData = {}, fKnown = null, fListen = false;
+const loadJs = u => new Promise((res, rej) => { const el = document.createElement('script'); el.src = u; el.onload = res; el.onerror = () => rej(new Error('sdk')); document.head.append(el); });
+function fbInit(){
+  if(fp) return fp;
+  fp = (async () => {
+    const b = 'https://www.gstatic.com/firebasejs/10.12.5/firebase-';
+    await loadJs(b + 'app-compat.js'); await Promise.all([loadJs(b + 'database-compat.js'), loadJs(b + 'auth-compat.js')]);
+    firebase.initializeApp(FBC); fauth = firebase.auth(); fdb = firebase.database();
+    fauth.onAuthStateChanged(u => {
+      fuser = u; const ok = !!u && u.email === EMAIL && u.emailVerified;
+      if(ok){ try{ localStorage.setItem('tx_fila_on', '1'); }catch(e){} startFila(); } else stopFila();
+      drawFila();
+    });
+  })();
+  fp.catch(() => { fp = null; drawFila(); });
+  return fp;
+}
+function startFila(){
+  if(fListen) return; fListen = true; fready = true;
+  fdb.ref('fila').on('value', sn => {
+    filaData = sn.val() || {};
+    const ativos = Object.keys(filaData).filter(k => FATIVO.includes(filaData[k].s));
+    if(fKnown){ ativos.forEach(k => { if(!fKnown.has(k) && filaData[k].s === 'aguardando') alertaNovo(filaData[k]); }); }
+    fKnown = new Set(ativos); drawFila(); varrerCancel();
+  }, () => {});
+  fdb.ref('cancelar').on('value', sn => { cancData = sn.val() || {}; varrerCancel(); }, () => {});
+  flushQ(); podarPub();
+}
+function stopFila(){
+  fready = false; fListen = false; filaData = {}; cancData = {}; fKnown = null;
+  if(fdb){ try{ fdb.ref('fila').off(); fdb.ref('cancelar').off(); }catch(e){} }
+}
+function setStatus(sid, pid, st){
+  const up = {}; up['fila/' + sid + '/s'] = st; if(pid) up['pub/' + pid + '/s'] = st;
+  return fdb.ref().update(up);
+}
+function qSet(sid, pid, st){
+  if(fready) setStatus(sid, pid, st).catch(() => {});
+  else { const l = store.get('tx_pendq', []); l.push({sid, pid, s: st}); store.set('tx_pendq', l.slice(-30)); }
+}
+function flushQ(){ const l = store.get('tx_pendq', []); if(!l.length) return; store.set('tx_pendq', []); l.forEach(x => setStatus(x.sid, x.pid, x.s).catch(() => {})); }
+function qSync(st){ const f = ride && ride.fila; if(!f) return; f.s = st; save(); qSet(f.sid, f.pid, st); }
+function varrerCancel(){
+  Object.keys(cancData).forEach(k => {
+    const it = filaData[k]; if(!it || !FATIVO.includes(it.s)) return;
+    if(ride && ride.fila && ride.fila.sid === k && ride.fase !== 'fim'){ toast('Cliente cancelou o pedido em andamento.'); return; }
+    setStatus(k, it.pid, 'cancelado').catch(() => {});
+  });
+}
+function podarPub(){
+  fdb.ref('pub').once('value').then(sn => { const v = sn.val() || {}, lim = Date.now() - 24*3600*1000, up = {};
+    Object.keys(v).forEach(k => { if(v[k].c < lim) up['pub/' + k] = null; });
+    Object.keys(filaData).forEach(k => { if(filaData[k].c < lim) up['fila/' + k] = null; });
+    if(Object.keys(up).length) fdb.ref().update(up).catch(() => {}); }).catch(() => {});
+}
+let actx;
+function alertaNovo(it){
+  toast('Novo pedido: ' + (it.nome || 'cliente'));
+  try{ navigator.vibrate && navigator.vibrate([300, 150, 300]); }catch(e){}
+  try{ actx = actx || new (window.AudioContext || window.webkitAudioContext)(); [0, .25].forEach(t => { const o = actx.createOscillator(), g = actx.createGain(); o.frequency.value = 880; g.gain.value = .2; o.connect(g); g.connect(actx.destination); o.start(actx.currentTime + t); o.stop(actx.currentTime + t + .18); }); }catch(e){}
+}
+const mapsUrl = (la, lo, txt) => 'https://www.google.com/maps/dir/?api=1&travelmode=driving&destination=' + encodeURIComponent(la != null && lo != null ? la + ',' + lo : txt || '');
+function irCliente(it){
+  window.open(mapsUrl(it.oLa, it.oLo, it.partida), '_blank');
+  if(ride && ride.fila && ride.fila.sid === it.sid && ride.fila.s === 'aceito') qSync('a_caminho');
+}
+function irDestino(f){
+  if(ride && ride.fase === 'corrida' && !confirm('O Maps vai ficar na frente e o taxímetro pode perder o GPS. Para não perder km, use o Maps em tela dividida ou volte logo ao taxímetro. Abrir mesmo assim?')) return;
+  window.open(mapsUrl(f.dLa, f.dLo, f.destino), '_blank');
+}
+function aceitar(sid){
+  const it = filaData[sid]; if(!it || it.s !== 'aguardando') return;
+  if(ride && ride.fase !== 'fim'){ toast('Termine ou cancele a corrida em andamento antes de aceitar outra.'); return; }
+  newRide('avulsa', null, it.passageiro || it.nome || '', (it.passageiro ? it.foneP : it.fone) || '', false);
+  ride.orig = it.partida || ''; ride.dest = it.destino || ''; ride.obs = it.obs || '';
+  ride.fila = {sid, pid: it.pid, s: 'aceito', oLa: it.oLa, oLo: it.oLo, dLa: it.dLa, dLo: it.dLo, partida: it.partida, destino: it.destino};
+  save(); qSet(sid, it.pid, 'aceito'); $('sFila').hidden = true; render();
+  toast('Pedido aceito. Toque em "Ir até o cliente".');
+}
+function recusar(sid){
+  const it = filaData[sid]; if(!it || !confirm('Cancelar o pedido de ' + (it.passageiro || it.nome || 'cliente') + '?')) return;
+  setStatus(sid, it.pid, 'cancelado').catch(() => toast('Falha ao cancelar. Tente de novo.'));
+}
+const foneWa = f => { let d = String(f || '').replace(/\D/g, ''); if(d.length === 10 || d.length === 11) d = '55' + d; return d; };
+function drawFila(){
+  const ativos = Object.keys(filaData).map(k => Object.assign({sid: k}, filaData[k])).filter(x => FATIVO.includes(x.s) && x.c > Date.now() - 12*3600*1000).sort((a, b) => a.c - b.c);
+  const nAg = ativos.filter(x => x.s === 'aguardando').length;
+  const n = $('filaN'); n.textContent = nAg; n.dataset.n = nAg;
+  const logged = !!fuser && fuser.email === EMAIL && fuser.emailVerified;
+  $('fLogin').hidden = logged; $('fSair').hidden = !fuser;
+  $('fMsg').textContent = logged ? (ativos.length ? 'Por ordem de chegada. Atualiza sozinha.' : 'Nenhum pedido na fila agora.')
+    : fuser ? 'Esta conta (' + fuser.email + ') não é a do motorista. Saia e entre com a conta certa.'
+    : fp ? 'Conectando…' : 'Entre com sua conta Google para ver os pedidos dos clientes.';
+  const L = $('fList');
+  L.innerHTML = logged ? ativos.map((x, i) => {
+    const meu = ride && ride.fila && ride.fila.sid === x.sid && ride.fase !== 'fim';
+    const hora = new Date(x.c).toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'});
+    const nome = x.passageiro ? `${escapeHtml(x.passageiro)} <small>(pedido por ${escapeHtml(x.nome)})</small>` : escapeHtml(x.nome);
+    const fone = foneWa(x.passageiro ? x.foneP : x.fone);
+    let a = '';
+    if(x.s === 'aguardando') a += `<button class="btn primary" data-a="ac" data-k="${x.sid}">Aceitar</button><button class="btn ghost" data-a="rc" data-k="${x.sid}">Cancelar</button>`;
+    else if(meu) a += `<button class="btn primary full" data-a="vc" data-k="${x.sid}">Ir até o cliente</button>`;
+    else a += `<button class="btn ghost" data-a="vc" data-k="${x.sid}">Ir até o cliente</button><button class="btn ghost" data-a="rc" data-k="${x.sid}">Cancelar</button>`;
+    if(fone) a += `<button class="btn wa full" data-a="wa" data-k="${x.sid}">WhatsApp</button>`;
+    return `<div class="fcard"><div class="st">${FLBL[x.s]}${meu ? ' · sua corrida atual' : ''}</div><h3><span class="pos">${i + 1}º</span>${nome}</h3>
+      <small>Pedido às ${hora} · ${escapeHtml(x.quando || 'Agora')}</small>
+      <p><b>De:</b> ${escapeHtml(x.partida)}<br><b>Para:</b> ${escapeHtml(x.destino)}</p>
+      ${x.estim ? `<p><small>Estimativa:</small> ${escapeHtml(x.estim)}</p>` : ''}${x.obs ? `<p><small>Obs.:</small> ${escapeHtml(x.obs)}</p>` : ''}
+      <div class="acts">${a}</div></div>`;
+  }).join('') : '';
+}
+$('fList').onclick = e => {
+  const b = e.target.closest('button[data-a]'); if(!b) return;
+  const k = b.dataset.k, it = filaData[k] && Object.assign({sid: k}, filaData[k]); if(!it) return;
+  if(b.dataset.a === 'ac') aceitar(k);
+  else if(b.dataset.a === 'rc') recusar(k);
+  else if(b.dataset.a === 'vc') irCliente(it);
+  else if(b.dataset.a === 'wa') window.open('https://wa.me/' + foneWa(it.passageiro ? it.foneP : it.fone), '_blank');
+};
+$('bFila').onclick = () => { $('sFila').hidden = false; drawFila(); fbInit().catch(() => { $('fMsg').textContent = 'Sem conexão com o serviço. Verifique a internet.'; }); };
+$('bEntrar').onclick = async () => {
+  try{ await fbInit(); const p = new firebase.auth.GoogleAuthProvider(); p.setCustomParameters({login_hint: EMAIL});
+    try{ await fauth.signInWithPopup(p); }
+    catch(e){ if(e && (e.code === 'auth/popup-blocked' || e.code === 'auth/operation-not-supported-in-this-environment' || e.code === 'auth/cancelled-popup-request')) await fauth.signInWithRedirect(p); else throw e; }
+  }catch(e){ $('fMsg').textContent = 'Não consegui entrar: ' + (e && e.code ? e.code : 'erro') ; }
+};
+$('bSair').onclick = () => { try{ localStorage.removeItem('tx_fila_on'); }catch(e){} if(fauth) fauth.signOut(); };
+let wasOn = false; try{ wasOn = localStorage.getItem('tx_fila_on') === '1'; }catch(e){}
+if(wasOn && navigator.onLine) setTimeout(() => fbInit().catch(() => {}), 1200);
 
 /* ---------- boot ---------- */
 if(ride && ride.fase === 'corrida'){ startGps(); keepAwake(true); }

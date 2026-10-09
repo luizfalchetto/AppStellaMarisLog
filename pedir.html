@@ -35,6 +35,14 @@ input:focus,textarea:focus{outline:2px solid var(--taxi);outline-offset:1px}
 fieldset{border:0;padding:0;margin:0;display:grid;gap:10px}
 legend{padding:0;margin-bottom:6px;font:700 16px "Barlow Condensed",sans-serif;letter-spacing:.08em;text-transform:uppercase;color:var(--taxi)}
 .g2{display:grid;grid-template-columns:100px 1fr;gap:8px}
+#st{display:grid;gap:14px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:18px;display:grid;gap:8px;text-align:center}
+.card .pos{font:700 54px/1 "Barlow Condensed",sans-serif;color:var(--taxi)}
+.card .tit{font:700 22px/1.1 "Barlow Condensed",sans-serif;letter-spacing:.04em;text-transform:uppercase}
+.card p{margin:0;color:var(--muted)}
+.card .eta{color:var(--fg);font-size:18px}
+.lnk{display:block;text-align:center;text-decoration:none;border:1px solid var(--line);background:var(--panel);color:var(--fg);border-radius:12px;padding:14px;font:600 15px "Barlow",sans-serif;cursor:pointer;width:100%}
+.lnk.red{color:#ff8a80}
 [hidden]{display:none!important}
 </style>
 </head>
@@ -42,8 +50,14 @@ legend{padding:0;margin-bottom:6px;font:700 16px "Barlow Condensed",sans-serif;l
 <div class="app">
   <header>
     <div class="lg"><svg class="logo" viewBox="0 0 100 100" aria-hidden="true"><defs><linearGradient id="lg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#F1D18D"/><stop offset="1" stop-color="#C8933A"/></linearGradient></defs><path fill="url(#lg)" fill-rule="evenodd" d="M50 0L58.7 40.9L98.2 50L58.7 59.1L50 100L41.3 59.1L1.8 50L41.3 40.9ZM50 0L53.6 44L98.2 50L53.6 56L50 100L46.4 56L1.8 50L46.4 44Z"/></svg></div><h1>Stella Maris <span>Ride</span></h1>
-    <p class="sub" id="sub">Informe partida e destino e envie o pedido pelo WhatsApp.</p>
+    <p class="sub" id="sub">Informe partida e destino e envie o pedido.</p>
   </header>
+  <section id="st" hidden>
+    <div class="card"><div class="tit" id="stT"></div><div class="pos" id="stP"></div><p class="eta" id="stE"></p><p id="stD"></p></div>
+    <button class="lnk" type="button" id="stW">Avisar também pelo WhatsApp</button>
+    <button class="lnk red" type="button" id="stC">Cancelar pedido</button>
+    <button class="lnk" type="button" id="stN" hidden>Fazer novo pedido</button>
+  </section>
   <form id="f" class="app" style="padding:0" autocomplete="off" novalidate>
     <div class="field"><label for="nome">Seu nome</label><input id="nome" required placeholder="Ex.: Dona Marta"></div>
     <div class="field"><label for="fone">Seu telefone (opcional)</label><input id="fone" type="tel" inputmode="tel" placeholder="(22) 99999-9999"></div>
@@ -73,8 +87,8 @@ legend{padding:0;margin-bottom:6px;font:700 16px "Barlow Condensed",sans-serif;l
     <div class="est" id="est" hidden></div>
     <button class="mini" type="button" id="bEst" hidden>Calcular estimativa de valor</button>
     <p class="err" id="err" hidden></p>
-    <button class="go" type="submit" id="go">Enviar pedido pelo WhatsApp</button>
-    <p class="hint">O motorista confirma o pedido e o valor final pelo WhatsApp. A estimativa é aproximada: o valor final é o do taxímetro.</p>
+    <button class="go" type="submit" id="go">Enviar pedido</button>
+    <p class="hint">Você entra na fila de atendimento e acompanha sua posição aqui. O motorista confirma o valor final. A estimativa é aproximada: o valor final é o do taxímetro.</p>
   </form>
 </div>
 <script>
@@ -87,7 +101,7 @@ const nm = q.get('n') || '';
 const num = k => { const v = parseFloat(String(q.get(k) || '').replace(',', '.')); return isFinite(v) ? v : 0; };
 const T = (q.has('b') || q.has('k') || q.has('m')) ? {band: num('b'), km: num('k'), min: num('m')} : {band: 5.5, km: 5, min: 0.4};
 const temTarifa = T.band > 0 || T.km > 0 || T.min > 0;
-if(nm) $('sub').textContent = `Pedido para ${nm}. Informe partida e destino e envie pelo WhatsApp.`;
+if(nm) $('sub').textContent = `Pedido para ${nm}. Informe partida e destino e envie o pedido.`;
 if(!W){ $('err').hidden = false; $('err').textContent = 'Link incompleto: peça ao motorista um novo link.'; }
 let agendar = false, pO = null, pD = null, est = null;
 const brl = v => v.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
@@ -148,7 +162,7 @@ function setOutro(v){
   outro = v; $('bMim').setAttribute('aria-pressed', !v); $('bOutro').setAttribute('aria-pressed', v);
   $('fPass').hidden = !v; $('loc').hidden = v;
   if(v && gps){ gps = false; pO = null; est = null; $('est').hidden = true; ['oRua', 'oNum', 'oBai'].forEach(id => $(id).value = ''); }
-  $('sub').textContent = v ? 'Informe onde buscar o passageiro e para onde ele vai.' : 'Informe partida e destino e envie o pedido pelo WhatsApp.';
+  $('sub').textContent = v ? 'Informe onde buscar o passageiro e para onde ele vai.' : 'Informe partida e destino e envie o pedido.';
 }
 $('bMim').onclick = () => setOutro(false); $('bOutro').onclick = () => setOutro(true);
 $('loc').onclick = () => {
@@ -201,7 +215,7 @@ $('f').onsubmit = async e => {
     const v = $('quando').value; if(!v){ $('err').hidden = false; $('err').textContent = 'Escolha a data e a hora.'; return; }
     quando = new Date(v).toLocaleString('pt-BR', {dateStyle:'short', timeStyle:'short'});
   }
-  if(temTarifa && !est){ const g = $('go'); g.disabled = true; g.textContent = 'Calculando valor…'; try{ await calcular(); }catch(x){} g.disabled = false; g.textContent = 'Enviar pedido pelo WhatsApp'; }
+  if(temTarifa && !est){ const g = $('go'); g.disabled = true; g.textContent = 'Calculando valor…'; try{ await calcular(); }catch(x){} g.disabled = false; g.textContent = 'Enviar pedido'; }
   const org = pO ? `${pO.la},${pO.lo}` : o, dst = pD ? `${pD.la},${pD.lo}` : d;
   const mapa = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(org)}&destination=${encodeURIComponent(dst)}&travelmode=driving`;
   const L = ['*Stella Maris Ride · Pedido de corrida*', outro ? `Pedido feito por: ${nome}` : `Nome: ${nome}`];
@@ -212,8 +226,93 @@ $('f').onsubmit = async e => {
   else if(temTarifa) L.push('Estimativa: a confirmar');
   const obs = $('obs').value.trim(); if(obs) L.push(`Obs.: ${obs}`);
   L.push(`Rota: ${mapa}`);
-  location.href = `https://wa.me/${W}?text=${encodeURIComponent(L.join('\n'))}`;
+  const msg = L.join('\n'), wa = `https://wa.me/${W}?text=${encodeURIComponent(msg)}`;
+  const g = $('go'); g.disabled = true; g.textContent = 'Enviando…';
+  try{
+    const db = await Promise.race([loadFB(), new Promise((_, rj) => setTimeout(() => rj(new Error('t')), 8000))]);
+    const sid = db.ref().push().key, pid = db.ref().push().key, TS = firebase.database.ServerValue.TIMESTAMP;
+    const m = Math.round(est ? est.min : 15) + 5;
+    const f = {nome, fone, passageiro: outro ? $('pNome').value.trim() : '', foneP: outro ? $('pFone').value.trim() : '', partida: o, destino: d, obs, quando, estim: est ? `R$ ${brl(est.v)} · ${est.km.toLocaleString('pt-BR',{maximumFractionDigits:1})} km` : '', pid, c: TS, s: 'aguardando'};
+    if(pO){ f.oLa = pO.la; f.oLo = pO.lo; } if(pD){ f.dLa = pD.la; f.dLo = pD.lo; }
+    for(const k of ['nome', 'passageiro']) f[k] = f[k].slice(0, 80);
+    f.partida = f.partida.slice(0, 200); f.destino = f.destino.slice(0, 200); f.obs = f.obs.slice(0, 300);
+    const up = {}; up['fila/' + sid] = f; up['pub/' + pid] = {c: TS, s: 'aguardando', m};
+    await Promise.race([db.ref().update(up), new Promise((_, rj) => setTimeout(() => rj(new Error('t')), 8000))]);
+    const sv = {sid, pid, wa, t: Date.now()};
+    try{ localStorage.setItem('sm_ped', JSON.stringify(sv)); }catch(x){}
+    g.disabled = false; g.textContent = 'Enviar pedido';
+    mostrar(sv);
+  }catch(x){
+    try{ firebase.database().goOffline(); }catch(y){}
+    location.href = wa;
+  }
 };
+
+// ---- fila ao vivo (Firebase) ----
+const FBC = {"apiKey": "AIzaSyAMHd8SJb_Ts5Ji-_MbWDvwcjI_UGRYC4I", "authDomain": "stella-maris-ride.firebaseapp.com", "databaseURL": "https://stella-maris-ride-default-rtdb.firebaseio.com", "projectId": "stella-maris-ride", "storageBucket": "stella-maris-ride.firebasestorage.app", "messagingSenderId": "561195291545", "appId": "1:561195291545:web:3b926f9089c3d0ab3fb908"};
+let fbp = null;
+function loadFB(){
+  if(fbp) return fbp;
+  fbp = new Promise((res, rej) => {
+    const urls = ['https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js', 'https://www.gstatic.com/firebasejs/10.12.5/firebase-database-compat.js'];
+    let i = 0;
+    const next = () => {
+      if(i >= urls.length){ try{ firebase.initializeApp(FBC); res(firebase.database()); }catch(e){ rej(e); } return; }
+      const sc = document.createElement('script'); sc.src = urls[i++]; sc.onload = next; sc.onerror = () => rej(new Error('sdk')); document.head.append(sc);
+    };
+    next();
+  });
+  fbp.catch(() => { fbp = null; });
+  return fbp;
+}
+const ATIVOS = ['aguardando', 'aceito', 'a_caminho', 'chegou', 'em_corrida'];
+const MSG = {
+  aceito: ['Pedido aceito', 'O motorista aceitou e vai até você.'],
+  a_caminho: ['Motorista a caminho', 'Fique no local de partida.'],
+  chegou: ['Motorista chegou', 'Ele já está no local de partida.'],
+  em_corrida: ['Corrida em andamento', 'Boa viagem!'],
+  concluido: ['Corrida concluída', 'Obrigado por viajar com a Stella Maris Ride!'],
+  cancelado: ['Pedido cancelado', 'Se foi engano, faça um novo pedido.']
+};
+let cur = null, off = null, canc = false;
+function limpar(){ try{ localStorage.removeItem('sm_ped'); }catch(x){} if(off){ off(); off = null; } cur = null; canc = false; $('st').hidden = true; $('f').hidden = false; $('sub').hidden = false; }
+function mostrar(sv){
+  cur = sv; $('f').hidden = true; $('st').hidden = false; $('sub').hidden = true;
+  $('stT').textContent = 'Pedido enviado'; $('stP').textContent = ''; $('stE').textContent = 'Conectando à fila…'; $('stD').textContent = '';
+  $('stC').hidden = false; $('stN').hidden = true;
+  loadFB().then(db => {
+    const ref = db.ref('pub'), cb = ref.on('value', snap => desenhar(snap.val() || {}));
+    off = () => ref.off('value', cb);
+  }).catch(() => { $('stE').textContent = 'Sem conexão para acompanhar a fila agora. Seu pedido foi enviado.'; });
+}
+function desenhar(all){
+  if(!cur) return;
+  const me = all[cur.pid], lim = Date.now() - 12*3600*1000;
+  if(!me){ $('stT').textContent = 'Pedido enviado'; $('stE').textContent = 'Aguardando confirmação…'; return; }
+  const s = me.s;
+  $('stC').hidden = !['aguardando', 'aceito', 'a_caminho'].includes(s) || canc;
+  if(MSG[s]){
+    $('stT').textContent = MSG[s][0]; $('stP').textContent = ''; $('stE').textContent = ''; $('stD').textContent = MSG[s][1];
+    if(s === 'concluido' || s === 'cancelado'){ $('stC').hidden = true; $('stN').hidden = false; }
+    return;
+  }
+  const ahead = Object.values(all).filter(x => x && ATIVOS.includes(x.s) && x.c > lim && x.c < me.c);
+  const pos = ahead.length + 1, min = ahead.reduce((a, x) => a + (x.m || 15), 0);
+  $('stT').textContent = pos === 1 ? 'Você é o próximo' : 'Você está na fila';
+  $('stP').textContent = pos + 'º';
+  $('stE').textContent = pos === 1 && !ahead.length ? 'Previsão de atendimento: em breve' : 'Previsão de atendimento: cerca de ' + Math.max(5, Math.round(min / 5) * 5) + ' min';
+  $('stD').textContent = canc ? 'Cancelamento enviado ao motorista.' : 'Pedido por ordem de chegada. Esta tela se atualiza sozinha.';
+}
+$('stW').onclick = () => { if(cur) location.href = cur.wa; };
+$('stN').onclick = limpar;
+$('stC').onclick = async () => {
+  if(!cur || !confirm('Cancelar o pedido?')) return;
+  try{ const db = await loadFB(); await Promise.race([db.ref('cancelar/' + cur.sid).set(firebase.database.ServerValue.TIMESTAMP), new Promise((_, rj) => setTimeout(() => rj(new Error('t')), 8000))]); canc = true; $('stC').hidden = true; $('stD').textContent = 'Cancelamento enviado ao motorista.'; }
+  catch(x){ alert('Não consegui cancelar agora. Avise o motorista pelo WhatsApp.'); }
+};
+try{ const sv = JSON.parse(localStorage.getItem('sm_ped') || 'null'); if(sv && sv.pid && Date.now() - sv.t < 12*3600*1000) mostrar(sv); else if(sv) localStorage.removeItem('sm_ped'); }catch(x){}
+setTimeout(() => { loadFB().catch(() => {}); }, 1500);
+
 })();
 </script>
 </body>
