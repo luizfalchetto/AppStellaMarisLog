@@ -1,6 +1,6 @@
 {
-  "name": "Taxímetro Stella Maris",
-  "short_name": "Taxímetro",
+  "name": "Stella Maris Ride",
+  "short_name": "Stella Ride",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

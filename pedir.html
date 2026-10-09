@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Solicitar corrida</title>
+<title>Stella Maris Ride · Solicitar corrida</title>
 <meta name="theme-color" content="#121417">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@600;700&display=swap">
 <style>
@@ -40,7 +40,7 @@ legend{padding:0;margin-bottom:6px;font:700 16px "Barlow Condensed",sans-serif;l
 <body>
 <div class="app">
   <header>
-    <h1>Solicitar <span>corrida</span></h1>
+    <h1>Stella Maris <span>Ride</span></h1>
     <p class="sub" id="sub">Informe partida e destino e envie o pedido pelo WhatsApp.</p>
   </header>
   <form id="f" class="app" style="padding:0" autocomplete="off" novalidate>
@@ -203,7 +203,7 @@ $('f').onsubmit = async e => {
   if(temTarifa && !est){ const g = $('go'); g.disabled = true; g.textContent = 'Calculando valor…'; try{ await calcular(); }catch(x){} g.disabled = false; g.textContent = 'Enviar pedido pelo WhatsApp'; }
   const org = pO ? `${pO.la},${pO.lo}` : o, dst = pD ? `${pD.la},${pD.lo}` : d;
   const mapa = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(org)}&destination=${encodeURIComponent(dst)}&travelmode=driving`;
-  const L = ['*Pedido de corrida*', outro ? `Pedido feito por: ${nome}` : `Nome: ${nome}`];
+  const L = ['*Stella Maris Ride · Pedido de corrida*', outro ? `Pedido feito por: ${nome}` : `Nome: ${nome}`];
   const fone = $('fone').value.trim(); if(fone) L.push(outro ? `Telefone de quem pediu: ${fone}` : `Telefone: ${fone}`);
   if(outro){ L.push(`*Passageiro: ${$('pNome').value.trim()}*`); const pf = $('pFone').value.trim(); if(pf) L.push(`Telefone do passageiro: ${pf}`); }
   L.push(`Quando: ${quando}`, `Partida: ${o}`, `Destino: ${d}`);

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Taxímetro</title>
+<title>Stella Maris Ride</title>
 <meta name="theme-color" content="#121417">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMAAAADABAMAAACg8nE0AAAAMFBMVEX1swHsrQLdogOYcgr/Sj3OSi/SQTh9OiR0MC4qMDhQKSopIh0bHyQbGhYWFxcSFBdodR9qAAADa0lEQVR42u3aUWsTWRTA8f9M0lhWYQZFEfZlqBUFWQ1UX3xpcL9AXPYDpIv4AdQH8cG6IqIvfoAqNl9AjK+Cth+gS7M+CLLbdtjHdWEnRlCmzRwfJupDR725uSMVz31pScj55Zxz752ZSzyh3OGjgAIKKKCAAgoooIACCiiggAIKKLBzgGrhq73QJpYYZ2AXH88YCC3LERoCPdt69wyB0LqjoRHQs58yvZ2xDsIxwoW6VbgHAslHAsyKtAFvSVLguEg9EPlix2Tb+CTwUOQVOVSHh7IZbgOC7dHMAe9/kT7ADyLPqIi8wgAYoQd+CJMAb2OOMglX7bfrj+P1SVZ43WAAu4BqFEPWWp6oB2Qds0388yUCRPId4IRsitTf12hJ+jguUcjbmGvDGh1r8ATHGSzJn/P5NGJWRCQyyqBq3uMGi6tMALCSp+F2JXuwvD6cFG8SeOx6q5gki/+lGgFkXZh3DUyTJlvQBKg04HfXQJMtspg5gIPAmXHui4pGgz0CTAGcA3ZHsdNp6g/ffZP//1Kk43ahTQz/1vId6Rb87LYHB95/IIJTZA+usTtyWqJZ2ZyZmTkt0sbfkD4/irRxcD34AMxLP6/+P+wSeURFpO8S8DbybWhJ+pwYXtEGkUOgItLJt7mU/Jr8k0jbAPDE7C7ccATJd3FflIwRLtkRGQRj9NisB4nDChUCgcMEinuQuEugGAjshMIHcU9/9qCAAgpY3vymbbtg500zsIxf+LmizW6BGav4g26tZZaBXXwqdbMSpRXbhlZSI6A9xpxpG5Wobh2/ritZAQXGOqvIroC/9xJAeuN6SRlk/y2WXaK/ygS8WxfJEnhxP70bl5PB/ogum4sxa/dLKlECrJU9TTv8VjsXuZ+mAIRJRNiLmJ4uJ4OXsR+NepYxQgZyGaYhydrl9aD6CzRZT++VBWTAIeDvxVIW2s0oW4aJuZFW9CgZ+E1WgSMXfLKklBLtYwsgrDbolgJUGeTfPCqpyV7IMrefJnTMidFmUZNVgsd30sQvCZjKmwCHy1poDJJf98Khs+Zl3f4AsvClx4NPX5MHz1t6X/RVgNp1LdE3D3Sto3WNgNYY39foKKE2sA0/qBn24A/L+F3D0xYWLDMoOGwpzqDlrAN6OK6AAgoooIACCiiggAIKKKCAAgrsLOAdvIB+EJDRlIUAAAAASUVORK5CYII=">
@@ -33,6 +33,8 @@ button,input,select{font:inherit;color:inherit}
 .app{max-width:520px;margin:0 auto;min-height:100%;display:flex;flex-direction:column;padding:12px 16px 16px;gap:14px}
 header{display:flex;align-items:center;justify-content:space-between;gap:8px}
 .brand{font:700 22px/1 var(--f-cond);letter-spacing:.04em;text-transform:uppercase;display:flex;align-items:center;gap:10px}
+.brand span{display:flex;flex-direction:column;gap:3px;font-size:11px;letter-spacing:.08em;line-height:1;white-space:nowrap}
+.brand b{font-size:26px;letter-spacing:.08em;color:var(--taxi)}
 .brand i{display:inline-block;width:30px;height:16px;border-radius:4px;background:var(--taxi)}
 .iconbtn{background:var(--panel);border:1px solid var(--line);border-radius:12px;height:44px;min-width:44px;padding:0 12px;font:600 14px var(--f-ui);cursor:pointer}
 .iconbtn:focus-visible,.btn:focus-visible,.seg button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--taxi);outline-offset:2px}
@@ -144,7 +146,7 @@ h3{font:700 15px var(--f-cond);letter-spacing:.12em;text-transform:uppercase;col
 <!-- ===== MAIN METER ===== -->
 <div class="app" id="main">
   <header>
-    <div class="brand"><i aria-hidden="true"></i>Taxímetro</div>
+    <div class="brand" aria-label="Stella Maris Ride"><i aria-hidden="true"></i><span>Stella Maris<b>Ride</b></span></div>
     <div style="display:flex;gap:8px">
       <button class="iconbtn" id="bHist" type="button">Relatório</button>
       <button class="iconbtn" id="bCfg" type="button">Tarifas</button>
