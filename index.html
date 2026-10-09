@@ -215,7 +215,8 @@ h3{font:700 15px var(--f-cond);letter-spacing:.12em;text-transform:uppercase;col
     <h3>Motorista</h3>
     <div class="grid2">
       <div class="field"><label for="cNome">Seu nome</label><input id="cNome" type="text" autocomplete="name"></div>
-      <div class="field"><label for="cPlaca">Placa / veículo</label><input id="cPlaca" type="text" autocapitalize="characters"></div>
+      <div class="field"><label for="cPlaca">Placa</label><input id="cPlaca" type="text" autocapitalize="characters"></div>
+      <div class="field"><label for="cModelo">Modelo do carro</label><input id="cModelo" type="text" autocomplete="off" placeholder="Ex.: Fiat Argo prata"></div>
     </div>
     <h3>Valores</h3>
     <div class="field"><label for="cBand">Bandeirada</label><div class="money"><input id="cBand" type="text" inputmode="decimal" placeholder="0,00"></div></div>
@@ -351,7 +352,7 @@ const dia = t => new Date(t).toLocaleDateString('pt-BR');
 const minTxt = ms => { const m = ms/60000; return m < 10 ? m.toLocaleString('pt-BR',{maximumFractionDigits:1}) : String(Math.round(m)); };
 
 /* ---------- config ---------- */
-const DEF = {nome:'', placa:'', band:0, km:0, min:0, esp:0, arred:0, msg:'Obrigado pela preferência!', empresa:'Stella Maris Logistics', cnpj:'64.842.411/0001-07', taxaDeb:0.89, taxaCre:3.09, dyn:50, pix:'70e9320f-2100-485f-8ad4-62dd0a868e90', meta:0};
+const DEF = {nome:'', placa:'', modelo:'', band:0, km:0, min:0, esp:0, arred:0, msg:'Obrigado pela preferência!', empresa:'Stella Maris Logistics', cnpj:'64.842.411/0001-07', taxaDeb:0.89, taxaCre:3.09, dyn:50, pix:'70e9320f-2100-485f-8ad4-62dd0a868e90', meta:0};
 const DYN = {fer:'Feriado', chu:'Chuva forte'};
 const dynPc = r => r && r.cfg && r.cfg.dyn != null ? Number(r.cfg.dyn) : 50;
 function drawDyn(el, r, fn){
@@ -477,7 +478,7 @@ function newRide(tipo, agendado, cliente, fone, direto){
 function cheguei(){ ride.chegada = Date.now(); ride.fase = 'espera'; save(); render(); if(ride.fone) avisar(); }
 function avisar(){
   let d = String(ride.fone || '').replace(/\D/g, ''); if(d.length === 10 || d.length === 11) d = '55' + d;
-  const t = `Olá${ride.cliente ? ', ' + ride.cliente : ''}! Cheguei para buscar você. ${[ride.cfg.nome, ride.cfg.placa].filter(Boolean).join(' · ')}`.trim();
+  const t = `Olá${ride.cliente ? ', ' + ride.cliente : ''}! Cheguei para buscar você. ${[ride.cfg.nome, ride.cfg.modelo, ride.cfg.placa].filter(Boolean).join(' · ')}`.trim();
   window.open(`https://wa.me/${d}?text=${encodeURIComponent(t)}`, '_blank');
 }
 function iniciar(){ ride.inicio = Date.now(); ride.fase = 'corrida'; ride.last = null; save(); startGps(); capEnd(ride, 'orig'); render(); }
@@ -511,7 +512,7 @@ function receipt(r){
   const c = calc(r), k = r.cfg, L = [];
   L.push(r.cancelada ? '*Recibo de espera*' : '*Recibo de corrida*');
   if(cfg.empresa || cfg.cnpj) L.push([cfg.empresa, cfg.cnpj ? 'CNPJ ' + cfg.cnpj : ''].filter(Boolean).join(' · '));
-  if(k.nome || k.placa) L.push([k.nome, k.placa].filter(Boolean).join(' · '));
+  if(k.nome || k.placa || k.modelo) L.push([k.nome, k.modelo, k.placa].filter(Boolean).join(' · '));
   L.push(`Data: ${dia(r.fim || Date.now())}`);
   if(r.cliente) L.push(`Cliente: ${r.cliente}`);
   if(r.tipo === 'agendada' && r.agendado) L.push(`Horário marcado: ${hhmm(r.agendado)}`);
@@ -631,14 +632,14 @@ $('bDireto').onclick = () => { newRide('avulsa', null, $('nCli').value.trim(), $
 
 const fmtIn = v => v ? brl(v) : '';
 function openCfg(){
-  $('cNome').value = cfg.nome; $('cPlaca').value = cfg.placa;
+  $('cNome').value = cfg.nome; $('cPlaca').value = cfg.placa; $('cModelo').value = cfg.modelo || '';
   $('cBand').value = fmtIn(cfg.band); $('cKm').value = fmtIn(cfg.km); $('cMin').value = fmtIn(cfg.min); $('cEsp').value = fmtIn(cfg.esp);
   $('cArr').value = String(cfg.arred); $('cMsg').value = cfg.msg; $('cEmp').value = cfg.empresa || ''; $('cCnpj').value = cfg.cnpj || ''; $('cWhats').value = cfg.whats || ''; $('cTd').value = String(cfg.taxaDeb).replace('.', ','); $('cTc').value = String(cfg.taxaCre).replace('.', ','); $('cPix').value = cfg.pix || ''; $('cMeta').value = fmtIn(cfg.meta); $('cDyn').value = String(cfg.dyn != null ? cfg.dyn : 50).replace('.', ',');
   show('sCfg', true);
 }
 $('fCfg').onsubmit = e => {
   e.preventDefault();
-  cfg = {nome:$('cNome').value.trim(), placa:$('cPlaca').value.trim().toUpperCase(), band:numIn($('cBand').value),
+  cfg = {nome:$('cNome').value.trim(), placa:$('cPlaca').value.trim().toUpperCase(), modelo:$('cModelo').value.trim(), band:numIn($('cBand').value),
          km:numIn($('cKm').value), min:numIn($('cMin').value), esp:numIn($('cEsp').value), arred:Number($('cArr').value), msg:$('cMsg').value.trim(), empresa:$('cEmp').value.trim(), cnpj:$('cCnpj').value.trim(), whats:$('cWhats').value.replace(/\D/g,''), taxaDeb:numIn($('cTd').value), taxaCre:numIn($('cTc').value), pix:$('cPix').value.trim(), meta:numIn($('cMeta').value), dyn:numIn($('cDyn').value)};
   store.set('tx_cfg', cfg); show('sCfg', false); render();
   toast(ride && ride.fase !== 'fim' ? 'Tarifas salvas. Valem a partir da próxima corrida.' : 'Tarifas salvas');
@@ -743,7 +744,7 @@ function gerarPdf(r){
   info.push(['Data', new Date(r.fim || r.id).toLocaleDateString('pt-BR')]);
   if(r.cliente) info.push(['Cliente', r.cliente]);
   if(k.nome) info.push(['Motorista', k.nome]);
-  if(k.placa) info.push(['Veículo', k.placa]);
+  if(k.placa || k.modelo) info.push(['Veículo', [k.modelo, k.placa].filter(Boolean).join(' · ')]);
   if(r.tipo === 'agendada' && r.agendado) info.push(['Horário marcado', hhmm(r.agendado)]);
   if(r.inicio) info.push(['Embarque', hhmm(r.inicio)]);
   if(r.inicio && r.fim) info.push(['Desembarque', hhmm(r.fim)]);
@@ -894,7 +895,7 @@ function renderRep(){
 function repTexto(){
   const {P, R, dTot} = window.__rep, L = [];
   L.push(`*Relatório – ${P.lbl}*`);
-  if(cfg.nome || cfg.placa) L.push([cfg.nome, cfg.placa].filter(Boolean).join(' · '));
+  if(cfg.nome || cfg.placa || cfg.modelo) L.push([cfg.nome, cfg.modelo, cfg.placa].filter(Boolean).join(' · '));
   L.push('');
   L.push(`Faturamento: *R$ ${brl(R.tot)}*`);
   L.push(`Corridas: ${R.n}${R.can ? ` (+${R.can} cancelada${R.can>1?'s':''})` : ''}`);
