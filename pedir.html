@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Stella Maris Ride · Solicitar corrida</title>
-<meta name="theme-color" content="#121417">
+<meta name="theme-color" content="#020D1F">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@600;700&display=swap">
 <style>
-:root{--bg:#121417;--panel:#1B1F24;--line:#2E353E;--fg:#E8EAED;--muted:#8B939D;--taxi:#F5B301;--ink:#17130A;--ok:#3DD68C;color-scheme:dark}
+:root{--bg:#020D1F;--panel:#0A1830;--line:#1D3258;--fg:#ECEFF5;--muted:#8C9BB5;--taxi:#DDB066;--ink:#1A1204;--ok:#3DD68C;color-scheme:dark}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.4 "Barlow",system-ui,sans-serif;padding:env(safe-area-inset-top,0) 0 env(safe-area-inset-bottom,0)}
 .app{max-width:520px;margin:0 auto;padding:20px 16px 40px;display:grid;gap:16px}
@@ -24,13 +24,14 @@ input:focus,textarea:focus{outline:2px solid var(--taxi);outline-offset:1px}
 .seg{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .seg button{min-height:52px;border-radius:12px;border:1px solid var(--line);background:var(--panel);color:var(--fg);font:700 16px "Barlow Condensed",sans-serif;letter-spacing:.06em;text-transform:uppercase;cursor:pointer}
 .seg button[aria-pressed=true]{background:var(--taxi);color:var(--ink);border-color:var(--taxi)}
-.go{border:0;border-radius:14px;min-height:60px;background:var(--ok);color:#06210F;font:700 20px "Barlow Condensed",sans-serif;letter-spacing:.06em;text-transform:uppercase;cursor:pointer}
+.go{border:0;border-radius:14px;min-height:60px;background:var(--taxi);color:var(--ink);font:700 20px "Barlow Condensed",sans-serif;letter-spacing:.06em;text-transform:uppercase;cursor:pointer}
 .go:disabled{opacity:.6}
 .est{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px;display:grid;gap:4px}
 .est b{font:700 28px "Barlow Condensed",sans-serif;color:var(--taxi)}
 .est small{color:var(--muted)}
 .hint{color:var(--muted);font-size:13px;margin:0}
 .err{color:#ff8a80;font-size:14px;margin:0}
+.lg{display:flex;margin-bottom:8px}.lg .logo{width:44px;height:44px}
 fieldset{border:0;padding:0;margin:0;display:grid;gap:10px}
 legend{padding:0;margin-bottom:6px;font:700 16px "Barlow Condensed",sans-serif;letter-spacing:.08em;text-transform:uppercase;color:var(--taxi)}
 .g2{display:grid;grid-template-columns:100px 1fr;gap:8px}
@@ -40,7 +41,7 @@ legend{padding:0;margin-bottom:6px;font:700 16px "Barlow Condensed",sans-serif;l
 <body>
 <div class="app">
   <header>
-    <h1>Stella Maris <span>Ride</span></h1>
+    <div class="lg"><svg class="logo" viewBox="0 0 100 100" aria-hidden="true"><defs><linearGradient id="lg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#F1D18D"/><stop offset="1" stop-color="#C8933A"/></linearGradient></defs><path fill="url(#lg)" fill-rule="evenodd" d="M50 0L58.7 40.9L98.2 50L58.7 59.1L50 100L41.3 59.1L1.8 50L41.3 40.9ZM50 0L53.6 44L98.2 50L53.6 56L50 100L46.4 56L1.8 50L46.4 44Z"/></svg></div><h1>Stella Maris <span>Ride</span></h1>
     <p class="sub" id="sub">Informe partida e destino e envie o pedido pelo WhatsApp.</p>
   </header>
   <form id="f" class="app" style="padding:0" autocomplete="off" novalidate>
