@@ -310,6 +310,7 @@ $('f').onsubmit = async e => {
     f.partida = f.partida.slice(0, 200); f.destino = f.destino.slice(0, 200); f.obs = f.obs.slice(0, 300);
     const up = {}; up['fila/' + sid] = f; up['pub/' + pid] = agendar ? {c: TS, s: 'aguardando', m, a: f.a} : {c: TS, s: 'aguardando', m};
     await Promise.race([db.ref().update(up), new Promise((_, rj) => setTimeout(() => rj(new Error('t')), 8000))]);
+    avisar(agendar ? 'Novo AGENDAMENTO de corrida' : 'Novo pedido de corrida');
     const sv = {sid, pid, wa, t: Date.now()}; if(f.a) sv.a = f.a;
     try{ localStorage.setItem('sm_ped', JSON.stringify(sv)); }catch(x){}
     g.disabled = false; g.textContent = 'Enviar pedido';
@@ -337,6 +338,8 @@ function loadFB(){
   fbp.catch(() => { fbp = null; });
   return fbp;
 }
+const NTFY = 'https://ntfy.sh/sm-ride-bmfl2gkhevm0wvdsip3e50';
+function avisar(msg){ try{ fetch(NTFY, {method: 'POST', body: msg, headers: {'Title': 'Stella Maris Ride', 'Priority': 'high', 'Tags': 'taxi', 'Click': 'https://luizfalchetto.github.io/AppStellaMarisLog/'}}).catch(() => {}); }catch(x){} }
 const ATIVOS = ['aguardando', 'aceito', 'a_caminho', 'chegou', 'em_corrida'];
 const MSG = {
   aceito: ['Pedido aceito', 'O motorista aceitou e vai até você.'],
@@ -386,7 +389,7 @@ $('stW').onclick = () => { if(cur) location.href = cur.wa; };
 $('stN').onclick = limpar;
 $('stC').onclick = async () => {
   if(!cur || !confirm('Cancelar o pedido?')) return;
-  try{ const db = await loadFB(); await Promise.race([db.ref('cancelar/' + cur.sid).set(firebase.database.ServerValue.TIMESTAMP), new Promise((_, rj) => setTimeout(() => rj(new Error('t')), 8000))]); canc = true; $('stC').hidden = true; $('stD').textContent = 'Cancelamento enviado ao motorista.'; }
+  try{ const db = await loadFB(); await Promise.race([db.ref('cancelar/' + cur.sid).set(firebase.database.ServerValue.TIMESTAMP), new Promise((_, rj) => setTimeout(() => rj(new Error('t')), 8000))]); canc = true; avisar('Cliente cancelou o pedido'); $('stC').hidden = true; $('stD').textContent = 'Cancelamento enviado ao motorista.'; }
   catch(x){ alert('Não consegui cancelar agora. Avise o motorista pelo WhatsApp.'); }
 };
 try{ const sv = JSON.parse(localStorage.getItem('sm_ped') || 'null'); if(sv && sv.pid && (Date.now() - sv.t < 12*3600*1000 || (sv.a && Date.now() < sv.a + 3*3600*1000))) mostrar(sv); else if(sv) localStorage.removeItem('sm_ped'); }catch(x){}
