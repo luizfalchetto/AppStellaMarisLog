@@ -1002,6 +1002,7 @@ const FBC = {"apiKey": "AIzaSyAMHd8SJb_Ts5Ji-_MbWDvwcjI_UGRYC4I", "authDomain": 
 const EMAIL = 'luizgustavofalchetto@gmail.com';
 const FATIVO = ['aguardando', 'aceito', 'a_caminho', 'chegou', 'em_corrida'];
 const FLBL = {aguardando: 'Aguardando', aceito: 'Aceito', a_caminho: 'A caminho', chegou: 'No local', em_corrida: 'Em corrida'};
+const flagOn = () => { try{ return localStorage.getItem('tx_fila_on') === '1'; }catch(e){ return false; } };
 let authChk = false, fdb = null, fauth = null, fuser = null, fready = false, fp = null, filaData = {}, cancData = {}, fKnown = null, fListen = false;
 const loadJs = u => new Promise((res, rej) => { const el = document.createElement('script'); el.src = u; el.onload = res; el.onerror = () => rej(new Error('sdk')); document.head.append(el); });
 function fbInit(){
@@ -1010,13 +1011,14 @@ function fbInit(){
     const b = 'https://www.gstatic.com/firebasejs/10.12.5/firebase-';
     await loadJs(b + 'app-compat.js'); await Promise.all([loadJs(b + 'database-compat.js'), loadJs(b + 'auth-compat.js')]);
     firebase.initializeApp(FBC); fauth = firebase.auth(); fdb = firebase.database();
+    try{ await fauth.setPersistence(firebase.auth.Auth.Persistence.LOCAL); }catch(e){}
     fauth.onAuthStateChanged(u => {
       fuser = u; authChk = true; const ok = !!u && u.email === EMAIL && u.emailVerified;
       if(ok){ try{ localStorage.setItem('tx_fila_on', '1'); }catch(e){} startFila(); } else stopFila();
       drawFila();
     });
   })();
-  fp.catch(() => { fp = null; drawFila(); });
+  fp.catch(() => { fp = null; drawFila(); if(flagOn()) setTimeout(() => fbInit().catch(() => {}), 5000); });
   return fp;
 }
 function startFila(){
@@ -1117,9 +1119,11 @@ function drawFila(){
   const nAg = ativos.filter(x => x.s === 'aguardando').length;
   const n = $('filaN'); n.textContent = nAg; n.dataset.n = nAg;
   const logged = !!fuser && fuser.email === EMAIL && fuser.emailVerified;
-  $('fLogin').hidden = logged; $('fSair').hidden = !fuser;
+  const recon = !logged && !fuser && flagOn() && !authChk;
+  $('fLogin').hidden = logged || recon; $('fSair').hidden = !(fuser && !logged);
   $('fMsg').textContent = logged ? (ativos.length ? 'Por ordem de chegada. Atualiza sozinha.' : 'Nenhum pedido na fila agora.')
     : fuser ? 'Esta conta (' + fuser.email + ') não é a do motorista. Saia e entre com a conta certa.'
+    : recon ? 'Reconectando sua conta…'
     : authChk || !fp ? 'Entre com sua conta Google para ver os pedidos dos clientes.' : 'Conectando…';
   const L = $('fList');
   L.innerHTML = logged ? ativos.map((x, i) => {
@@ -1158,7 +1162,11 @@ $('bEntrar').onclick = async () => {
 };
 $('bSair').onclick = () => { try{ localStorage.removeItem('tx_fila_on'); }catch(e){} if(fauth) fauth.signOut(); };
 let wasOn = false; try{ wasOn = localStorage.getItem('tx_fila_on') === '1'; }catch(e){}
-if(wasOn && navigator.onLine) setTimeout(() => fbInit().catch(() => {}), 1200);
+if(wasOn) setTimeout(() => fbInit().catch(() => {}), 300);
+const retomar = () => { if(!flagOn()) return; fbInit().catch(() => {}); if(fdb){ try{ fdb.goOnline(); }catch(e){} } };
+document.addEventListener('visibilitychange', () => { if(!document.hidden) retomar(); });
+window.addEventListener('online', retomar); window.addEventListener('focus', retomar);
+try{ if(navigator.storage && navigator.storage.persist) navigator.storage.persist(); }catch(e){}
 
 /* ---------- boot ---------- */
 if(ride && ride.fase === 'corrida'){ startGps(); keepAwake(true); }
