@@ -96,7 +96,7 @@ legend{padding:0;margin-bottom:6px;font:700 16px "Barlow Condensed",sans-serif;l
     <div class="field"><label>Quando?</label>
       <div class="seg"><button type="button" id="bAgora" aria-pressed="true">Agora</button><button type="button" id="bAgend" aria-pressed="false">Agendar</button></div>
     </div>
-    <div class="field" id="fQuando" hidden><label for="quando">Data e hora</label><input id="quando" type="datetime-local"></div>
+    <div class="field" id="fQuando" hidden><label for="quando">Data e hora</label><input id="quando" type="datetime-local"><small id="qAv" style="display:block;margin-top:6px"></small><small style="display:block;margin-top:6px;color:var(--muted)">Corrida agendada tem <b>prioridade</b> sobre os pedidos do dia e acréscimo de <span id="agPct">20</span>% sobre o valor. O horário fica reservado só para você.</small></div>
     <div class="field"><label for="obs">Observações (opcional)</label><textarea id="obs" placeholder="Ponto de referência, nº de passageiros, bagagem…"></textarea></div>
     <div class="aviso" id="aviso">
       <b class="t">Antes de pedir, saiba que</b>
@@ -105,6 +105,7 @@ legend{padding:0;margin-bottom:6px;font:700 16px "Barlow Condensed",sans-serif;l
         <li><b>Paradas:</b> você pode pedir paradas no trajeto. O taxímetro continua correndo durante a parada, então o valor aumenta conforme o tempo até a corrida ser encerrada.</li>
         <li><b>Espera:</b> o tempo de espera do passageiro é cobrado<span id="avEsp"></span>. Se o motorista já tiver chegado e você cancelar, a espera pode ser cobrada.</li>
         <li id="avDyn" hidden></li>
+        <li><b>Corrida agendada:</b> tem prioridade sobre os pedidos comuns, o horário fica reservado (outro cliente não consegue o mesmo horário) e há acréscimo de <span id="avAg">20</span>% sobre o valor.</li>
         <li><b>Pagamento:</b> Pix ou dinheiro<span id="avCar"></span>.</li>
         <li><b>Recibo:</b> você tem direito a recibo da corrida, enviado por WhatsApp, <b>desde que informe seu WhatsApp ao pedir</b>.</li>
       </ul>
@@ -131,11 +132,13 @@ const W = (q.get('w') || '5522999299851').replace(/\D/g, '');
 const nm = q.get('n') || '';
 const num = k => { const v = parseFloat(String(q.get(k) || '').replace(',', '.')); return isFinite(v) ? v : 0; };
 const T = (q.has('b') || q.has('k') || q.has('m')) ? {band: num('b'), km: num('k'), min: num('m')} : {band: 5.5, km: 5, min: 0.4};
+let AG = 20;
 const pc = k => { const v = String(q.get(k) || '').replace(',', '.').trim(); return v !== '' && isFinite(+v) ? +v : null; };
 const fmt = v => v.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
 { const e = pc('e'), d = pc('d'), td = pc('td'), tc = pc('tc');
   if(e) document.getElementById('avEsp').textContent = ` por minuto (R$ ${fmt(e)}/min)`;
-  { const dc = pc('dc'), f = d != null ? d : 50, c = dc != null ? dc : 30, li = document.getElementById('avDyn'), z = v => String(v).replace('.', ','); li.hidden = false; li.innerHTML = `<b>Tarifa dinâmica:</b> em dias de chuva o valor tem acréscimo de ${z(c)}%, e em feriados, de ${z(f)}%.`; }
+  { const ap = pc('ag'); if(ap != null) AG = ap; document.getElementById('avAg').textContent = document.getElementById('agPct').textContent = String(AG).replace('.', ',');
+  const dc = pc('dc'), f = d != null ? d : 50, c = dc != null ? dc : 30, li = document.getElementById('avDyn'), z = v => String(v).replace('.', ','); li.hidden = false; li.innerHTML = `<b>Tarifa dinâmica:</b> em dias de chuva o valor tem acréscimo de ${z(c)}%, e em feriados, de ${z(f)}%.`; }
   if(td != null && tc != null) document.getElementById('avCar').textContent = `; cartão de débito (taxa de ${String(td).replace('.', ',')}%) ou crédito (${String(tc).replace('.', ',')}%), acrescida ao valor`;
   const emp = q.get('n'); if(emp) document.getElementById('avEmp').textContent = emp; }
 const temTarifa = T.band > 0 || T.km > 0 || T.min > 0;
@@ -143,7 +146,35 @@ if(nm) $('sub').textContent = `Pedido para ${nm}. Informe partida e destino e en
 if(!W){ $('err').hidden = false; $('err').textContent = 'Link incompleto: peça ao motorista um novo link.'; }
 let agendar = false, pO = null, pD = null, est = null;
 const brl = v => v.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
-function setQuando(a){ agendar = a; $('bAgora').setAttribute('aria-pressed', !a); $('bAgend').setAttribute('aria-pressed', a); $('fQuando').hidden = !a; }
+function showEst(){ if(!est) return; $('est').hidden = false;
+  $('est').innerHTML = `<small>Estimativa${est.aprox ? ' aproximada' : ''}${agendar ? ' · já com acréscimo de agendamento' : ''}</small><b>≈ R$ ${brl(est.v)}</b><small>${est.km.toLocaleString('pt-BR',{maximumFractionDigits:1})} km · cerca de ${Math.round(est.min)} min</small>`; }
+function setQuando(a){ agendar = a; $('bAgora').setAttribute('aria-pressed', !a); $('bAgend').setAttribute('aria-pressed', a); $('fQuando').hidden = !a;
+  if(a){ const d = new Date(Date.now() + 30*60000), p = n => String(n).padStart(2, '0'); $('quando').min = `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`; chkSlot(); }
+  showEst(); }
+const SLOT_ANTES = 15*60000, SLOT_DEPOIS = 10*60000; // deslocamento até você + folga após a corrida
+async function ocupado(ts, mins){
+  const db = await Promise.race([loadFB(), new Promise((_, rj) => setTimeout(() => rj(new Error('t')), 6000))]);
+  const sn = await Promise.race([db.ref('pub').once('value'), new Promise((_, rj) => setTimeout(() => rj(new Error('t')), 6000))]);
+  const v = sn.val() || {}, ini = ts - SLOT_ANTES, fim = ts + mins*60000 + SLOT_DEPOIS, now = Date.now();
+  for(const k of Object.keys(v)){ const x = v[k];
+    if(!x || !x.a || !ATIVOS.includes(x.s) || x.a < now - 3*3600*1000) continue;
+    if(cur && cur.pid === k) continue;
+    const i2 = x.a - SLOT_ANTES, f2 = x.a + (x.m || 35)*60000 + SLOT_DEPOIS;
+    if(ini < f2 && i2 < fim) return {de: i2 + SLOT_ANTES, ate: f2};
+  }
+  return null;
+}
+let slotTk = 0;
+async function chkSlot(){
+  const el = $('qAv'), v = $('quando').value; el.textContent = ''; if(!agendar || !v) return true;
+  const ts = new Date(v).getTime(); if(ts < Date.now() + 25*60000){ el.style.color = '#e5484d'; el.textContent = 'Escolha um horário com pelo menos 30 minutos de antecedência.'; return false; }
+  const tk = ++slotTk;
+  try{ const o = await ocupado(ts, Math.round(est ? est.min : 30) + 5); if(tk !== slotTk) return true;
+    if(o){ const h = t => new Date(t).toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'}); el.style.color = '#e5484d'; el.textContent = `Horário indisponível: já existe corrida agendada por volta das ${h(o.de)} (ocupado até ${h(o.ate)}). Escolha outro horário.`; return false; }
+    el.style.color = '#2fb36d'; el.textContent = 'Horário disponível ✓'; return true;
+  }catch(x){ return true; }
+}
+$('quando').onchange = chkSlot; $('quando').oninput = chkSlot;
 $('bAgora').onclick = () => setQuando(false); $('bAgend').onclick = () => setQuando(true);
 if(temTarifa) $('bEst').hidden = false;
 const addr = p => { const g = id => $(p + id).value.trim(); return [[g('Rua'), g('Num')].filter(Boolean).join(', '), g('Bai'), g('Cid')].filter(Boolean).join(' - '); };
@@ -228,9 +259,8 @@ async function calcular(){
     km = r.distance/1000; min = r.duration/60;
   }catch(e){ km = hav(pO, pD)*1.3; min = km/25*60; aprox = true; }
   const v = Math.max(T.band, km*T.km) + min*T.min;
-  est = {km, min, v, aprox};
-  $('est').hidden = false;
-  $('est').innerHTML = `<small>Estimativa${aprox ? ' aproximada' : ''}</small><b>≈ R$ ${brl(v)}</b><small>${km.toLocaleString('pt-BR',{maximumFractionDigits:1})} km · cerca de ${Math.round(min)} min</small>`;
+  est = {km, min, base: v, aprox, get v(){ return this.base*(agendar ? 1 + AG/100 : 1); }};
+  showEst();
   return est;
 }
 async function estimar(){
@@ -252,7 +282,9 @@ $('f').onsubmit = async e => {
   let quando = 'Agora';
   if(agendar){
     const v = $('quando').value; if(!v){ $('err').hidden = false; $('err').textContent = 'Escolha a data e a hora.'; return; }
-    quando = new Date(v).toLocaleString('pt-BR', {dateStyle:'short', timeStyle:'short'});
+    quando = new Date(v).toLocaleString('pt-BR', {dateStyle:'short', timeStyle:'short'}) + ' (agendada)';
+    if(temTarifa && !est){ try{ await calcular(); }catch(x){} }
+    if(!(await chkSlot())){ $('err').hidden = false; $('err').textContent = 'Esse horário não está disponível. Veja a mensagem abaixo do campo de data e escolha outro.'; return; }
   }
   if(temTarifa && !est){ const g = $('go'); g.disabled = true; g.textContent = 'Calculando valor…'; try{ await calcular(); }catch(x){} g.disabled = false; g.textContent = 'Enviar pedido'; }
   const org = pO ? `${pO.la},${pO.lo}` : o, dst = pD ? `${pD.la},${pD.lo}` : d;
@@ -261,7 +293,7 @@ $('f').onsubmit = async e => {
   const fone = $('fone').value.trim(); if(fone) L.push(outro ? `Telefone de quem pediu: ${fone}` : `Telefone: ${fone}`);
   if(outro){ L.push(`*Passageiro: ${$('pNome').value.trim()}*`); const pf = $('pFone').value.trim(); if(pf) L.push(`Telefone do passageiro: ${pf}`); }
   L.push(`Quando: ${quando}`, `Partida: ${o}`, `Destino: ${d}`);
-  if(est) L.push(`Estimativa: ≈ R$ ${brl(est.v)} (${est.km.toLocaleString('pt-BR',{maximumFractionDigits:1})} km${est.aprox ? ', aproximada' : ''})`);
+  if(est) L.push(`Estimativa${agendar ? ' (com acréscimo de agendamento)' : ''}: ≈ R$ ${brl(est.v)} (${est.km.toLocaleString('pt-BR',{maximumFractionDigits:1})} km${est.aprox ? ', aproximada' : ''})`);
   else if(temTarifa) L.push('Estimativa: a confirmar');
   const obs = $('obs').value.trim(); if(obs) L.push(`Obs.: ${obs}`);
   L.push(`Rota: ${mapa}`);
@@ -270,14 +302,15 @@ $('f').onsubmit = async e => {
   try{
     const db = await Promise.race([loadFB(), new Promise((_, rj) => setTimeout(() => rj(new Error('t')), 8000))]);
     const sid = db.ref().push().key, pid = db.ref().push().key, TS = firebase.database.ServerValue.TIMESTAMP;
-    const m = Math.round(est ? est.min : 15) + 5;
+    const m = Math.round(est ? est.min : (agendar ? 30 : 15)) + 5;
     const f = {nome, fone, passageiro: outro ? $('pNome').value.trim() : '', foneP: outro ? $('pFone').value.trim() : '', partida: o, destino: d, obs, quando, estim: est ? `R$ ${brl(est.v)} · ${est.km.toLocaleString('pt-BR',{maximumFractionDigits:1})} km` : '', pid, c: TS, s: 'aguardando'};
+    if(agendar){ f.a = new Date($('quando').value).getTime(); }
     if(pO){ f.oLa = pO.la; f.oLo = pO.lo; } if(pD){ f.dLa = pD.la; f.dLo = pD.lo; }
     for(const k of ['nome', 'passageiro']) f[k] = f[k].slice(0, 80);
     f.partida = f.partida.slice(0, 200); f.destino = f.destino.slice(0, 200); f.obs = f.obs.slice(0, 300);
-    const up = {}; up['fila/' + sid] = f; up['pub/' + pid] = {c: TS, s: 'aguardando', m};
+    const up = {}; up['fila/' + sid] = f; up['pub/' + pid] = agendar ? {c: TS, s: 'aguardando', m, a: f.a} : {c: TS, s: 'aguardando', m};
     await Promise.race([db.ref().update(up), new Promise((_, rj) => setTimeout(() => rj(new Error('t')), 8000))]);
-    const sv = {sid, pid, wa, t: Date.now()};
+    const sv = {sid, pid, wa, t: Date.now()}; if(f.a) sv.a = f.a;
     try{ localStorage.setItem('sm_ped', JSON.stringify(sv)); }catch(x){}
     g.disabled = false; g.textContent = 'Enviar pedido';
     mostrar(sv);
@@ -326,21 +359,28 @@ function mostrar(sv){
 }
 function desenhar(all){
   if(!cur) return;
-  const me = all[cur.pid], lim = Date.now() - 12*3600*1000;
+  const me = all[cur.pid], now = Date.now(), lim = now - 12*3600*1000;
+  const fmtA = t => new Date(t).toLocaleString('pt-BR', {day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'});
   if(!me){ $('stT').textContent = 'Pedido enviado'; $('stE').textContent = 'Aguardando confirmação…'; return; }
   const s = me.s;
   $('stC').hidden = !['aguardando', 'aceito', 'a_caminho'].includes(s) || canc;
+  if(me.a && (s === 'aguardando' || s === 'aceito')){
+    $('stT').textContent = s === 'aceito' ? 'Agendamento confirmado' : 'Agendamento solicitado'; $('stP').textContent = fmtA(me.a);
+    $('stE').textContent = s === 'aceito' ? 'O motorista irá até você no horário marcado.' : 'Aguardando confirmação do motorista.';
+    $('stD').textContent = 'Horário reservado, com prioridade (acréscimo de ' + String(AG).replace('.', ',') + '%). Você pode cancelar até o horário.'; return;
+  }
   if(MSG[s]){
     $('stT').textContent = MSG[s][0]; $('stP').textContent = ''; $('stE').textContent = ''; $('stD').textContent = MSG[s][1];
     if(s === 'concluido' || s === 'cancelado'){ $('stC').hidden = true; $('stN').hidden = false; }
     return;
   }
-  const ahead = Object.values(all).filter(x => x && ATIVOS.includes(x.s) && x.c > lim && x.c < me.c);
+  const ahead = Object.values(all).filter(x => x && ATIVOS.includes(x.s) && !x.a && x.c > lim && x.c < me.c);
   const pos = ahead.length + 1, min = ahead.reduce((a, x) => a + (x.m || 15), 0);
   $('stT').textContent = pos === 1 ? 'Você é o próximo' : 'Você está na fila';
   $('stP').textContent = pos + 'º';
   $('stE').textContent = pos === 1 && !ahead.length ? 'Previsão de atendimento: em breve' : 'Previsão de atendimento: cerca de ' + Math.max(5, Math.round(min / 5) * 5) + ' min';
-  $('stD').textContent = canc ? 'Cancelamento enviado ao motorista.' : 'Pedido por ordem de chegada. Esta tela se atualiza sozinha.';
+  const prox = Object.values(all).filter(x => x && x.a && ['aguardando', 'aceito'].includes(x.s) && x.a > now - 15*60000 && x.a - 30*60000 < now + (min + (me.m || 15))*60000).sort((p, q) => p.a - q.a)[0];
+  $('stD').textContent = canc ? 'Cancelamento enviado ao motorista.' : 'Pedido por ordem de chegada. Esta tela se atualiza sozinha.' + (prox ? ' Atenção: há uma corrida agendada com prioridade por volta das ' + new Date(prox.a).toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'}) + '; seu atendimento pode atrasar ou ficar para depois dela.' : '');
 }
 $('stW').onclick = () => { if(cur) location.href = cur.wa; };
 $('stN').onclick = limpar;
@@ -349,7 +389,7 @@ $('stC').onclick = async () => {
   try{ const db = await loadFB(); await Promise.race([db.ref('cancelar/' + cur.sid).set(firebase.database.ServerValue.TIMESTAMP), new Promise((_, rj) => setTimeout(() => rj(new Error('t')), 8000))]); canc = true; $('stC').hidden = true; $('stD').textContent = 'Cancelamento enviado ao motorista.'; }
   catch(x){ alert('Não consegui cancelar agora. Avise o motorista pelo WhatsApp.'); }
 };
-try{ const sv = JSON.parse(localStorage.getItem('sm_ped') || 'null'); if(sv && sv.pid && Date.now() - sv.t < 12*3600*1000) mostrar(sv); else if(sv) localStorage.removeItem('sm_ped'); }catch(x){}
+try{ const sv = JSON.parse(localStorage.getItem('sm_ped') || 'null'); if(sv && sv.pid && (Date.now() - sv.t < 12*3600*1000 || (sv.a && Date.now() < sv.a + 3*3600*1000))) mostrar(sv); else if(sv) localStorage.removeItem('sm_ped'); }catch(x){}
 function watchDisp(){
   loadFB().then(db => db.ref('disp').on('value', sn => {
     const v = sn.val(), el = $('disp'); if(!v || typeof v.on !== 'boolean'){ el.hidden = true; return; }

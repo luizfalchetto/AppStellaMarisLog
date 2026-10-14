@@ -280,6 +280,7 @@ h3{font:700 15px var(--f-cond);letter-spacing:.12em;text-transform:uppercase;col
     <div class="field"><label for="cPix">Chave Pix</label><input id="cPix" type="text" autocomplete="off"></div>
     <div class="field"><label for="cDyn">Tarifa dinâmica — feriado: acréscimo (%)</label><input id="cDyn" type="text" inputmode="decimal" placeholder="50"></div>
     <div class="field"><label for="cDynC">Tarifa dinâmica — chuva forte: acréscimo (%)</label><input id="cDynC" type="text" inputmode="decimal" placeholder="30"></div>
+    <div class="field"><label for="cAg">Corrida agendada (prioridade): acréscimo (%)</label><input id="cAg" type="text" inputmode="decimal" placeholder="20"></div>
     <div class="field"><label for="cMeta">Meta diária (R$)</label><div class="money"><input id="cMeta" type="text" inputmode="decimal" placeholder="0,00"></div></div>
     <h3>Pedidos de clientes</h3>
     <div class="field"><label for="cWhats">Seu WhatsApp para receber pedidos (com DDD)</label><input id="cWhats" type="tel" inputmode="tel" placeholder="22999999999"></div>
@@ -386,9 +387,10 @@ const dia = t => new Date(t).toLocaleDateString('pt-BR');
 const minTxt = ms => { const m = ms/60000; return m < 10 ? m.toLocaleString('pt-BR',{maximumFractionDigits:1}) : String(Math.round(m)); };
 
 /* ---------- config ---------- */
-const DEF = {nome:'', placa:'', modelo:'', band:0, km:0, min:0, esp:0, arred:0, msg:'Obrigado pela preferência!', empresa:'Stella Maris Logistics', cnpj:'64.842.411/0001-07', taxaDeb:0.89, taxaCre:3.09, dyn:50, dynC:30, pix:'70e9320f-2100-485f-8ad4-62dd0a868e90', meta:0};
+const DEF = {nome:'', placa:'', modelo:'', band:0, km:0, min:0, esp:0, arred:0, msg:'Obrigado pela preferência!', empresa:'Stella Maris Logistics', cnpj:'64.842.411/0001-07', taxaDeb:0.89, taxaCre:3.09, dyn:50, dynC:30, ag:20, pix:'70e9320f-2100-485f-8ad4-62dd0a868e90', meta:0};
 const DYN = {fer:'Feriado', chu:'Chuva forte'};
 const dynRate = (c, k) => k === 'chu' ? (c && c.dynC != null ? Number(c.dynC) : 30) : (c && c.dyn != null ? Number(c.dyn) : 50);
+const agRate = c => c && c.ag != null ? Number(c.ag) : 20;
 const dynPc = r => r && r.cfg ? dynRate(r.cfg, 'fer') : 50;
 function drawDyn(el, r, fn){
   const pc = dynRate(r && r.cfg, 'fer'), pcC = dynRate(r && r.cfg, 'chu'); el.hidden = !r || (pc <= 0 && pcC <= 0); if(el.hidden) return;
@@ -420,13 +422,15 @@ function calc(r, now){
   if(r.inicio){ minimoAplicado = c.band > vKm; corrida = Math.max(c.band, vKm) + vMin; }
   let sub = corrida + vEsp;
   const dynPct = r.dyn ? dynRate(c, r.dyn) : 0;
-  const vDyn = Math.round(sub*dynPct)/100; sub += vDyn;
+  const vDyn = Math.round(sub*dynPct)/100;
+  const agPct = r.tipo === 'agendada' ? agRate(c) : 0, vAg = Math.round(sub*agPct)/100;
+  sub += vDyn + vAg;
   const arr = Number(c.arred)||0;
   if(arr > 0 && sub > 0) sub = Math.ceil(sub/arr - 1e-9)*arr;
   const pct = r.pag === 'deb' ? (c.taxaDeb != null ? c.taxaDeb : cfg.taxaDeb) : r.pag === 'cre' ? (c.taxaCre != null ? c.taxaCre : cfg.taxaCre) : 0;
   const taxa = Math.round(sub*(pct||0))/100;
   const total = Math.round((sub + taxa)*100)/100;
-  return {dynPct, vDyn, km, corrMs, espMs, espTotal, espStart, vKm, vMin, vEsp, corrida, minimoAplicado, sub, taxa, pct: pct||0, total};
+  return {dynPct, vDyn, agPct, vAg, km, corrMs, espMs, espTotal, espStart, vKm, vMin, vEsp, corrida, minimoAplicado, sub, taxa, pct: pct||0, total};
 }
 
 /* ---------- GPS ---------- */
@@ -561,6 +565,7 @@ function receipt(r){
     L.push(`Tempo: ${minTxt(c.corrMs)} min × R$ ${brl(k.min)} = R$ ${brl(c.vMin)}`);
   }
   if(c.espMs > 0) L.push(`Espera: ${minTxt(c.espMs)} min × R$ ${brl(k.esp)} = R$ ${brl(c.vEsp)}`);
+  if(c.vAg > 0) L.push(`Corrida agendada (prioridade) +${c.agPct.toLocaleString('pt-BR')}%: R$ ${brl(c.vAg)}`);
   if(c.vDyn > 0) L.push(`Tarifa dinâmica (${DYN[r.dyn] || 'especial'}) +${c.dynPct.toLocaleString('pt-BR')}%: R$ ${brl(c.vDyn)}`);
   if(c.taxa > 0) L.push(`Taxa ${r.pag === 'deb' ? 'débito' : 'crédito'} ${c.pct.toLocaleString('pt-BR')}%: R$ ${brl(c.taxa)}`);
   L.push('');
@@ -673,13 +678,13 @@ const fmtIn = v => v ? brl(v) : '';
 function openCfg(){
   $('cNome').value = cfg.nome; $('cPlaca').value = cfg.placa; $('cModelo').value = cfg.modelo || '';
   $('cBand').value = fmtIn(cfg.band); $('cKm').value = fmtIn(cfg.km); $('cMin').value = fmtIn(cfg.min); $('cEsp').value = fmtIn(cfg.esp);
-  $('cArr').value = String(cfg.arred); $('cMsg').value = cfg.msg; $('cEmp').value = cfg.empresa || ''; $('cCnpj').value = cfg.cnpj || ''; $('cWhats').value = cfg.whats || ''; $('cTd').value = String(cfg.taxaDeb).replace('.', ','); $('cTc').value = String(cfg.taxaCre).replace('.', ','); $('cPix').value = cfg.pix || ''; $('cMeta').value = fmtIn(cfg.meta); $('cDyn').value = String(cfg.dyn != null ? cfg.dyn : 50).replace('.', ','); $('cDynC').value = String(cfg.dynC != null ? cfg.dynC : 30).replace('.', ',');
+  $('cArr').value = String(cfg.arred); $('cMsg').value = cfg.msg; $('cEmp').value = cfg.empresa || ''; $('cCnpj').value = cfg.cnpj || ''; $('cWhats').value = cfg.whats || ''; $('cTd').value = String(cfg.taxaDeb).replace('.', ','); $('cTc').value = String(cfg.taxaCre).replace('.', ','); $('cPix').value = cfg.pix || ''; $('cMeta').value = fmtIn(cfg.meta); $('cDyn').value = String(cfg.dyn != null ? cfg.dyn : 50).replace('.', ','); $('cDynC').value = String(cfg.dynC != null ? cfg.dynC : 30).replace('.', ','); $('cAg').value = String(cfg.ag != null ? cfg.ag : 20).replace('.', ',');
   show('sCfg', true);
 }
 $('fCfg').onsubmit = e => {
   e.preventDefault();
   cfg = {nome:$('cNome').value.trim(), placa:$('cPlaca').value.trim().toUpperCase(), modelo:$('cModelo').value.trim(), band:numIn($('cBand').value),
-         km:numIn($('cKm').value), min:numIn($('cMin').value), esp:numIn($('cEsp').value), arred:Number($('cArr').value), msg:$('cMsg').value.trim(), empresa:$('cEmp').value.trim(), cnpj:$('cCnpj').value.trim(), whats:$('cWhats').value.replace(/\D/g,''), taxaDeb:numIn($('cTd').value), taxaCre:numIn($('cTc').value), pix:$('cPix').value.trim(), meta:numIn($('cMeta').value), dyn:numIn($('cDyn').value), dynC:numIn($('cDynC').value)};
+         km:numIn($('cKm').value), min:numIn($('cMin').value), esp:numIn($('cEsp').value), arred:Number($('cArr').value), msg:$('cMsg').value.trim(), empresa:$('cEmp').value.trim(), cnpj:$('cCnpj').value.trim(), whats:$('cWhats').value.replace(/\D/g,''), taxaDeb:numIn($('cTd').value), taxaCre:numIn($('cTc').value), pix:$('cPix').value.trim(), meta:numIn($('cMeta').value), dyn:numIn($('cDyn').value), dynC:numIn($('cDynC').value), ag:numIn($('cAg').value)};
   store.set('tx_cfg', cfg); show('sCfg', false); render();
   toast(ride && ride.fase !== 'fim' ? 'Tarifas salvas. Valem a partir da próxima corrida.' : 'Tarifas salvas');
 };
@@ -688,7 +693,7 @@ $('bLink').onclick = async () => {
   if(w.length <= 11) w = '55' + w;
   const n = s => String(s || '').replace('.', ',');
   const u = new URL('pedir.html', location.href);
-  u.search = new URLSearchParams({w, n:($('cEmp').value.trim() || 'Stella Maris Logistics'), b:n(numIn($('cBand').value)), k:n(numIn($('cKm').value)), m:n(numIn($('cMin').value)), e:n(numIn($('cEsp').value)), d:n(numIn($('cDyn').value)), dc:n(numIn($('cDynC').value)), td:n(numIn($('cTd').value)), tc:n(numIn($('cTc').value))}).toString();
+  u.search = new URLSearchParams({w, n:($('cEmp').value.trim() || 'Stella Maris Logistics'), b:n(numIn($('cBand').value)), k:n(numIn($('cKm').value)), m:n(numIn($('cMin').value)), e:n(numIn($('cEsp').value)), d:n(numIn($('cDyn').value)), dc:n(numIn($('cDynC').value)), ag:n(numIn($('cAg').value)), td:n(numIn($('cTd').value)), tc:n(numIn($('cTc').value))}).toString();
   try{ await navigator.clipboard.writeText(u.href); toast('Link copiado. Mande ao cliente.'); }catch(e){ prompt('Copie o link:', u.href); }
 };
 $('bCfg').onclick = openCfg; $('bCfg2').onclick = openCfg;
@@ -701,6 +706,7 @@ function linhas(r){
     rows.push([`Tempo ${minTxt(c.corrMs)} min × R$ ${brl(k.min)}`, 'R$ '+brl(c.vMin)]);
   }
   if(c.espMs > 0 || !r.inicio) rows.push([`Espera ${minTxt(c.espMs)} min × R$ ${brl(k.esp)}`, 'R$ '+brl(c.vEsp)]);
+  if(c.vAg > 0) rows.push([`Corrida agendada (prioridade) +${c.agPct.toLocaleString('pt-BR')}%`, 'R$ '+brl(c.vAg)]);
   if(c.vDyn > 0) rows.push([`Tarifa dinâmica (${DYN[r.dyn] || 'especial'}) +${c.dynPct.toLocaleString('pt-BR')}%`, 'R$ '+brl(c.vDyn)]);
   if(c.taxa > 0) rows.push([`Taxa ${r.pag === 'deb' ? 'débito' : 'crédito'} ${c.pct.toLocaleString('pt-BR')}%`, 'R$ '+brl(c.taxa)]);
   return {c, k, rows};
@@ -1053,8 +1059,8 @@ function varrerCancel(){
 }
 function podarPub(){
   fdb.ref('pub').once('value').then(sn => { const v = sn.val() || {}, lim = Date.now() - 24*3600*1000, up = {};
-    Object.keys(v).forEach(k => { if(v[k].c < lim) up['pub/' + k] = null; });
-    Object.keys(filaData).forEach(k => { if(filaData[k].c < lim) up['fila/' + k] = null; });
+    Object.keys(v).forEach(k => { if((v[k].a || v[k].c) < lim) up['pub/' + k] = null; });
+    Object.keys(filaData).forEach(k => { if((filaData[k].a || filaData[k].c) < lim) up['fila/' + k] = null; });
     if(Object.keys(up).length) fdb.ref().update(up).catch(() => {}); }).catch(() => {});
 }
 let dispOn = store.get('tx_disp', false) === true;
@@ -1068,7 +1074,7 @@ $('bDisp').onclick = () => {
 drawDisp();
 let actx;
 function alertaNovo(it){
-  toast('Novo pedido: ' + (it.nome || 'cliente'));
+  toast((it.a ? 'Novo AGENDAMENTO: ' : 'Novo pedido: ') + (it.nome || 'cliente'));
   try{ navigator.vibrate && navigator.vibrate([300, 150, 300]); }catch(e){}
   try{ actx = actx || new (window.AudioContext || window.webkitAudioContext)(); [0, .25].forEach(t => { const o = actx.createOscillator(), g = actx.createGain(); o.frequency.value = 880; g.gain.value = .2; o.connect(g); g.connect(actx.destination); o.start(actx.currentTime + t); o.stop(actx.currentTime + t + .18); }); }catch(e){}
 }
@@ -1083,6 +1089,9 @@ function irDestino(f){
 }
 function aceitar(sid){
   const it = filaData[sid]; if(!it || it.s !== 'aguardando') return;
+  if(it.a){ setStatus(sid, it.pid, 'aceito').then(() => toast('Agendamento confirmado para ' + fmtAg(it.a) + '.')).catch(() => toast('Falha ao confirmar. Tente de novo.')); return; }
+  const pri = proxAg(sid);
+  if(pri && !confirm('Há corrida AGENDADA (prioridade) às ' + hhmm(pri.a) + '. Aceitar este pedido mesmo assim?')) return;
   if(ride && ride.fase !== 'fim'){ toast('Termine ou cancele a corrida em andamento antes de aceitar outra.'); return; }
   newRide('avulsa', null, it.passageiro || it.nome || '', (it.passageiro ? it.foneP : it.fone) || '', false);
   ride.orig = it.partida || ''; ride.dest = it.destino || ''; ride.obs = it.obs || '';
@@ -1090,13 +1099,27 @@ function aceitar(sid){
   save(); qSet(sid, it.pid, 'aceito'); $('sFila').hidden = true; render();
   toast('Pedido aceito. Toque em "Ir até o cliente".');
 }
+const fmtAg = ts => new Date(ts).toLocaleString('pt-BR', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'});
+function proxAg(skip){
+  const t = Date.now();
+  return Object.keys(filaData).map(k => Object.assign({sid: k}, filaData[k])).filter(x => x.sid !== skip && x.a && ['aguardando', 'aceito'].includes(x.s) && x.a - 45*60000 <= t && x.a + 20*60000 >= t).sort((p, q) => p.a - q.a)[0];
+}
+function iniciarAg(sid){
+  const it = filaData[sid]; if(!it || !it.a || it.s !== 'aceito') return;
+  if(ride && ride.fase !== 'fim'){ toast('Termine ou cancele a corrida em andamento antes.'); return; }
+  newRide('agendada', it.a, it.passageiro || it.nome || '', (it.passageiro ? it.foneP : it.fone) || '', false);
+  ride.orig = it.partida || ''; ride.dest = it.destino || ''; ride.obs = it.obs || '';
+  ride.fila = {sid, pid: it.pid, s: 'aceito', oLa: it.oLa, oLo: it.oLo, dLa: it.dLa, dLo: it.dLo, partida: it.partida, destino: it.destino};
+  save(); $('sFila').hidden = true; render();
+  toast('Corrida agendada iniciada. Toque em "Ir até o cliente".');
+}
 function recusar(sid){
   const it = filaData[sid]; if(!it || !confirm('Cancelar o pedido de ' + (it.passageiro || it.nome || 'cliente') + '?')) return;
   setStatus(sid, it.pid, 'cancelado').catch(() => toast('Falha ao cancelar. Tente de novo.'));
 }
 const foneWa = f => { let d = String(f || '').replace(/\D/g, ''); if(d.length === 10 || d.length === 11) d = '55' + d; return d; };
 function drawFila(){
-  const ativos = Object.keys(filaData).map(k => Object.assign({sid: k}, filaData[k])).filter(x => FATIVO.includes(x.s) && x.c > Date.now() - 12*3600*1000).sort((a, b) => a.c - b.c);
+  const ativos = Object.keys(filaData).map(k => Object.assign({sid: k}, filaData[k])).filter(x => FATIVO.includes(x.s) && (x.a ? x.a > Date.now() - 6*3600*1000 : x.c > Date.now() - 12*3600*1000)).sort((a, b) => (a.a && b.a) ? a.a - b.a : a.a ? -1 : b.a ? 1 : a.c - b.c);
   const nAg = ativos.filter(x => x.s === 'aguardando').length;
   const n = $('filaN'); n.textContent = nAg; n.dataset.n = nAg;
   const logged = !!fuser && fuser.email === EMAIL && fuser.emailVerified;
@@ -1111,11 +1134,12 @@ function drawFila(){
     const nome = x.passageiro ? `${escapeHtml(x.passageiro)} <small>(pedido por ${escapeHtml(x.nome)})</small>` : escapeHtml(x.nome);
     const fone = foneWa(x.passageiro ? x.foneP : x.fone);
     let a = '';
-    if(x.s === 'aguardando') a += `<button class="btn primary" data-a="ac" data-k="${x.sid}">Aceitar</button><button class="btn ghost" data-a="rc" data-k="${x.sid}">Cancelar</button>`;
+    if(x.s === 'aguardando') a += `<button class="btn primary" data-a="ac" data-k="${x.sid}">${x.a ? 'Confirmar agendamento' : 'Aceitar'}</button><button class="btn ghost" data-a="rc" data-k="${x.sid}">Cancelar</button>`;
+    else if(x.a && x.s === 'aceito' && !meu) a += `<button class="btn primary" data-a="ia" data-k="${x.sid}">Iniciar atendimento</button><button class="btn ghost" data-a="rc" data-k="${x.sid}">Cancelar</button>`;
     else if(meu) a += `<button class="btn primary full" data-a="vc" data-k="${x.sid}">Ir até o cliente</button>`;
     else a += `<button class="btn ghost" data-a="vc" data-k="${x.sid}">Ir até o cliente</button><button class="btn ghost" data-a="rc" data-k="${x.sid}">Cancelar</button>`;
     if(fone) a += `<button class="btn wa full" data-a="wa" data-k="${x.sid}">WhatsApp</button>`;
-    return `<div class="fcard"><div class="st">${FLBL[x.s]}${meu ? ' · sua corrida atual' : ''}</div><h3><span class="pos">${i + 1}º</span>${nome}</h3>
+    return `<div class="fcard"><div class="st">${x.a ? 'AGENDADA · ' + fmtAg(x.a) + ' · prioridade · ' : ''}${FLBL[x.s]}${meu ? ' · sua corrida atual' : ''}</div><h3><span class="pos">${i + 1}º</span>${nome}</h3>
       <small>Pedido às ${hora} · ${escapeHtml(x.quando || 'Agora')}</small>
       <p><b>De:</b> ${escapeHtml(x.partida)}<br><b>Para:</b> ${escapeHtml(x.destino)}</p>
       ${x.estim ? `<p><small>Estimativa:</small> ${escapeHtml(x.estim)}</p>` : ''}${x.obs ? `<p><small>Obs.:</small> ${escapeHtml(x.obs)}</p>` : ''}
@@ -1126,6 +1150,7 @@ $('fList').onclick = e => {
   const b = e.target.closest('button[data-a]'); if(!b) return;
   const k = b.dataset.k, it = filaData[k] && Object.assign({sid: k}, filaData[k]); if(!it) return;
   if(b.dataset.a === 'ac') aceitar(k);
+  else if(b.dataset.a === 'ia') iniciarAg(k);
   else if(b.dataset.a === 'rc') recusar(k);
   else if(b.dataset.a === 'vc') irCliente(it);
   else if(b.dataset.a === 'wa') window.open('https://wa.me/' + foneWa(it.passageiro ? it.foneP : it.fone), '_blank');
