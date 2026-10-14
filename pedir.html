@@ -135,7 +135,7 @@ const pc = k => { const v = String(q.get(k) || '').replace(',', '.').trim(); ret
 const fmt = v => v.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
 { const e = pc('e'), d = pc('d'), td = pc('td'), tc = pc('tc');
   if(e) document.getElementById('avEsp').textContent = ` por minuto (R$ ${fmt(e)}/min)`;
-  if(d){ const li = document.getElementById('avDyn'); li.hidden = false; li.innerHTML = `<b>Tarifa dinâmica:</b> em feriados e com chuva forte, há acréscimo de ${String(d).replace('.', ',')}% sobre o valor.`; }
+  { const dc = pc('dc'), f = d != null ? d : 50, c = dc != null ? dc : 30, li = document.getElementById('avDyn'), z = v => String(v).replace('.', ','); li.hidden = false; li.innerHTML = `<b>Tarifa dinâmica:</b> em dias de chuva o valor tem acréscimo de ${z(c)}%, e em feriados, de ${z(f)}%.`; }
   if(td != null && tc != null) document.getElementById('avCar').textContent = `; cartão de débito (taxa de ${String(td).replace('.', ',')}%) ou crédito (${String(tc).replace('.', ',')}%), acrescida ao valor`;
   const emp = q.get('n'); if(emp) document.getElementById('avEmp').textContent = emp; }
 const temTarifa = T.band > 0 || T.km > 0 || T.min > 0;
