@@ -686,7 +686,7 @@ $('bLink').onclick = async () => {
   if(w.length <= 11) w = '55' + w;
   const n = s => String(s || '').replace('.', ',');
   const u = new URL('pedir.html', location.href);
-  u.search = new URLSearchParams({w, n:($('cEmp').value.trim() || 'Stella Maris Logistics'), b:n(numIn($('cBand').value)), k:n(numIn($('cKm').value)), m:n(numIn($('cMin').value))}).toString();
+  u.search = new URLSearchParams({w, n:($('cEmp').value.trim() || 'Stella Maris Logistics'), b:n(numIn($('cBand').value)), k:n(numIn($('cKm').value)), m:n(numIn($('cMin').value)), e:n(numIn($('cEsp').value)), d:n(numIn($('cDyn').value)), td:n(numIn($('cTd').value)), tc:n(numIn($('cTc').value))}).toString();
   try{ await navigator.clipboard.writeText(u.href); toast('Link copiado. Mande ao cliente.'); }catch(e){ prompt('Copie o link:', u.href); }
 };
 $('bCfg').onclick = openCfg; $('bCfg2').onclick = openCfg;

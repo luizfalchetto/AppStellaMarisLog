@@ -46,6 +46,14 @@ legend{padding:0;margin-bottom:6px;font:700 16px "Barlow Condensed",sans-serif;l
 .disp.on i{background:var(--ok);box-shadow:0 0 8px var(--ok)}
 .disp.off i{background:#ff8a80}
 .disp small{color:var(--muted);display:block}
+.aviso{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px;display:grid;gap:8px;font-size:14px}
+.aviso b.t{font:700 16px "Barlow Condensed",sans-serif;letter-spacing:.08em;text-transform:uppercase;color:var(--taxi)}
+.aviso ul{margin:0;padding-left:18px;display:grid;gap:6px;color:var(--fg)}
+.aviso details{color:var(--muted)}
+.aviso summary{cursor:pointer;color:var(--fg);font-weight:600}
+.aviso details p{margin:8px 0 0}
+.ck{display:flex;gap:10px;align-items:flex-start;font-size:14px;color:var(--fg)}
+.ck input{width:22px;min-height:22px;height:22px;flex:none;margin-top:1px;accent-color:#DDB066}
 .lnk{display:block;text-align:center;text-decoration:none;border:1px solid var(--line);background:var(--panel);color:var(--fg);border-radius:12px;padding:14px;font:600 15px "Barlow",sans-serif;cursor:pointer;width:100%}
 .lnk.red{color:#ff8a80}
 [hidden]{display:none!important}
@@ -66,7 +74,7 @@ legend{padding:0;margin-bottom:6px;font:700 16px "Barlow Condensed",sans-serif;l
   </section>
   <form id="f" class="app" style="padding:0" autocomplete="off" novalidate>
     <div class="field"><label for="nome">Seu nome</label><input id="nome" required placeholder="Ex.: Dona Marta"></div>
-    <div class="field"><label for="fone">Seu telefone (opcional)</label><input id="fone" type="tel" inputmode="tel" placeholder="(22) 99999-9999"></div>
+    <div class="field"><label for="fone">Seu WhatsApp (necessário para receber o recibo)</label><input id="fone" type="tel" inputmode="tel" placeholder="(22) 99999-9999"></div>
     <div class="field"><label>Para quem é a corrida?</label>
       <div class="seg"><button type="button" id="bMim" aria-pressed="true">Para mim</button><button type="button" id="bOutro" aria-pressed="false">Para outra pessoa</button></div>
     </div>
@@ -90,6 +98,23 @@ legend{padding:0;margin-bottom:6px;font:700 16px "Barlow Condensed",sans-serif;l
     </div>
     <div class="field" id="fQuando" hidden><label for="quando">Data e hora</label><input id="quando" type="datetime-local"></div>
     <div class="field"><label for="obs">Observações (opcional)</label><textarea id="obs" placeholder="Ponto de referência, nº de passageiros, bagagem…"></textarea></div>
+    <div class="aviso" id="aviso">
+      <b class="t">Antes de pedir, saiba que</b>
+      <ul>
+        <li><b>O valor final é o do taxímetro</b> (distância e tempo da corrida). A estimativa é aproximada e o trânsito pode alterá-la.</li>
+        <li><b>Paradas:</b> você pode pedir paradas no trajeto. O taxímetro continua correndo durante a parada, então o valor aumenta conforme o tempo até a corrida ser encerrada.</li>
+        <li><b>Espera:</b> o tempo de espera do passageiro é cobrado<span id="avEsp"></span>. Se o motorista já tiver chegado e você cancelar, a espera pode ser cobrada.</li>
+        <li id="avDyn" hidden></li>
+        <li><b>Pagamento:</b> Pix ou dinheiro<span id="avCar"></span>.</li>
+        <li><b>Recibo:</b> você tem direito a recibo da corrida, enviado por WhatsApp, <b>desde que informe seu WhatsApp ao pedir</b>.</li>
+      </ul>
+      <details><summary>Privacidade e seus dados (LGPD)</summary>
+        <p>Usamos seu nome, telefone, endereços, observações e, se você permitir, sua localização GPS <b>somente</b> para receber e atender o pedido, calcular o valor, entrar em contato e emitir o recibo. Não vendemos nem compartilhamos seus dados para outras finalidades.</p>
+        <p>O pedido fica em um serviço de nuvem do Google (Firebase), cujos servidores podem estar fora do Brasil, e é limpo periodicamente da fila. O motorista pode manter nome, telefone e dados da corrida no histórico dele para recibo e controle da atividade.</p>
+        <p>Controlador: <span id="avEmp">Stella Maris Logistics</span>. Para acessar, corrigir ou pedir a exclusão dos seus dados, fale conosco pelo WhatsApp. Se pedir para outra pessoa, informe só dados que ela autorizou.</p>
+      </details>
+    </div>
+    <label class="ck"><input type="checkbox" id="ciente"><span>Li os avisos acima e concordo com o uso dos meus dados para atender o pedido.</span></label>
     <div class="est" id="est" hidden></div>
     <button class="mini" type="button" id="bEst" hidden>Calcular estimativa de valor</button>
     <p class="err" id="err" hidden></p>
@@ -106,6 +131,13 @@ const W = (q.get('w') || '5522999299851').replace(/\D/g, '');
 const nm = q.get('n') || '';
 const num = k => { const v = parseFloat(String(q.get(k) || '').replace(',', '.')); return isFinite(v) ? v : 0; };
 const T = (q.has('b') || q.has('k') || q.has('m')) ? {band: num('b'), km: num('k'), min: num('m')} : {band: 5.5, km: 5, min: 0.4};
+const pc = k => { const v = String(q.get(k) || '').replace(',', '.').trim(); return v !== '' && isFinite(+v) ? +v : null; };
+const fmt = v => v.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+{ const e = pc('e'), d = pc('d'), td = pc('td'), tc = pc('tc');
+  if(e) document.getElementById('avEsp').textContent = ` por minuto (R$ ${fmt(e)}/min)`;
+  if(d){ const li = document.getElementById('avDyn'); li.hidden = false; li.innerHTML = `<b>Tarifa dinâmica:</b> em feriados e com chuva forte, há acréscimo de ${String(d).replace('.', ',')}% sobre o valor.`; }
+  if(td != null && tc != null) document.getElementById('avCar').textContent = `; cartão de débito (taxa de ${String(td).replace('.', ',')}%) ou crédito (${String(tc).replace('.', ',')}%), acrescida ao valor`;
+  const emp = q.get('n'); if(emp) document.getElementById('avEmp').textContent = emp; }
 const temTarifa = T.band > 0 || T.km > 0 || T.min > 0;
 if(nm) $('sub').textContent = `Pedido para ${nm}. Informe partida e destino e envie o pedido.`;
 if(!W){ $('err').hidden = false; $('err').textContent = 'Link incompleto: peça ao motorista um novo link.'; }
@@ -215,6 +247,7 @@ $('f').onsubmit = async e => {
   if(!W){ return; }
   if(!nome || (!pO && !$('oRua').value.trim()) || !$('dRua').value.trim()){ $('err').hidden = false; $('err').textContent = 'Preencha nome, rua de partida e rua de destino.'; return; }
   if(outro && !$('pNome').value.trim()){ $('err').hidden = false; $('err').textContent = 'Informe o nome do passageiro.'; return; }
+  if(!$('ciente').checked){ $('err').hidden = false; $('err').textContent = 'Marque que leu os avisos para enviar o pedido.'; $('ciente').focus(); return; }
   $('err').hidden = true;
   let quando = 'Agora';
   if(agendar){
