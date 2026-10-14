@@ -108,6 +108,11 @@ h3{font:700 15px var(--f-cond);letter-spacing:.12em;text-transform:uppercase;col
 .hi small{color:var(--muted);font-size:13px}
 .hi strong{font:18px var(--f-led);grid-row:span 2;align-self:center}
 .empty{color:var(--muted);text-align:center;padding:30px 0}
+.dispRow{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.dispRow .btn{min-height:56px;font-size:17px}
+.btn.disp::before{content:"";display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--muted);margin-right:8px;vertical-align:middle}
+.btn.disp[aria-pressed="true"]{background:#1FA855;border-color:#1FA855;color:#fff}
+.btn.disp[aria-pressed="true"]::before{background:#fff}
 .filabar{display:flex;align-items:center;justify-content:center;gap:10px;width:100%}
 .filabar b{background:var(--taxi);color:var(--taxi-ink);border-radius:999px;min-width:26px;height:26px;padding:0 8px;display:inline-grid;place-items:center;font:700 15px var(--f-ui)}
 .filabar b[data-n="0"]{background:var(--line);color:var(--muted)}
@@ -168,7 +173,10 @@ h3{font:700 15px var(--f-cond);letter-spacing:.12em;text-transform:uppercase;col
 
   <div class="banner" id="cfgWarn" hidden>Configure suas tarifas antes da primeira corrida. <button class="iconbtn" id="bCfg2" type="button" style="height:34px;margin-left:6px">Abrir tarifas</button></div>
 
-  <button class="btn filabar" id="bFila" type="button">Fila de pedidos <b id="filaN" data-n="0">0</b></button>
+  <div class="dispRow">
+    <button class="btn disp" id="bDisp" type="button" aria-pressed="false">Indisponível</button>
+    <button class="btn filabar" id="bFila" type="button">Fila <b id="filaN" data-n="0">0</b></button>
+  </div>
 
   <section class="meter" aria-live="polite">
     <div class="status">
@@ -1018,7 +1026,7 @@ function startFila(){
     fKnown = new Set(ativos); drawFila(); varrerCancel();
   }, () => {});
   fdb.ref('cancelar').on('value', sn => { cancData = sn.val() || {}; varrerCancel(); }, () => {});
-  flushQ(); podarPub();
+  flushQ(); podarPub(); pushDisp();
 }
 function stopFila(){
   fready = false; fListen = false; filaData = {}; cancData = {}; fKnown = null;
@@ -1047,6 +1055,15 @@ function podarPub(){
     Object.keys(filaData).forEach(k => { if(filaData[k].c < lim) up['fila/' + k] = null; });
     if(Object.keys(up).length) fdb.ref().update(up).catch(() => {}); }).catch(() => {});
 }
+let dispOn = store.get('tx_disp', false) === true;
+function drawDisp(){ const b = $('bDisp'); b.setAttribute('aria-pressed', dispOn); b.textContent = dispOn ? 'Disponível' : 'Indisponível'; }
+function pushDisp(){ if(fready) fdb.ref('disp').set({on: dispOn, t: firebase.database.ServerValue.TIMESTAMP}).catch(() => toast('Não consegui atualizar a disponibilidade.')); }
+$('bDisp').onclick = () => {
+  dispOn = !dispOn; store.set('tx_disp', dispOn); drawDisp();
+  if(fready) pushDisp();
+  else { toast('Entre com Google em "Fila" para o cliente ver'); fbInit().catch(() => {}); }
+};
+drawDisp();
 let actx;
 function alertaNovo(it){
   toast('Novo pedido: ' + (it.nome || 'cliente'));

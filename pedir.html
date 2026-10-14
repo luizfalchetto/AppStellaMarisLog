@@ -41,6 +41,11 @@ legend{padding:0;margin-bottom:6px;font:700 16px "Barlow Condensed",sans-serif;l
 .card .tit{font:700 22px/1.1 "Barlow Condensed",sans-serif;letter-spacing:.04em;text-transform:uppercase}
 .card p{margin:0;color:var(--muted)}
 .card .eta{color:var(--fg);font-size:18px}
+.disp{display:flex;align-items:center;gap:10px;border:1px solid var(--line);background:var(--panel);border-radius:12px;padding:10px 14px;font-size:15px}
+.disp i{width:12px;height:12px;border-radius:50%;background:var(--muted);flex:none}
+.disp.on i{background:var(--ok);box-shadow:0 0 8px var(--ok)}
+.disp.off i{background:#ff8a80}
+.disp small{color:var(--muted);display:block}
 .lnk{display:block;text-align:center;text-decoration:none;border:1px solid var(--line);background:var(--panel);color:var(--fg);border-radius:12px;padding:14px;font:600 15px "Barlow",sans-serif;cursor:pointer;width:100%}
 .lnk.red{color:#ff8a80}
 [hidden]{display:none!important}
@@ -52,6 +57,7 @@ legend{padding:0;margin-bottom:6px;font:700 16px "Barlow Condensed",sans-serif;l
     <div class="lg"><svg class="logo" viewBox="0 0 100 100" aria-hidden="true"><defs><linearGradient id="lg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#F1D18D"/><stop offset="1" stop-color="#C8933A"/></linearGradient></defs><path fill="url(#lg)" fill-rule="evenodd" d="M50 0L58.7 40.9L98.2 50L58.7 59.1L50 100L41.3 59.1L1.8 50L41.3 40.9ZM50 0L53.6 44L98.2 50L53.6 56L50 100L46.4 56L1.8 50L46.4 44Z"/></svg></div><h1>Stella Maris <span>Ride</span></h1>
     <p class="sub" id="sub">Informe partida e destino e envie o pedido.</p>
   </header>
+  <div class="disp" id="disp" hidden><i></i><div><b id="dispT"></b><small id="dispS"></small></div></div>
   <section id="st" hidden>
     <div class="card"><div class="tit" id="stT"></div><div class="pos" id="stP"></div><p class="eta" id="stE"></p><p id="stD"></p></div>
     <button class="lnk" type="button" id="stW">Avisar também pelo WhatsApp</button>
@@ -311,7 +317,15 @@ $('stC').onclick = async () => {
   catch(x){ alert('Não consegui cancelar agora. Avise o motorista pelo WhatsApp.'); }
 };
 try{ const sv = JSON.parse(localStorage.getItem('sm_ped') || 'null'); if(sv && sv.pid && Date.now() - sv.t < 12*3600*1000) mostrar(sv); else if(sv) localStorage.removeItem('sm_ped'); }catch(x){}
-setTimeout(() => { loadFB().catch(() => {}); }, 1500);
+function watchDisp(){
+  loadFB().then(db => db.ref('disp').on('value', sn => {
+    const v = sn.val(), el = $('disp'); if(!v || typeof v.on !== 'boolean'){ el.hidden = true; return; }
+    el.hidden = false; el.className = 'disp ' + (v.on ? 'on' : 'off');
+    $('dispT').textContent = v.on ? 'Motorista disponível agora' : 'Motorista indisponível no momento';
+    $('dispS').textContent = (v.on ? '' : 'Você pode enviar o pedido: ele entra na fila e é atendido quando o motorista voltar. ') + (v.t ? 'Atualizado às ' + new Date(v.t).toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'}) + '.' : '');
+  })).catch(() => {});
+}
+watchDisp();
 
 })();
 </script>
