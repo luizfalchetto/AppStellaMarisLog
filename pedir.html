@@ -96,7 +96,7 @@ legend{padding:0;margin-bottom:6px;font:700 16px "Barlow Condensed",sans-serif;l
     <div class="field"><label>Quando?</label>
       <div class="seg"><button type="button" id="bAgora" aria-pressed="true">Agora</button><button type="button" id="bAgend" aria-pressed="false">Agendar</button></div>
     </div>
-    <div class="field" id="fQuando" hidden><label for="quando">Data e hora</label><input id="quando" type="datetime-local"><small id="qAv" style="display:block;margin-top:6px"></small><small style="display:block;margin-top:6px;color:var(--muted)">Corrida agendada tem <b>prioridade</b> sobre os pedidos do dia e acréscimo de <span id="agPct">20</span>% sobre o valor. O horário fica reservado só para você.</small></div>
+    <div class="field" id="fQuando" hidden><label for="quando">Data e hora</label><input id="quando" type="datetime-local"><small id="qAv" style="display:block;margin-top:6px"></small><small style="display:block;margin-top:6px;color:var(--muted)">Corrida agendada tem <b>prioridade</b> sobre os pedidos do dia O horário fica reservado só para você, sem custo extra.</small></div>
     <div class="field"><label for="obs">Observações (opcional)</label><textarea id="obs" placeholder="Ponto de referência, nº de passageiros, bagagem…"></textarea></div>
     <div class="aviso" id="aviso">
       <b class="t">Antes de pedir, saiba que</b>
@@ -105,7 +105,7 @@ legend{padding:0;margin-bottom:6px;font:700 16px "Barlow Condensed",sans-serif;l
         <li><b>Paradas:</b> você pode pedir paradas no trajeto. O taxímetro continua correndo durante a parada, então o valor aumenta conforme o tempo até a corrida ser encerrada.</li>
         <li><b>Espera:</b> o tempo de espera do passageiro é cobrado<span id="avEsp"></span>. Se o motorista já tiver chegado e você cancelar, a espera pode ser cobrada.</li>
         <li id="avDyn" hidden></li>
-        <li><b>Corrida agendada:</b> tem prioridade sobre os pedidos comuns, o horário fica reservado (outro cliente não consegue o mesmo horário) e há acréscimo de <span id="avAg">20</span>% sobre o valor.</li>
+        <li><b>Corrida agendada:</b> tem prioridade sobre os pedidos comuns, o horário fica reservado (outro cliente não consegue o mesmo horário); não há acréscimo de preço por agendar.</li>
         <li><b>Pagamento:</b> Pix ou dinheiro<span id="avCar"></span>.</li>
         <li><b>Recibo:</b> você tem direito a recibo da corrida, enviado por WhatsApp, <b>desde que informe seu WhatsApp ao pedir</b>.</li>
       </ul>
@@ -132,13 +132,11 @@ const W = (q.get('w') || '5522999299851').replace(/\D/g, '');
 const nm = q.get('n') || '';
 const num = k => { const v = parseFloat(String(q.get(k) || '').replace(',', '.')); return isFinite(v) ? v : 0; };
 const T = (q.has('b') || q.has('k') || q.has('m')) ? {band: num('b'), km: num('k'), min: num('m')} : {band: 5.5, km: 5, min: 0.4};
-let AG = 20;
 const pc = k => { const v = String(q.get(k) || '').replace(',', '.').trim(); return v !== '' && isFinite(+v) ? +v : null; };
 const fmt = v => v.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
 { const e = pc('e'), d = pc('d'), td = pc('td'), tc = pc('tc');
   if(e) document.getElementById('avEsp').textContent = ` por minuto (R$ ${fmt(e)}/min)`;
-  { const ap = pc('ag'); if(ap != null) AG = ap; document.getElementById('avAg').textContent = document.getElementById('agPct').textContent = String(AG).replace('.', ',');
-  const dc = pc('dc'), f = d != null ? d : 50, c = dc != null ? dc : 30, li = document.getElementById('avDyn'), z = v => String(v).replace('.', ','); li.hidden = false; li.innerHTML = `<b>Tarifa dinâmica:</b> em dias de chuva o valor tem acréscimo de ${z(c)}%, e em feriados, de ${z(f)}%.`; }
+  { const dc = pc('dc'), f = d != null ? d : 50, c = dc != null ? dc : 30, li = document.getElementById('avDyn'), z = v => String(v).replace('.', ','); li.hidden = false; li.innerHTML = `<b>Tarifa dinâmica:</b> em dias de chuva o valor tem acréscimo de ${z(c)}%, e em feriados, de ${z(f)}%.`; }
   if(td != null && tc != null) document.getElementById('avCar').textContent = `; cartão de débito (taxa de ${String(td).replace('.', ',')}%) ou crédito (${String(tc).replace('.', ',')}%), acrescida ao valor`;
   const emp = q.get('n'); if(emp) document.getElementById('avEmp').textContent = emp; }
 const temTarifa = T.band > 0 || T.km > 0 || T.min > 0;
@@ -147,7 +145,7 @@ if(!W){ $('err').hidden = false; $('err').textContent = 'Link incompleto: peça 
 let agendar = false, pO = null, pD = null, est = null;
 const brl = v => v.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
 function showEst(){ if(!est) return; $('est').hidden = false;
-  $('est').innerHTML = `<small>Estimativa${est.aprox ? ' aproximada' : ''}${agendar ? ' · já com acréscimo de agendamento' : ''}</small><b>≈ R$ ${brl(est.v)}</b><small>${est.km.toLocaleString('pt-BR',{maximumFractionDigits:1})} km · cerca de ${Math.round(est.min)} min</small>`; }
+  $('est').innerHTML = `<small>Estimativa${est.aprox ? ' aproximada' : ''}</small><b>≈ R$ ${brl(est.v)}</b><small>${est.km.toLocaleString('pt-BR',{maximumFractionDigits:1})} km · cerca de ${Math.round(est.min)} min</small>`; }
 function setQuando(a){ agendar = a; $('bAgora').setAttribute('aria-pressed', !a); $('bAgend').setAttribute('aria-pressed', a); $('fQuando').hidden = !a;
   if(a){ const d = new Date(Date.now() + 30*60000), p = n => String(n).padStart(2, '0'); $('quando').min = `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`; chkSlot(); }
   showEst(); }
@@ -259,7 +257,7 @@ async function calcular(){
     km = r.distance/1000; min = r.duration/60;
   }catch(e){ km = hav(pO, pD)*1.3; min = km/25*60; aprox = true; }
   const v = Math.max(T.band, km*T.km) + min*T.min;
-  est = {km, min, base: v, aprox, get v(){ return this.base*(agendar ? 1 + AG/100 : 1); }};
+  est = {km, min, v, aprox};
   showEst();
   return est;
 }
@@ -293,7 +291,7 @@ $('f').onsubmit = async e => {
   const fone = $('fone').value.trim(); if(fone) L.push(outro ? `Telefone de quem pediu: ${fone}` : `Telefone: ${fone}`);
   if(outro){ L.push(`*Passageiro: ${$('pNome').value.trim()}*`); const pf = $('pFone').value.trim(); if(pf) L.push(`Telefone do passageiro: ${pf}`); }
   L.push(`Quando: ${quando}`, `Partida: ${o}`, `Destino: ${d}`);
-  if(est) L.push(`Estimativa${agendar ? ' (com acréscimo de agendamento)' : ''}: ≈ R$ ${brl(est.v)} (${est.km.toLocaleString('pt-BR',{maximumFractionDigits:1})} km${est.aprox ? ', aproximada' : ''})`);
+  if(est) L.push(`Estimativa: ≈ R$ ${brl(est.v)} (${est.km.toLocaleString('pt-BR',{maximumFractionDigits:1})} km${est.aprox ? ', aproximada' : ''})`);
   else if(temTarifa) L.push('Estimativa: a confirmar');
   const obs = $('obs').value.trim(); if(obs) L.push(`Obs.: ${obs}`);
   L.push(`Rota: ${mapa}`);
@@ -370,7 +368,7 @@ function desenhar(all){
   if(me.a && (s === 'aguardando' || s === 'aceito')){
     $('stT').textContent = s === 'aceito' ? 'Agendamento confirmado' : 'Agendamento solicitado'; $('stP').textContent = fmtA(me.a);
     $('stE').textContent = s === 'aceito' ? 'O motorista irá até você no horário marcado.' : 'Aguardando confirmação do motorista.';
-    $('stD').textContent = 'Horário reservado, com prioridade (acréscimo de ' + String(AG).replace('.', ',') + '%). Você pode cancelar até o horário.'; return;
+    $('stD').textContent = 'Horário reservado, com prioridade. Você pode cancelar até o horário.'; return;
   }
   if(MSG[s]){
     $('stT').textContent = MSG[s][0]; $('stP').textContent = ''; $('stE').textContent = ''; $('stD').textContent = MSG[s][1];
