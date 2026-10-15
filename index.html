@@ -121,6 +121,15 @@ h3{font:700 15px var(--f-cond);letter-spacing:.12em;text-transform:uppercase;col
 .fcard .pos{color:var(--taxi);margin-right:6px}
 .fcard p{margin:0;font-size:15px}
 .fcard small{color:var(--muted)}
+.mdl{position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:60;display:flex;align-items:flex-end;justify-content:center}
+.mbox{background:var(--panel);border:1px solid var(--line);border-radius:16px 16px 0 0;padding:16px 16px calc(16px + env(safe-area-inset-bottom,0px));width:100%;max-width:520px;display:grid;gap:10px}
+.mbox h3{margin:0;font:700 20px/1.1 var(--f-cond);letter-spacing:.04em;text-transform:uppercase}
+.mbox p{margin:0;font-size:14px;color:var(--muted)}
+.mch{display:flex;flex-wrap:wrap;gap:8px}
+.mch button{border:1px solid var(--line);background:var(--panel2);color:var(--text,#fff);border-radius:999px;padding:9px 12px;font:600 14px/1 var(--f-body,inherit);cursor:pointer}
+.mch button[aria-pressed="true"]{background:var(--taxi);color:var(--taxi-ink);border-color:var(--taxi)}
+.mbox textarea{width:100%;min-height:64px;border:1px solid var(--line);background:var(--panel2);color:inherit;border-radius:10px;padding:10px;font:inherit;box-sizing:border-box}
+.mbox .macts{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .fcard .st{font:700 13px var(--f-cond);letter-spacing:.08em;text-transform:uppercase;color:var(--taxi)}
 .fcard .acts{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .fcard .acts .btn{min-height:48px;font-size:16px}
@@ -522,13 +531,14 @@ function finalizar(){
   lembrarCli(ride); saveHist(); render(); openFim(); if(ride.inicio) capEnd(ride, 'dest');
 }
 function cancelar(){
-  if(ride.chegada && ride.cfg.esp > 0){
-    if(!confirm('Cancelar a corrida? A espera já contada fica registrada e você pode mandar o recibo dela.')) return;
-    ride.fim = Date.now(); ride.fase = 'fim'; ride.cancelada = true; save(); qSync('cancelado'); stopGps(); keepAwake(false); saveHist(); render(); openFim();
-  } else {
-    if(!confirm('Cancelar esta corrida?')) return;
-    qSync('cancelado'); ride = null; save(); stopGps(); keepAwake(false); render();
-  }
+  if(!ride) return;
+  const comEspera = ride.chegada && ride.cfg.esp > 0;
+  pedirMotivo(comEspera ? 'Cancelar a corrida?' : 'Cancelar esta corrida?', motivo => {
+    if(!ride) return;
+    ride.motivo = motivo; ride.canceladaPor = 'motorista'; ride.fim = Date.now(); ride.fase = 'fim'; ride.cancelada = true;
+    if(comEspera){ save(); qSync('cancelado'); stopGps(); keepAwake(false); saveHist(); render(); openFim(); }
+    else { qSync('cancelado'); saveHist(); ride = null; save(); stopGps(); keepAwake(false); render(); toast('Corrida cancelada e registrada no histórico.'); }
+  }, comEspera ? 'A espera já contada fica registrada e você pode mandar o recibo dela.' : '');
 }
 
 /* ---------- history ---------- */
@@ -536,7 +546,7 @@ function saveHist(){
   const h = store.get('tx_hist', []);
   const c = calc(ride);
   const item = {id: ride.id, cliente: ride.cliente, tipo: ride.tipo, chegada: ride.chegada, inicio: ride.inicio, fim: ride.fim,
-                km: c.km, corrMs: c.corrMs, espMs: c.espMs, total: c.total, cancelada: !!ride.cancelada, ride};
+                km: c.km, corrMs: c.corrMs, espMs: c.espMs, total: c.total, cancelada: !!ride.cancelada, motivo: ride.motivo || '', canceladaPor: ride.canceladaPor || '', ride};
   const i = h.findIndex(x => x.id === ride.id);
   if(i >= 0) h[i] = item; else h.unshift(item);
   store.set('tx_hist', h.slice(0, 500));
@@ -875,13 +885,14 @@ function resumo(list){
   return {n: ok.length, can: list.length - ok.length, tot, km, ms, esp, best,
     avg: ok.length ? tot/ok.length : 0, pkm: km > 0.05 ? tot/km : 0, ph: ms > 60000 ? tot/(ms/3600000) : 0};
 }
+const cancTxt = x => x.canceladaPor === 'cliente' ? 'Cancelada pelo cliente' : 'Cancelada: ' + (String(x.motivo || 'sem motivo registrado').replace(/^Outro: /, ''));
 function rideItem(x){
   const b = document.createElement('button'); b.type='button'; b.className='hi';
   const nome = x.cliente || (x.tipo === 'agendada' ? 'Hora marcada' : 'Corrida avulsa');
   const quando = rp === 'dia' ? hhmm(x.inicio || x.chegada || x.id) : `${new Date(x.fim || x.id).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})} ${hhmm(x.inicio || x.chegada || x.id)}`;
   b.innerHTML = `<span>${escapeHtml(nome)}${x.cancelada ? ' · cancelada' : ''}</span><strong>R$ ${brl(x.total)}</strong>
-    <small>${quando} · ${kmTxt(x.km)} km · ${minTxt(x.corrMs)} min</small>`;
-  b.onclick = () => { show('sHist', false); openFim(x.ride); };
+    <small>${x.cancelada && x.motivo ? `${quando} · ${escapeHtml(cancTxt(x))}` : `${quando} · ${kmTxt(x.km)} km · ${minTxt(x.corrMs)} min`}</small>`;
+  b.onclick = () => { if(x.cancelada && !(x.ride && x.ride.chegada)){ toast(cancTxt(x)); return; } show('sHist', false); openFim(x.ride); };
   return b;
 }
 function openHist(){ renderRep(); show('sHist', true); }
@@ -989,12 +1000,26 @@ $('fRest').onchange = async () => {
 const csv = v => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
 $('bCsv').onclick = () => {
   const P = periodo(), l = store.get('tx_hist', []).filter(x => { const t = x.fim || x.id; return t >= P.a && t < P.b; }).sort((a, b) => (a.fim || a.id) - (b.fim || b.id));
-  const head = ['Data', 'Hora', 'Cliente', 'Partida', 'Destino', 'Km', 'Min corrida', 'Min espera', 'Pagamento', 'Taxa cartão', 'Total'];
-  const rows = l.map(x => { const r = x.ride || {}, c = r.cfg ? calc(r) : {taxa:0}, t = x.fim || x.id; return [dia(t), hhmm(t), x.cliente, r.orig, r.dest, (x.km || 0).toFixed(2).replace('.', ','), minTxt(x.corrMs), minTxt(x.espMs), r.pag ? PAGN[r.pag] : 'Dinheiro', brl(c.taxa || 0), brl(x.total || 0)].map(csv).join(';'); });
+  const head = ['Data', 'Hora', 'Cliente', 'Partida', 'Destino', 'Km', 'Min corrida', 'Min espera', 'Pagamento', 'Taxa cartão', 'Total', 'Situação', 'Motivo do cancelamento'];
+  const rows = l.map(x => { const r = x.ride || {}, c = r.cfg ? calc(r) : {taxa:0}, t = x.fim || x.id; return [dia(t), hhmm(t), x.cliente, r.orig, r.dest, (x.km || 0).toFixed(2).replace('.', ','), minTxt(x.corrMs), minTxt(x.espMs), r.pag ? PAGN[r.pag] : 'Dinheiro', brl(c.taxa || 0), brl(x.total || 0), x.cancelada ? 'Cancelada' : 'Concluída', x.motivo || ''].map(csv).join(';'); });
   baixar(`corridas-${P.lbl.replace(/[^A-Za-z0-9]+/g, '-')}.csv`, '\ufeff' + [head.map(csv).join(';')].concat(rows).join('\r\n'), 'text/csv');
 };
 $('bClear').onclick = () => { if(confirm('Apagar TODO o histórico de corridas? Isso não pode ser desfeito.')){ store.set('tx_hist', []); renderRep(); } };
 
+const MOTIVOS = ['Cliente não veio', 'Cliente desistiu', 'Cliente não atende', 'Endereço ou local errado', 'Valor não combinado', 'Problema no veículo', 'Outro'];
+function pedirMotivo(titulo, ok, extra){
+  const o = document.createElement('div'); o.className = 'mdl';
+  const bx = document.createElement('div'); bx.className = 'mbox'; o.append(bx);
+  bx.innerHTML = '<h3></h3><p></p><div class="mch"></div><textarea maxlength="140" placeholder="Detalhe o motivo (obrigatório em \"Outro\")"></textarea><div class="macts"><button class="btn ghost" type="button">Voltar</button><button class="btn primary" type="button" disabled>Confirmar cancelamento</button></div>';
+  bx.querySelector('h3').textContent = titulo;
+  bx.querySelector('p').textContent = 'Informe o motivo do cancelamento. Ele fica salvo no histórico.' + (extra ? ' ' + extra : '');
+  let sel = ''; const ch = bx.querySelector('.mch'), ta = bx.querySelector('textarea'), [bv, bc] = bx.querySelectorAll('.macts button');
+  const upd = () => { bc.disabled = !sel || (sel === 'Outro' && ta.value.trim().length < 3); };
+  MOTIVOS.forEach(m => { const b = document.createElement('button'); b.type = 'button'; b.textContent = m; b.setAttribute('aria-pressed', 'false'); b.onclick = () => { sel = m; ch.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', x === b)); upd(); if(m === 'Outro') ta.focus(); }; ch.append(b); });
+  ta.oninput = upd; bv.onclick = () => o.remove();
+  bc.onclick = () => { const t = ta.value.trim(); o.remove(); ok(t ? sel + ': ' + t : sel); };
+  document.body.append(o);
+}
 let tt; function toast(m){ const t = $('toast'); t.textContent = m; t.hidden = false; clearTimeout(tt); tt = setTimeout(() => t.hidden = true, 2600); }
 
 /* ---------- fila de pedidos (Firebase) ---------- */
@@ -1053,6 +1078,7 @@ function varrerCancel(){
   Object.keys(cancData).forEach(k => {
     const it = filaData[k]; if(!it || !FATIVO.includes(it.s)) return;
     if(ride && ride.fila && ride.fila.sid === k && ride.fase !== 'fim'){ toast('Cliente cancelou o pedido em andamento.'); return; }
+    regCancelFila(it, 'Cancelado pelo cliente', 'cliente');
     setStatus(k, it.pid, 'cancelado').catch(() => {});
   });
 }
@@ -1112,9 +1138,21 @@ function iniciarAg(sid){
   save(); $('sFila').hidden = true; render();
   toast('Corrida agendada iniciada. Toque em "Ir até o cliente".');
 }
+function regCancelFila(it, motivo, quem){
+  const h = store.get('tx_hist', []), id = Number(it.c) || Date.now();
+  if(h.some(x => x.id === id)) return;
+  const nome = it.passageiro || it.nome || '', t = Date.now();
+  const r = {id, tipo: it.a ? 'agendada' : 'avulsa', agendado: it.a || null, cliente: nome, fone: (it.passageiro ? it.foneP : it.fone) || '', cfg: Object.assign({}, cfg), fase: 'fim', criado: id, chegada: null, inicio: null, fim: t, m: 0, last: null, kmManual: null,
+    orig: it.partida || '', dest: it.destino || '', obs: it.obs || '', cancelada: true, motivo, canceladaPor: quem};
+  h.unshift({id, cliente: nome, tipo: r.tipo, chegada: null, inicio: null, fim: t, km: 0, corrMs: 0, espMs: 0, total: 0, cancelada: true, motivo, canceladaPor: quem, ride: r});
+  store.set('tx_hist', h.slice(0, 500));
+}
 function recusar(sid){
-  const it = filaData[sid]; if(!it || !confirm('Cancelar o pedido de ' + (it.passageiro || it.nome || 'cliente') + '?')) return;
-  setStatus(sid, it.pid, 'cancelado').catch(() => toast('Falha ao cancelar. Tente de novo.'));
+  const it = filaData[sid]; if(!it) return;
+  pedirMotivo('Cancelar o pedido de ' + (it.passageiro || it.nome || 'cliente') + '?', motivo => {
+    regCancelFila(it, motivo, 'motorista');
+    setStatus(sid, it.pid, 'cancelado').catch(() => toast('Falha ao cancelar. Tente de novo.'));
+  });
 }
 const foneWa = f => { let d = String(f || '').replace(/\D/g, ''); if(d.length === 10 || d.length === 11) d = '55' + d; return d; };
 function drawFila(){
