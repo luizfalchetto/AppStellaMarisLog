@@ -113,6 +113,7 @@ h3{font:700 15px var(--f-cond);letter-spacing:.12em;text-transform:uppercase;col
 .btn.disp::before{content:"";display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--muted);margin-right:8px;vertical-align:middle}
 .btn.disp[aria-pressed="true"]{background:#1FA855;border-color:#1FA855;color:#fff}
 .btn.disp[aria-pressed="true"]::before{background:#fff}
+.btn.dem[aria-pressed="true"]{background:#E0A100;border-color:#E0A100;color:#1a1400}
 .filabar{display:flex;align-items:center;justify-content:center;gap:10px;width:100%}
 .filabar b{background:var(--taxi);color:var(--taxi-ink);border-radius:999px;min-width:26px;height:26px;padding:0 8px;display:inline-grid;place-items:center;font:700 15px var(--f-ui)}
 .filabar b[data-n="0"]{background:var(--line);color:var(--muted)}
@@ -185,6 +186,7 @@ h3{font:700 15px var(--f-cond);letter-spacing:.12em;text-transform:uppercase;col
   <div class="dispRow">
     <button class="btn disp" id="bDisp" type="button" aria-pressed="false">Indisponível</button>
     <button class="btn filabar" id="bFila" type="button">Fila <b id="filaN" data-n="0">0</b></button>
+    <button class="btn dem" id="bDem" type="button" aria-pressed="false" style="grid-column:1/-1;min-height:44px;font-size:15px">Alta demanda: desligada</button>
   </div>
 
   <section class="meter" aria-live="polite">
@@ -1090,13 +1092,16 @@ function podarPub(){
 }
 let dispOn = store.get('tx_disp', false) === true;
 function drawDisp(){ const b = $('bDisp'); b.setAttribute('aria-pressed', dispOn); b.textContent = dispOn ? 'Disponível' : 'Indisponível'; }
-function pushDisp(){ if(fready) fdb.ref('disp').set({on: dispOn, t: firebase.database.ServerValue.TIMESTAMP}).catch(() => toast('Não consegui atualizar a disponibilidade.')); }
+let demOn = store.get('tx_dem', false) === true;
+function drawDem(){ const b = $('bDem'); b.setAttribute('aria-pressed', demOn); b.textContent = demOn ? 'Alta demanda: ligada (cliente avisado)' : 'Alta demanda: desligada'; }
+$('bDem').onclick = () => { demOn = !demOn; store.set('tx_dem', demOn); drawDem(); if(fready) pushDisp(); else { toast('Entre com Google em "Fila" para o cliente ver'); fbInit().catch(() => {}); } };
+function pushDisp(){ if(fready) fdb.ref('disp').set({on: dispOn, dem: demOn, t: firebase.database.ServerValue.TIMESTAMP}).catch(() => toast('Não consegui atualizar a disponibilidade.')); }
 $('bDisp').onclick = () => {
   dispOn = !dispOn; store.set('tx_disp', dispOn); drawDisp();
   if(fready) pushDisp();
   else { toast('Entre com Google em "Fila" para o cliente ver'); fbInit().catch(() => {}); }
 };
-drawDisp();
+drawDisp(); drawDem();
 let actx;
 function alertaNovo(it){
   toast((it.a ? 'Novo AGENDAMENTO: ' : 'Novo pedido: ') + (it.nome || 'cliente'));
