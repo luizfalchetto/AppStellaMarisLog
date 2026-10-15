@@ -135,6 +135,11 @@ h3{font:700 15px var(--f-cond);letter-spacing:.12em;text-transform:uppercase;col
 .fcard .acts{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .fcard .acts .btn{min-height:48px;font-size:16px}
 .fcard .acts .full{grid-column:1/-1}
+@keyframes pisca{0%,49%{opacity:1}50%,100%{opacity:.15}}
+.agblink{display:inline-block;background:var(--taxi);color:var(--taxi-ink);border-radius:6px;padding:1px 8px;animation:pisca 1s linear infinite}
+@media (prefers-reduced-motion:reduce){.agblink{animation:none}}
+.fcard .prox{color:#2fb36d;font-weight:700}
+.fcard.ag{border-color:var(--taxi)}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:10px 16px;border-radius:10px;font-weight:600;z-index:20;max-width:90%}
 /* pagamento */
 .seg4{display:grid;grid-template-columns:repeat(4,1fr);background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:4px;gap:4px}
@@ -184,8 +189,7 @@ h3{font:700 15px var(--f-cond);letter-spacing:.12em;text-transform:uppercase;col
   <div class="banner" id="cfgWarn" hidden>Configure suas tarifas antes da primeira corrida. <button class="iconbtn" id="bCfg2" type="button" style="height:34px;margin-left:6px">Abrir tarifas</button></div>
 
   <div class="dispRow">
-    <button class="btn disp" id="bDisp" type="button" aria-pressed="false">Indisponível</button>
-    <button class="btn filabar" id="bFila" type="button">Fila <b id="filaN" data-n="0">0</b></button>
+    <button class="btn disp" id="bDisp" type="button" aria-pressed="false" style="grid-column:1/-1">Indisponível</button>
     <div class="dynsel" id="dynMain" hidden style="grid-column:1/-1;margin-top:0"></div>
     <button class="btn dem" id="bDem" type="button" aria-pressed="false" style="grid-column:1/-1;min-height:44px;font-size:15px">Alta demanda: desligada</button>
   </div>
@@ -210,17 +214,14 @@ h3{font:700 15px var(--f-cond);letter-spacing:.12em;text-transform:uppercase;col
   <div class="banner" id="schedInfo" hidden></div>
 
   <div class="actions" id="actions"></div>
-</div>
 
-<!-- ===== FILA ===== -->
-<div class="sheet" id="sFila" hidden>
-  <div class="app">
-    <header><h2>Fila de pedidos</h2><button class="iconbtn" type="button" data-close>Fechar</button></header>
+  <section id="sFila" aria-label="Fila de pedidos" style="display:grid;gap:8px">
+    <div class="filabar" style="justify-content:flex-start;font:700 18px var(--f-cond);letter-spacing:.06em;text-transform:uppercase;margin-top:6px">Fila de pedidos <b id="filaN" data-n="0">0</b></div>
     <p class="hint" id="fMsg"></p>
     <div class="actions" id="fLogin"><button class="btn primary" type="button" id="bEntrar">Entrar com Google</button></div>
     <div class="actions" id="fSair" hidden><button class="btn ghost" type="button" id="bSair">Sair da conta</button></div>
     <div id="fList"></div>
-  </div>
+  </section>
 </div>
 
 <!-- ===== NEW RIDE ===== -->
@@ -594,9 +595,11 @@ function waLink(r){
 /* ---------- render ---------- */
 const chipTxt = {livre:'Livre', indo:'A caminho', espera:'Aguardando cliente', corrida:'Ocupado', fim:'Encerrada'};
 function btn(txt, cls, fn){ const b = document.createElement('button'); b.type='button'; b.className='btn '+(cls||''); b.textContent=txt; b.onclick=fn; return b; }
+let lastRk = null;
 function render(){
   $('cfgWarn').hidden = cfgOk();
   const fase = ride ? ride.fase : 'livre';
+  { const rk = ride && ride.fase !== 'fim' && ride.fila ? ride.fila.sid + fase : ''; if(rk !== lastRk){ lastRk = rk; try{ drawFila(); }catch(e){} } }
   $('chip').dataset.s = fase; $('chipTxt').textContent = chipTxt[fase];
   $('cliTxt').textContent = ride && ride.cliente ? ride.cliente : '';
   const c = ride ? calc(ride) : null;
@@ -1133,7 +1136,7 @@ function aceitar(sid){
   newRide('avulsa', null, it.passageiro || it.nome || '', (it.passageiro ? it.foneP : it.fone) || '', false);
   ride.orig = it.partida || ''; ride.dest = it.destino || ''; ride.obs = it.obs || ''; if(it.parada){ ride.par = true; ride.parEnd = it.parada; }
   ride.fila = {sid, pid: it.pid, s: 'aceito', oLa: it.oLa, oLo: it.oLo, dLa: it.dLa, dLo: it.dLo, partida: it.partida, destino: it.destino, parada: it.parada || ''};
-  save(); qSet(sid, it.pid, 'aceito'); $('sFila').hidden = true; render();
+  save(); qSet(sid, it.pid, 'aceito'); render();
   toast('Pedido aceito. Toque em "Ir até o cliente".');
 }
 const fmtAg = ts => new Date(ts).toLocaleString('pt-BR', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'});
@@ -1147,7 +1150,7 @@ function iniciarAg(sid){
   newRide('agendada', it.a, it.passageiro || it.nome || '', (it.passageiro ? it.foneP : it.fone) || '', false);
   ride.orig = it.partida || ''; ride.dest = it.destino || ''; ride.obs = it.obs || '';
   ride.fila = {sid, pid: it.pid, s: 'aceito', oLa: it.oLa, oLo: it.oLo, dLa: it.dLa, dLo: it.dLo, partida: it.partida, destino: it.destino};
-  save(); $('sFila').hidden = true; render();
+  save(); render();
   toast('Corrida agendada iniciada. Toque em "Ir até o cliente".');
 }
 function regCancelFila(it, motivo, quem){
@@ -1167,20 +1170,37 @@ function recusar(sid){
   });
 }
 const foneWa = f => { let d = String(f || '').replace(/\D/g, ''); if(d.length === 10 || d.length === 11) d = '55' + d; return d; };
+const ESPERA_MAX = 15*60000;
+const kmFila = m => (m/1000).toLocaleString('pt-BR', {maximumFractionDigits: 1}) + ' km';
+function refFim(){ const f = ride && ride.fase !== 'fim' && ride.fila; return f && f.dLa != null && f.dLo != null ? {lat: f.dLa, lng: f.dLo} : null; }
+function ordenar(lista){
+  const now = Date.now(), ref = refFim();
+  const ag = lista.filter(x => x.a).sort((a, b) => a.a - b.a);
+  const norm = lista.filter(x => !x.a);
+  const emAnd = norm.filter(x => x.s !== 'aguardando').sort((a, b) => a.c - b.c);
+  const esp = norm.filter(x => x.s === 'aguardando').sort((a, b) => a.c - b.c);
+  esp.forEach((x, i) => { x.chegada = i + 1; x.dist = null; if(ref && x.oLa != null && x.oLo != null) x.dist = hav(ref, {lat: x.oLa, lng: x.oLo}); });
+  const A = esp.filter(x => now - x.c >= ESPERA_MAX || !ref);
+  const B = esp.filter(x => !A.includes(x) && x.dist != null).sort((a, b) => a.dist - b.dist);
+  const C = esp.filter(x => !A.includes(x) && x.dist == null);
+  const fim = ag.concat(emAnd, A, B, C);
+  esp.forEach(x => { x.furou = fim.filter(y => y.s === 'aguardando' && !y.a).indexOf(x) + 1 < x.chegada; });
+  return fim;
+}
 function drawFila(){
-  const ativos = Object.keys(filaData).map(k => Object.assign({sid: k}, filaData[k])).filter(x => FATIVO.includes(x.s) && (x.a ? x.a > Date.now() - 6*3600*1000 : x.c > Date.now() - 12*3600*1000)).sort((a, b) => (a.a && b.a) ? a.a - b.a : a.a ? -1 : b.a ? 1 : a.c - b.c);
+  const ativos = ordenar(Object.keys(filaData).map(k => Object.assign({sid: k}, filaData[k])).filter(x => FATIVO.includes(x.s) && (x.a ? x.a > Date.now() - 6*3600*1000 : x.c > Date.now() - 12*3600*1000)));
   const nAg = ativos.filter(x => x.s === 'aguardando').length;
   const n = $('filaN'); n.textContent = nAg; n.dataset.n = nAg;
   const logged = !!fuser && fuser.email === EMAIL && fuser.emailVerified;
   const recon = !logged && !fuser && flagOn() && !authChk && Date.now() - T0 < 7000;
   $('fLogin').hidden = logged || recon; $('fSair').hidden = !(fuser && !logged);
-  $('fMsg').textContent = logged ? (ativos.length ? 'Por ordem de chegada. Atualiza sozinha.' : 'Nenhum pedido na fila agora.')
+  $('fMsg').textContent = logged ? (ativos.length ? (refFim() ? 'Agendadas primeiro; depois por proximidade de onde você termina a corrida (ninguém espera mais de 15 min por isso).' : 'Agendadas primeiro, depois por ordem de chegada. Com uma corrida em andamento, ordeno por proximidade do destino.') : 'Nenhum pedido na fila agora.')
     : fuser ? 'Esta conta (' + fuser.email + ') não é a do motorista. Saia e entre com a conta certa.'
     : recon ? 'Reconectando sua conta…'
     : !fuser && flagOn() && !authChk ? 'Não consegui reconectar a conta' + (fErr ? ' (' + fErr + ')' : '') + '. Toque em Entrar com Google.'
     : authChk || !fp ? 'Entre com sua conta Google para ver os pedidos dos clientes.' : 'Conectando…';
   const L = $('fList');
-  L.innerHTML = logged ? ativos.map((x, i) => {
+  const html = logged ? ativos.map((x, i) => {
     const meu = ride && ride.fila && ride.fila.sid === x.sid && ride.fase !== 'fim';
     const hora = new Date(x.c).toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'});
     const nome = x.passageiro ? `${escapeHtml(x.passageiro)} <small>(pedido por ${escapeHtml(x.nome)})</small>` : escapeHtml(x.nome);
@@ -1191,12 +1211,14 @@ function drawFila(){
     else if(meu) a += `<button class="btn primary full" data-a="vc" data-k="${x.sid}">Ir até o cliente</button>`;
     else a += `<button class="btn ghost" data-a="vc" data-k="${x.sid}">Ir até o cliente</button><button class="btn ghost" data-a="rc" data-k="${x.sid}">Cancelar</button>`;
     if(fone) a += `<button class="btn wa full" data-a="wa" data-k="${x.sid}">WhatsApp</button>`;
-    return `<div class="fcard"><div class="st">${x.a ? 'AGENDADA · ' + fmtAg(x.a) + ' · prioridade · ' : ''}${FLBL[x.s]}${meu ? ' · sua corrida atual' : ''}</div><h3><span class="pos">${i + 1}º</span>${nome}</h3>
+    const prox = x.dist != null && x.s === 'aguardando' ? `<p class="prox">${kmFila(x.dist)} de onde você termina${x.furou ? ' · passou na frente por proximidade' : ''}</p>` : '';
+    return `<div class="fcard${x.a ? ' ag' : ''}"><div class="st">${x.a ? '<span class="agblink">AGENDADA</span> ' + fmtAg(x.a) + ' · prioridade · ' : ''}${FLBL[x.s]}${meu ? ' · sua corrida atual' : ''}</div><h3><span class="pos">${i + 1}º</span>${nome}</h3>
       <small>Pedido às ${hora} · ${escapeHtml(x.quando || 'Agora')}</small>
       <p><b>De:</b> ${escapeHtml(x.partida)}<br><b>Para:</b> ${escapeHtml(x.destino)}${x.parada ? '<br><b>Parada:</b> ' + escapeHtml(x.parada) : ''}</p>
-      ${x.estim ? `<p><small>Estimativa:</small> ${escapeHtml(x.estim)}</p>` : ''}${x.obs ? `<p><small>Obs.:</small> ${escapeHtml(x.obs)}</p>` : ''}
+      ${prox}${x.estim ? `<p><small>Estimativa:</small> ${escapeHtml(x.estim)}</p>` : ''}${x.obs ? `<p><small>Obs.:</small> ${escapeHtml(x.obs)}</p>` : ''}
       <div class="acts">${a}</div></div>`;
   }).join('') : '';
+  if(L.dataset.h !== html){ L.dataset.h = html; L.innerHTML = html; }
 }
 $('fList').onclick = e => {
   const b = e.target.closest('button[data-a]'); if(!b) return;
@@ -1207,7 +1229,8 @@ $('fList').onclick = e => {
   else if(b.dataset.a === 'vc') irCliente(it);
   else if(b.dataset.a === 'wa') window.open('https://wa.me/' + foneWa(it.passageiro ? it.foneP : it.fone), '_blank');
 };
-$('bFila').onclick = () => { $('sFila').hidden = false; drawFila(); fbInit().catch(() => { $('fMsg').textContent = 'Sem conexão com o serviço. Verifique a internet.'; }); };
+setTimeout(() => fbInit().catch(() => { $('fMsg').textContent = 'Sem conexão com o serviço. Verifique a internet.'; }), 400);
+setInterval(() => { try{ drawFila(); }catch(e){} }, 30000);
 $('bEntrar').onclick = async () => {
   try{ await fbInit(); const p = new firebase.auth.GoogleAuthProvider(); p.setCustomParameters({login_hint: EMAIL});
     try{ await fauth.signInWithPopup(p); }

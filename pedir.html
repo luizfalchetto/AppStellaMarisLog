@@ -112,6 +112,7 @@ legend{padding:0;margin-bottom:6px;font:700 16px "Barlow Condensed",sans-serif;l
         <li><b>Parada adicional:</b> <span id="avPar">R$ 3,00</span> fixos por parada, somados ao valor da corrida. Vale somente para embarque ou desembarque em outro endereço antes do destino final (no máximo 1 parada). O taxímetro continua correndo durante a parada.</li>
         <li><b>Espera:</b> o tempo de espera do passageiro é cobrado<span id="avEsp"></span>. Se o motorista já tiver chegado e você cancelar, a espera pode ser cobrada.</li>
         <li id="avDyn" hidden></li>
+        <li><b>Ordem de atendimento:</b> é por chegada, mas o motorista pode atender antes quem estiver mais perto de onde ele termina a corrida, para não rodar vazio. Isso não deixa ninguém esperando mais de 15 minutos por causa disso. Corridas agendadas têm prioridade.</li>
         <li><b>Alta demanda:</b> em horários de muitos pedidos o atendimento pode demorar mais que o normal. Acompanhe sua posição e a previsão na tela do pedido.</li>
         <li><b>Corrida agendada:</b> tem prioridade sobre os pedidos comuns, o horário fica reservado (outro cliente não consegue o mesmo horário); não há acréscimo de preço por agendar.</li>
         <li><b>Pagamento:</b> Pix ou dinheiro<span id="avCar"></span>.</li>
@@ -400,7 +401,7 @@ function desenhar(all){
   $('stP').textContent = pos + 'º';
   $('stE').textContent = pos === 1 && !ahead.length ? 'Previsão de atendimento: em breve' : 'Previsão de atendimento: cerca de ' + Math.max(5, Math.round(min / 5) * 5) + ' min';
   const prox = Object.values(all).filter(x => x && x.a && ['aguardando', 'aceito'].includes(x.s) && x.a > now - 15*60000 && x.a - 30*60000 < now + (min + (me.m || 15))*60000).sort((p, q) => p.a - q.a)[0];
-  $('stD').textContent = canc ? 'Cancelamento enviado ao motorista.' : 'Pedido por ordem de chegada. Esta tela se atualiza sozinha.' + (demOn ? ' Alta demanda no momento: o atendimento pode demorar mais que o normal.' : '') + (prox ? ' Atenção: há uma corrida agendada com prioridade por volta das ' + new Date(prox.a).toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'}) + '; seu atendimento pode atrasar ou ficar para depois dela.' : '');
+  $('stD').textContent = canc ? 'Cancelamento enviado ao motorista.' : 'Atendimento por ordem de chegada, com ajuste pela proximidade do motorista para evitar deslocamento vazio (ninguém espera mais de 15 min por isso). Esta tela se atualiza sozinha.' + (demOn ? ' Alta demanda no momento: o atendimento pode demorar mais que o normal.' : '') + (prox ? ' Atenção: há uma corrida agendada com prioridade por volta das ' + new Date(prox.a).toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'}) + '; seu atendimento pode atrasar ou ficar para depois dela.' : '');
 }
 $('stW').onclick = () => { if(cur) location.href = cur.wa; };
 $('stN').onclick = limpar;
