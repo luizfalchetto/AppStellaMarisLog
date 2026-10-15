@@ -93,6 +93,13 @@ legend{padding:0;margin-bottom:6px;font:700 16px "Barlow Condensed",sans-serif;l
       <div class="g2"><div class="field"><label for="dNum">Número</label><input id="dNum" inputmode="numeric" placeholder="123" autocomplete="off"></div><div class="field"><label for="dBai">Bairro</label><input id="dBai" placeholder="Bairro" autocomplete="off"></div></div>
       <div class="field"><label for="dCid">Cidade</label><input id="dCid" value="Macaé" autocomplete="off"></div>
     </fieldset>
+    <div class="field"><button class="mini" type="button" id="bPar">+ Adicionar parada</button></div>
+    <fieldset id="fPar" hidden><legend>Parada no trajeto</legend>
+      <p class="hint" id="parAv"></p>
+      <div class="field"><label for="sRua">Rua</label><input id="sRua" placeholder="Nome da rua" autocomplete="off"></div>
+      <div class="g2"><div class="field"><label for="sNum">Número</label><input id="sNum" inputmode="numeric" placeholder="123" autocomplete="off"></div><div class="field"><label for="sBai">Bairro</label><input id="sBai" placeholder="Bairro" autocomplete="off"></div></div>
+      <div class="field"><label for="sCid">Cidade</label><input id="sCid" value="Macaé" autocomplete="off"></div>
+    </fieldset>
     <div class="field"><label>Quando?</label>
       <div class="seg"><button type="button" id="bAgora" aria-pressed="true">Agora</button><button type="button" id="bAgend" aria-pressed="false">Agendar</button></div>
     </div>
@@ -102,7 +109,7 @@ legend{padding:0;margin-bottom:6px;font:700 16px "Barlow Condensed",sans-serif;l
       <b class="t">Antes de pedir, saiba que</b>
       <ul>
         <li><b>O valor final é o do taxímetro</b> (distância e tempo da corrida). A estimativa é aproximada e o trânsito pode alterá-la.</li>
-        <li><b>Paradas:</b> você pode pedir paradas no trajeto. O taxímetro continua correndo durante a parada, então o valor aumenta conforme o tempo até a corrida ser encerrada.</li>
+        <li><b>Parada adicional:</b> <span id="avPar">R$ 3,00</span> fixos por parada, somados ao valor da corrida. Vale somente para embarque ou desembarque em outro endereço antes do destino final (no máximo 1 parada). O taxímetro continua correndo durante a parada.</li>
         <li><b>Espera:</b> o tempo de espera do passageiro é cobrado<span id="avEsp"></span>. Se o motorista já tiver chegado e você cancelar, a espera pode ser cobrada.</li>
         <li id="avDyn" hidden></li>
         <li><b>Alta demanda:</b> em horários de muitos pedidos o atendimento pode demorar mais que o normal. Acompanhe sua posição e a previsão na tela do pedido.</li>
@@ -140,13 +147,18 @@ const fmt = v => v.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFra
   { const dc = pc('dc'), f = d != null ? d : 50, c = dc != null ? dc : 30, li = document.getElementById('avDyn'), z = v => String(v).replace('.', ','); li.hidden = false; li.innerHTML = `<b>Tarifa dinâmica:</b> em dias de chuva o valor tem acréscimo de ${z(c)}%, e em feriados, de ${z(f)}%.`; }
   if(td != null && tc != null) document.getElementById('avCar').textContent = `; cartão de débito (taxa de ${String(td).replace('.', ',')}%) ou crédito (${String(tc).replace('.', ',')}%), acrescida ao valor`;
   const emp = q.get('n'); if(emp) document.getElementById('avEmp').textContent = emp; }
+const PAR = q.has('pa') ? num('pa') : 3, parTxt = 'R$ ' + fmt(PAR);
+document.getElementById('avPar').textContent = parTxt;
+document.getElementById('parAv').innerHTML = `Parada adicional: <b>${parTxt}</b> fixos, cobrados além do taxímetro. Serve <b>somente para embarque ou desembarque</b> em outro endereço antes do destino final. No máximo 1 parada por corrida.`;
 const temTarifa = T.band > 0 || T.km > 0 || T.min > 0;
 if(nm) $('sub').textContent = `Pedido para ${nm}. Informe partida e destino e envie o pedido.`;
 if(!W){ $('err').hidden = false; $('err').textContent = 'Link incompleto: peça ao motorista um novo link.'; }
-let agendar = false, pO = null, pD = null, est = null;
+let agendar = false, pO = null, pD = null, est = null, par = false;
+function setPar(v){ par = v; $('fPar').hidden = !v; $('bPar').textContent = v ? '− Remover parada' : '+ Adicionar parada'; showEst(); }
+$('bPar').onclick = () => setPar(!par);
 const brl = v => v.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
 function showEst(){ if(!est) return; $('est').hidden = false;
-  $('est').innerHTML = `<small>Estimativa${est.aprox ? ' aproximada' : ''}</small><b>≈ R$ ${brl(est.v)}</b><small>${est.km.toLocaleString('pt-BR',{maximumFractionDigits:1})} km · cerca de ${Math.round(est.min)} min</small>`; }
+  $('est').innerHTML = `<small>Estimativa${est.aprox ? ' aproximada' : ''}</small><b>≈ R$ ${brl(est.v + (par ? PAR : 0))}</b><small>${est.km.toLocaleString('pt-BR',{maximumFractionDigits:1})} km · cerca de ${Math.round(est.min)} min${par ? ' · inclui parada ' + parTxt : ''}</small>`; }
 function setQuando(a){ agendar = a; $('bAgora').setAttribute('aria-pressed', !a); $('bAgend').setAttribute('aria-pressed', a); $('fQuando').hidden = !a;
   if(a){ const d = new Date(Date.now() + 30*60000), p = n => String(n).padStart(2, '0'); $('quando').min = `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`; chkSlot(); }
   showEst(); }
@@ -276,6 +288,7 @@ $('f').onsubmit = async e => {
   if(!W){ return; }
   if(!nome || (!pO && !$('oRua').value.trim()) || !$('dRua').value.trim()){ $('err').hidden = false; $('err').textContent = 'Preencha nome, rua de partida e rua de destino.'; return; }
   if(outro && !$('pNome').value.trim()){ $('err').hidden = false; $('err').textContent = 'Informe o nome do passageiro.'; return; }
+  if(par && !$('sRua').value.trim()){ $('err').hidden = false; $('err').textContent = 'Informe a rua da parada ou remova a parada.'; return; }
   if(!$('ciente').checked){ $('err').hidden = false; $('err').textContent = 'Marque que leu os avisos para enviar o pedido.'; $('ciente').focus(); return; }
   $('err').hidden = true;
   let quando = 'Agora';
@@ -291,8 +304,10 @@ $('f').onsubmit = async e => {
   const L = ['*Stella Maris Ride · Pedido de corrida*', outro ? `Pedido feito por: ${nome}` : `Nome: ${nome}`];
   const fone = $('fone').value.trim(); if(fone) L.push(outro ? `Telefone de quem pediu: ${fone}` : `Telefone: ${fone}`);
   if(outro){ L.push(`*Passageiro: ${$('pNome').value.trim()}*`); const pf = $('pFone').value.trim(); if(pf) L.push(`Telefone do passageiro: ${pf}`); }
-  L.push(`Quando: ${quando}`, `Partida: ${o}`, `Destino: ${d}`);
-  if(est) L.push(`Estimativa: ≈ R$ ${brl(est.v)} (${est.km.toLocaleString('pt-BR',{maximumFractionDigits:1})} km${est.aprox ? ', aproximada' : ''})`);
+  L.push(`Quando: ${quando}`, `Partida: ${o}`);
+  if(par) L.push(`Parada: ${addr('s')} (+${parTxt})`);
+  L.push(`Destino: ${d}`);
+  if(est) L.push(`Estimativa: ≈ R$ ${brl(est.v + (par ? PAR : 0))} (${est.km.toLocaleString('pt-BR',{maximumFractionDigits:1})} km${est.aprox ? ', aproximada' : ''})`);
   else if(temTarifa) L.push('Estimativa: a confirmar');
   const obs = $('obs').value.trim(); if(obs) L.push(`Obs.: ${obs}`);
   L.push(`Rota: ${mapa}`);
@@ -302,7 +317,8 @@ $('f').onsubmit = async e => {
     const db = await Promise.race([loadFB(), new Promise((_, rj) => setTimeout(() => rj(new Error('t')), 8000))]);
     const sid = db.ref().push().key, pid = db.ref().push().key, TS = firebase.database.ServerValue.TIMESTAMP;
     const m = Math.round(est ? est.min : (agendar ? 30 : 15)) + 5;
-    const f = {nome, fone, passageiro: outro ? $('pNome').value.trim() : '', foneP: outro ? $('pFone').value.trim() : '', partida: o, destino: d, obs, quando, estim: est ? `R$ ${brl(est.v)} · ${est.km.toLocaleString('pt-BR',{maximumFractionDigits:1})} km` : '', pid, c: TS, s: 'aguardando'};
+    const f = {nome, fone, passageiro: outro ? $('pNome').value.trim() : '', foneP: outro ? $('pFone').value.trim() : '', partida: o, destino: d, obs, quando, estim: est ? `R$ ${brl(est.v + (par ? PAR : 0))} · ${est.km.toLocaleString('pt-BR',{maximumFractionDigits:1})} km` : '', pid, c: TS, s: 'aguardando'};
+    if(par) f.parada = addr('s').slice(0, 200);
     if(agendar){ f.a = new Date($('quando').value).getTime(); }
     if(pO){ f.oLa = pO.la; f.oLo = pO.lo; } if(pD){ f.dLa = pD.la; f.dLo = pD.lo; }
     for(const k of ['nome', 'passageiro']) f[k] = f[k].slice(0, 80);
