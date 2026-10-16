@@ -1,0 +1,27 @@
+{
+  "id": "pedir-corrida",
+  "name": "Pedir corrida · Stella Maris Ride",
+  "short_name": "Pedir corrida",
+  "description": "Peça sua corrida pelo aplicativo próprio da Stella Maris Ride.",
+  "start_url": "pedir.html?w=5522999299851&n=Stella+Maris+Logistics&b=5%2C5&k=5&m=0%2C4&e=1&d=50&dc=30&td=0%2C89&tc=3%2C09",
+  "scope": "pedir.html",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#020D1F",
+  "theme_color": "#020D1F",
+  "lang": "pt-BR",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

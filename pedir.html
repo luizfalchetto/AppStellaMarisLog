@@ -5,6 +5,12 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Stella Maris Ride · Solicitar corrida</title>
 <meta name="theme-color" content="#020D1F">
+<link rel="manifest" href="manifest-cliente.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Pedir corrida">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@600;700&display=swap">
 <style>
 :root{--bg:#020D1F;--panel:#0A1830;--line:#1D3258;--fg:#ECEFF5;--muted:#8C9BB5;--taxi:#DDB066;--ink:#1A1204;--ok:#3DD68C;color-scheme:dark}
@@ -64,6 +70,8 @@ legend{padding:0;margin-bottom:6px;font:700 16px "Barlow Condensed",sans-serif;l
   <header>
     <div class="lg"><svg class="logo" viewBox="0 0 100 100" aria-hidden="true"><defs><linearGradient id="lg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#F1D18D"/><stop offset="1" stop-color="#C8933A"/></linearGradient></defs><path fill="url(#lg)" fill-rule="evenodd" d="M50 0L58.7 40.9L98.2 50L58.7 59.1L50 100L41.3 59.1L1.8 50L41.3 40.9ZM50 0L53.6 44L98.2 50L53.6 56L50 100L46.4 56L1.8 50L46.4 44Z"/></svg></div><h1>Stella Maris <span>Ride</span></h1>
     <p class="sub" id="sub">Informe partida e destino e envie o pedido.</p>
+    <button class="mini" type="button" id="bInst" hidden>📲 Instalar no celular</button>
+    <p class="hint" id="iosInst" hidden>No iPhone: toque em Compartilhar e depois em “Adicionar à Tela de Início”.</p>
   </header>
   <div class="disp" id="disp" hidden><i></i><div><b id="dispT"></b><small id="dispS"></small></div></div>
   <section id="st" hidden>
@@ -189,6 +197,14 @@ async function chkSlot(){
 $('quando').onchange = chkSlot; $('quando').oninput = chkSlot;
 $('bAgora').onclick = () => setQuando(false); $('bAgend').onclick = () => setQuando(true);
 if(temTarifa) $('bEst').hidden = false;
+{ let dp = null; const st = (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone;
+  if(!st){
+    window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); dp = e; $('bInst').hidden = false; });
+    if(/iphone|ipad|ipod/i.test(navigator.userAgent)) $('iosInst').hidden = false;
+    $('bInst').onclick = async () => { if(!dp) return; dp.prompt(); try{ await dp.userChoice; }catch(x){} dp = null; $('bInst').hidden = true; };
+  }
+  window.addEventListener('appinstalled', () => { $('bInst').hidden = true; });
+  if('serviceWorker' in navigator && location.protocol.indexOf('http') === 0) navigator.serviceWorker.register('sw.js').catch(() => {}); }
 const addr = p => { const g = id => $(p + id).value.trim(); return [[g('Rua'), g('Num')].filter(Boolean).join(', '), g('Bai'), g('Cid')].filter(Boolean).join(' - '); };
 const addrQ = (p, simples) => { const g = id => $(p + id).value.trim(); return [[g('Rua'), simples ? '' : g('Num')].filter(Boolean).join(' '), simples ? '' : g('Bai'), g('Cid'), 'Brasil'].filter(Boolean).join(', '); };
 let tmr;
