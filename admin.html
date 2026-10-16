@@ -1,0 +1,386 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<title>Stella Maris Ride · Gestão</title>
+<meta name="theme-color" content="#020D1F">
+<link rel="icon" href="icon-192.png">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@600;700&display=swap">
+<style>
+:root{--bg:#020D1F;--panel:#0A1830;--panel2:#10213F;--line:#1D3258;--fg:#ECEFF5;--muted:#8C9BB5;--taxi:#DDB066;--ink:#1A1204;--ok:#3DD68C;--bad:#ff8a80;color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.4 "Barlow",system-ui,sans-serif;padding:env(safe-area-inset-top,0) 0 env(safe-area-inset-bottom,0)}
+.wrap{max-width:1100px;margin:0 auto;padding:16px 16px 48px;display:grid;gap:16px}
+.narrow{max-width:460px}
+header{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.logo{width:40px;height:40px;flex:none}
+h1{margin:0;font:700 26px/1 "Barlow Condensed",sans-serif;letter-spacing:.04em;text-transform:uppercase}
+h1 span{color:var(--taxi)}
+h2{margin:0 0 4px;font:700 20px/1.1 "Barlow Condensed",sans-serif;letter-spacing:.06em;text-transform:uppercase;color:var(--taxi)}
+.sp{flex:1}
+.who{color:var(--muted);font-size:13px}
+nav{display:flex;gap:8px;flex-wrap:wrap}
+nav button{min-height:44px;padding:0 16px;border-radius:12px;border:1px solid var(--line);background:var(--panel);color:var(--fg);font:700 15px "Barlow Condensed",sans-serif;letter-spacing:.06em;text-transform:uppercase;cursor:pointer}
+nav button[aria-pressed=true]{background:var(--taxi);color:var(--ink);border-color:var(--taxi)}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px;display:grid;gap:10px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.kpi{background:var(--panel2);border-radius:12px;padding:10px 12px}
+.kpi small{display:block;color:var(--muted);font:600 12px "Barlow Condensed",sans-serif;letter-spacing:.1em;text-transform:uppercase}
+.kpi b{font:700 24px/1.2 "Barlow Condensed",sans-serif;color:var(--taxi)}
+.grid{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
+.field{display:grid;gap:5px}
+label{font-size:13px;color:var(--muted)}
+input,select,textarea{background:var(--bg);border:1px solid var(--line);border-radius:10px;min-height:44px;padding:0 12px;font:inherit;font-size:16px;color:var(--fg);width:100%}
+input[type=checkbox]{width:22px;min-height:22px;accent-color:var(--taxi)}
+input:focus,select:focus{outline:2px solid var(--taxi);outline-offset:1px}
+.btn{min-height:44px;padding:0 16px;border-radius:10px;border:1px solid var(--line);background:var(--panel2);color:var(--fg);font:700 15px "Barlow Condensed",sans-serif;letter-spacing:.05em;text-transform:uppercase;cursor:pointer}
+.btn.pri{background:var(--taxi);color:var(--ink);border-color:var(--taxi)}
+.btn.sm{min-height:34px;padding:0 12px;font-size:13px}
+.btn:disabled{opacity:.55;cursor:default}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.tag{display:inline-block;border-radius:999px;padding:2px 10px;font-size:12px;font-weight:700;background:var(--panel2);color:var(--muted)}
+.tag.ok{background:rgba(61,214,140,.15);color:var(--ok)}
+.tag.bad{background:rgba(255,138,128,.15);color:var(--bad)}
+.tag.gold{background:rgba(221,176,102,.15);color:var(--taxi)}
+.muted{color:var(--muted)}
+.msg{margin:0;font-size:14px}
+.msg.err{color:var(--bad)}.msg.ok{color:var(--ok)}
+.tbl{overflow-x:auto;border:1px solid var(--line);border-radius:12px}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{padding:8px 10px;text-align:left;border-bottom:1px solid var(--line);white-space:nowrap}
+th{color:var(--muted);font:600 12px "Barlow Condensed",sans-serif;letter-spacing:.1em;text-transform:uppercase;background:var(--panel2)}
+td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
+tr:last-child td{border-bottom:0}
+.item{display:grid;gap:4px;padding:10px 0;border-bottom:1px solid var(--line)}
+.item:last-child{border-bottom:0}
+.item b{font-size:17px}
+.foot{color:var(--muted);font-size:12px}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+
+<div class="wrap narrow" id="login">
+  <header>
+    <svg class="logo" viewBox="0 0 100 100" aria-hidden="true"><defs><linearGradient id="lg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#F1D18D"/><stop offset="1" stop-color="#C8933A"/></linearGradient></defs><path fill="url(#lg)" fill-rule="evenodd" d="M50 0L58.7 40.9L98.2 50L58.7 59.1L50 100L41.3 59.1L1.8 50L41.3 40.9ZM50 0L53.6 44L98.2 50L53.6 56L50 100L46.4 56L1.8 50L46.4 44Z"/></svg>
+    <h1>Stella Maris <span>Ride</span></h1>
+  </header>
+  <div class="card">
+    <h2>Gestão</h2>
+    <p class="muted" style="margin:0">Acesso restrito ao administrador. Entre com a conta Google autorizada.</p>
+    <button class="btn pri" type="button" id="bEntrar">Entrar com Google</button>
+    <p class="msg" id="lMsg">Conectando…</p>
+    <button class="btn sm" type="button" id="bSairL" hidden>Sair desta conta</button>
+  </div>
+</div>
+
+<div class="wrap" id="main" hidden>
+  <header>
+    <svg class="logo" viewBox="0 0 100 100" aria-hidden="true"><path fill="url(#lg)" fill-rule="evenodd" d="M50 0L58.7 40.9L98.2 50L58.7 59.1L50 100L41.3 59.1L1.8 50L41.3 40.9ZM50 0L53.6 44L98.2 50L53.6 56L50 100L46.4 56L1.8 50L46.4 44Z"/></svg>
+    <h1>Stella Maris <span>Ride</span> · Gestão</h1>
+    <span class="sp"></span>
+    <span class="who" id="who"></span>
+    <button class="btn sm" type="button" id="bSair">Sair</button>
+  </header>
+  <nav id="tabs">
+    <button type="button" data-t="corridas" aria-pressed="true">Corridas</button>
+    <button type="button" data-t="empresas" aria-pressed="false">Empresas</button>
+    <button type="button" data-t="usuarios" aria-pressed="false">Usuários</button>
+    <button type="button" data-t="numeracao" aria-pressed="false">Numeração</button>
+  </nav>
+
+  <!-- CORRIDAS -->
+  <section id="t-corridas" class="wrap" style="padding:0">
+    <div class="card">
+      <div class="grid">
+        <div class="field"><label for="fMes">Mês</label><input id="fMes" type="month"></div>
+        <div class="field"><label for="fEmp">Empresa</label><select id="fEmp"></select></div>
+        <div class="field"><label for="fSit">Situação</label><select id="fSit"><option value="">Todas</option><option value="concluida">Concluída</option><option value="noshow">No-Show</option><option value="cancelada">Cancelada</option></select></div>
+      </div>
+      <div class="row"><button class="btn pri" type="button" id="bCsv">Baixar planilha (CSV)</button><span class="muted" id="cInfo"></span></div>
+    </div>
+    <div class="cards" id="kpis"></div>
+    <div class="card"><h2>Fechamento do mês por empresa</h2><div id="fech"></div></div>
+    <div class="card" id="ccBox" hidden><h2>Por centro de custo</h2><div class="tbl"><table id="ccTb"></table></div></div>
+    <div class="card"><h2>Corridas</h2><div class="tbl"><table id="tb"></table></div><p class="msg muted" id="tbVazio" hidden>Nenhuma corrida neste filtro.</p></div>
+  </section>
+
+  <!-- EMPRESAS -->
+  <section id="t-empresas" class="wrap" style="padding:0" hidden>
+    <form class="card" id="fEmpresa" autocomplete="off">
+      <h2 id="eTit">Nova empresa</h2>
+      <div class="grid">
+        <div class="field"><label for="eNome">Nome da empresa *</label><input id="eNome" required maxlength="100"></div>
+        <div class="field"><label for="eCnpj">CNPJ</label><input id="eCnpj" maxlength="20" inputmode="numeric"></div>
+        <div class="field"><label for="eCont">Contato financeiro (e-mail ou telefone)</label><input id="eCont" maxlength="120"></div>
+      </div>
+      <h2 style="margin-top:6px">Tarifa contratada</h2>
+      <div class="grid">
+        <div class="field"><label for="eBand">Bandeirada mínima (R$)</label><input id="eBand" inputmode="decimal" placeholder="0,00"></div>
+        <div class="field"><label for="eKm">Valor por km (R$)</label><input id="eKm" inputmode="decimal" placeholder="0,00"></div>
+        <div class="field"><label for="eMin">Valor por minuto (R$)</label><input id="eMin" inputmode="decimal" placeholder="0,00"></div>
+        <div class="field"><label for="eEsp">Espera por minuto (R$)</label><input id="eEsp" inputmode="decimal" placeholder="0,00"></div>
+        <div class="field"><label for="eDyn">Feriado: acréscimo (%)</label><input id="eDyn" inputmode="decimal" placeholder="50"></div>
+        <div class="field"><label for="eNs">No-Show: % do valor estimado</label><input id="eNs" inputmode="decimal" placeholder="50"></div>
+        <div class="field"><label for="eCan">Cancelamento sem custo até (horas antes)</label><input id="eCan" inputmode="decimal" placeholder="6"></div>
+      </div>
+      <p class="foot">Chuva não incide sobre corridas de empresa. Taxa de cartão não se aplica: o pagamento é por fatura.</p>
+      <label class="row" style="color:var(--fg)"><input type="checkbox" id="eAtivo" checked> Empresa ativa (pode solicitar corridas)</label>
+      <div class="row"><button class="btn pri" type="submit">Salvar empresa</button><button class="btn" type="button" id="eCancel" hidden>Cancelar edição</button></div>
+      <p class="msg" id="eMsg"></p>
+    </form>
+    <div class="card"><h2>Empresas cadastradas</h2><div id="eLista"></div></div>
+  </section>
+
+  <!-- USUARIOS -->
+  <section id="t-usuarios" class="wrap" style="padding:0" hidden>
+    <form class="card" id="fUsuario" autocomplete="off">
+      <h2>Novo acesso de empresa</h2>
+      <div class="grid">
+        <div class="field"><label for="uEmp">Empresa *</label><select id="uEmp" required></select></div>
+        <div class="field"><label for="uPapel">Perfil *</label><select id="uPapel"><option value="solicitante">Solicitante (pede corridas)</option><option value="gestor">Gestor (pede e vê o extrato da empresa)</option></select></div>
+        <div class="field"><label for="uNome">Nome *</label><input id="uNome" required maxlength="80"></div>
+        <div class="field"><label for="uEmail">E-mail *</label><input id="uEmail" type="email" required maxlength="120"></div>
+        <div class="field"><label for="uFone">Telefone</label><input id="uFone" type="tel" maxlength="30"></div>
+      </div>
+      <p class="foot">O acesso é criado com uma senha aleatória que ninguém vê. A pessoa recebe um e-mail para definir a própria senha. Antes, ative “E-mail/senha” em Authentication, no console do Firebase.</p>
+      <div class="row"><button class="btn pri" type="submit" id="uSalvar">Criar acesso e enviar e-mail</button></div>
+      <p class="msg" id="uMsg"></p>
+    </form>
+    <div class="card"><h2>Acessos cadastrados</h2><div id="uLista"></div></div>
+  </section>
+
+  <!-- NUMERACAO -->
+  <section id="t-numeracao" class="wrap" style="padding:0" hidden>
+    <div class="card">
+      <h2>Numeração das requisições</h2>
+      <div class="cards">
+        <div class="kpi"><small>Próxima RT (empresas)</small><b id="nRt">—</b></div>
+        <div class="kpi"><small>Próximo nº (particulares)</small><b id="nPart">—</b></div>
+      </div>
+      <p class="foot">A RT é única e sequencial para todas as empresas, no formato RT000000002. A numeração começa em 2 porque já existiram transportes particulares. Os particulares têm contador próprio.</p>
+      <div class="row"><button class="btn pri" type="button" id="bIniciar" hidden>Iniciar numeração (RT começa em RT000000002)</button></div>
+      <p class="msg" id="nMsg"></p>
+    </div>
+  </section>
+
+  <p class="foot">Este painel trata dados pessoais de funcionários de empresas clientes (nome, e-mail e telefone) e de passageiros, apenas para atender, faturar e comprovar as corridas contratadas (LGPD). Acesso restrito ao administrador. Stella Maris Technology.</p>
+</div>
+
+<script>
+(() => {
+'use strict';
+const ADMIN = 'luizgustavofalchetto@gmail.com';
+const FBC = {"apiKey": "AIzaSyAMHd8SJb_Ts5Ji-_MbWDvwcjI_UGRYC4I", "authDomain": "stella-maris-ride.firebaseapp.com", "databaseURL": "https://stella-maris-ride-default-rtdb.firebaseio.com", "projectId": "stella-maris-ride", "storageBucket": "stella-maris-ride.firebasestorage.app", "messagingSenderId": "561195291545", "appId": "1:561195291545:web:3b926f9089c3d0ab3fb908"};
+const $ = id => document.getElementById(id);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const brl = v => Number(v || 0).toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+const numIn = v => { const n = parseFloat(String(v == null ? '' : v).replace(/\./g, '').replace(',', '.')); return isFinite(n) && n >= 0 ? n : 0; };
+const numOut = v => v == null ? '' : String(v).replace('.', ',');
+const rtTxt = n => 'RT' + String(n).padStart(9, '0');
+const dt = ts => ts ? new Date(ts).toLocaleString('pt-BR', {day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit'}) : '';
+const mesDe = ts => { const d = new Date(ts); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); };
+const SIT = {concluida: 'Concluída', noshow: 'No-Show', cancelada: 'Cancelada'};
+let db = null, auth = null, S = {empresas: {}, usuarios: {}, corridas: {}, faturas: {}, cont: {}}, ligado = false;
+
+const loadJs = u => new Promise((res, rej) => { const s = document.createElement('script'); s.src = u; s.onload = res; s.onerror = () => rej(new Error('sdk')); document.head.append(s); });
+async function boot(){
+  try{
+    const b = 'https://www.gstatic.com/firebasejs/10.12.5/firebase-';
+    await loadJs(b + 'app-compat.js'); await Promise.all([loadJs(b + 'database-compat.js'), loadJs(b + 'auth-compat.js')]);
+    if(!(firebase.apps && firebase.apps.length)) firebase.initializeApp(FBC);
+    auth = firebase.auth(); db = firebase.database();
+    auth.onAuthStateChanged(onAuth);
+  }catch(e){ $('lMsg').textContent = 'Sem conexão com o serviço. Verifique a internet e recarregue.'; $('lMsg').className = 'msg err'; }
+}
+function onAuth(u){
+  const ok = !!u && u.email === ADMIN && u.emailVerified;
+  $('login').hidden = ok; $('main').hidden = !ok;
+  $('bSairL').hidden = !(u && !ok);
+  if(ok){ $('who').textContent = u.email; ligar(); }
+  else {
+    desligar();
+    $('lMsg').className = 'msg' + (u ? ' err' : '');
+    $('lMsg').textContent = u ? 'A conta ' + u.email + ' não tem acesso a este painel.' : 'Entre para continuar.';
+  }
+}
+$('bEntrar').onclick = async () => {
+  try{ const p = new firebase.auth.GoogleAuthProvider(); p.setCustomParameters({login_hint: ADMIN});
+    try{ await auth.signInWithPopup(p); }
+    catch(e){ if(e && (e.code === 'auth/popup-blocked' || e.code === 'auth/operation-not-supported-in-this-environment' || e.code === 'auth/cancelled-popup-request')) await auth.signInWithRedirect(p); else throw e; }
+  }catch(e){ $('lMsg').className = 'msg err'; $('lMsg').textContent = 'Não consegui entrar: ' + (e && e.code ? e.code : 'erro'); }
+};
+$('bSair').onclick = $('bSairL').onclick = () => auth && auth.signOut();
+
+const refs = [];
+function ligar(){
+  if(ligado) return; ligado = true;
+  const on = (path, key, fn) => { const r = db.ref(path); const cb = sn => { S[key] = sn.val() || {}; fn(); }; r.on('value', cb, e => { toast('Sem permissão para ler ' + path + '.', true); }); refs.push([r, cb]); };
+  on('empresas', 'empresas', () => { desenharEmpresas(); preencherSelects(); desenharUsuarios(); desenharCorridas(); });
+  on('usuarios', 'usuarios', desenharUsuarios);
+  on('corridas', 'corridas', desenharCorridas);
+  on('faturas', 'faturas', desenharCorridas);
+  on('contadores', 'cont', desenharNumeracao);
+  if(!$('fMes').value) $('fMes').value = mesDe(Date.now());
+}
+function desenhar(){ desenharEmpresas(); desenharUsuarios(); desenharCorridas(); desenharNumeracao(); }
+function desligar(){ refs.splice(0).forEach(([r, cb]) => r.off('value', cb)); ligado = false; S = {empresas: {}, usuarios: {}, corridas: {}, faturas: {}, cont: {}}; }
+function toast(t, bad){ const m = $('nMsg'); if(m){ m.className = 'msg ' + (bad ? 'err' : 'ok'); m.textContent = t; } }
+
+// ---- abas ----
+$('tabs').onclick = e => { const b = e.target.closest('button[data-t]'); if(!b) return;
+  document.querySelectorAll('#tabs button').forEach(x => x.setAttribute('aria-pressed', x === b));
+  ['corridas', 'empresas', 'usuarios', 'numeracao'].forEach(t => $('t-' + t).hidden = t !== b.dataset.t); };
+
+// ---- empresas ----
+const empAtivas = () => Object.keys(S.empresas).filter(k => S.empresas[k].ativo).sort((a, b) => S.empresas[a].nome.localeCompare(S.empresas[b].nome, 'pt-BR'));
+const empOrdenadas = () => Object.keys(S.empresas).sort((a, b) => (S.empresas[a].nome || '').localeCompare(S.empresas[b].nome || '', 'pt-BR'));
+let editEid = null;
+function desenharEmpresas(){
+  const L = $('eLista'); const ks = empOrdenadas();
+  L.innerHTML = ks.length ? ks.map(k => { const e = S.empresas[k], t = e.tar || {};
+    return `<div class="item"><div class="row"><b>${esc(e.nome)}</b><span class="tag ${e.ativo ? 'ok' : 'bad'}">${e.ativo ? 'Ativa' : 'Inativa'}</span><span class="sp"></span>
+      <button class="btn sm" type="button" data-a="ed" data-k="${esc(k)}">Editar</button><button class="btn sm" type="button" data-a="tg" data-k="${esc(k)}">${e.ativo ? 'Desativar' : 'Ativar'}</button></div>
+      <span class="muted">${esc(e.cnpj || 'CNPJ não informado')}${e.contato ? ' · ' + esc(e.contato) : ''}</span>
+      <span class="muted">Bandeirada R$ ${brl(t.band)} · R$ ${brl(t.km)}/km · R$ ${brl(t.min)}/min · espera R$ ${brl(t.esp)}/min · feriado +${numOut(t.dyn != null ? t.dyn : 50)}% · No-Show ${numOut(e.nsPct != null ? e.nsPct : 50)}% · cancelamento sem custo até ${numOut(e.canH != null ? e.canH : 6)} h antes</span></div>`;
+  }).join('') : '<p class="muted" style="margin:0">Nenhuma empresa cadastrada.</p>';
+}
+function preencherSelects(){
+  const mk = (sel, ks, todas) => { const cur = sel.value; sel.innerHTML = (todas ? '<option value="">Todas as empresas</option>' : '') + ks.map(k => `<option value="${esc(k)}">${esc(S.empresas[k].nome)}</option>`).join(''); if([...sel.options].some(o => o.value === cur)) sel.value = cur; };
+  mk($('uEmp'), empAtivas(), false); mk($('fEmp'), empOrdenadas(), true);
+}
+$('eLista').onclick = async e => { const b = e.target.closest('button[data-a]'); if(!b) return; const k = b.dataset.k, em = S.empresas[k]; if(!em) return;
+  if(b.dataset.a === 'tg'){ try{ await db.ref('empresas/' + k + '/ativo').set(!em.ativo); }catch(x){ $('eMsg').className = 'msg err'; $('eMsg').textContent = 'Falha ao salvar.'; } }
+  if(b.dataset.a === 'ed'){ editEid = k; const t = em.tar || {};
+    $('eTit').textContent = 'Editar empresa'; $('eNome').value = em.nome || ''; $('eCnpj').value = em.cnpj || ''; $('eCont').value = em.contato || '';
+    $('eBand').value = numOut(t.band); $('eKm').value = numOut(t.km); $('eMin').value = numOut(t.min); $('eEsp').value = numOut(t.esp); $('eDyn').value = numOut(t.dyn != null ? t.dyn : 50);
+    $('eNs').value = numOut(em.nsPct != null ? em.nsPct : 50); $('eCan').value = numOut(em.canH != null ? em.canH : 6); $('eAtivo').checked = !!em.ativo; $('eCancel').hidden = false; $('fEmpresa').scrollIntoView({behavior: 'smooth'}); }
+};
+function limparEmpresa(){ editEid = null; $('fEmpresa').reset(); $('eAtivo').checked = true; $('eTit').textContent = 'Nova empresa'; $('eCancel').hidden = true; }
+$('eCancel').onclick = limparEmpresa;
+const slug = s => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 24) || 'empresa';
+$('fEmpresa').onsubmit = async e => {
+  e.preventDefault(); const m = $('eMsg'); m.className = 'msg'; m.textContent = '';
+  const nome = $('eNome').value.trim(); if(!nome){ m.className = 'msg err'; m.textContent = 'Informe o nome da empresa.'; return; }
+  const tar = {band: numIn($('eBand').value), km: numIn($('eKm').value), min: numIn($('eMin').value), esp: numIn($('eEsp').value), dyn: $('eDyn').value.trim() === '' ? 50 : numIn($('eDyn').value)};
+  if(!(tar.band > 0 || tar.km > 0 || tar.min > 0)){ m.className = 'msg err'; m.textContent = 'Informe pelo menos bandeirada, valor por km ou por minuto.'; return; }
+  const eid = editEid || (slug(nome) + '-' + Math.random().toString(36).slice(2, 6));
+  const o = {nome, cnpj: $('eCnpj').value.trim(), contato: $('eCont').value.trim(), ativo: $('eAtivo').checked, tar,
+            nsPct: $('eNs').value.trim() === '' ? 50 : numIn($('eNs').value), canH: $('eCan').value.trim() === '' ? 6 : numIn($('eCan').value),
+            c: editEid && S.empresas[editEid] && S.empresas[editEid].c || Date.now()};
+  try{ await db.ref('empresas/' + eid).set(o); m.className = 'msg ok'; m.textContent = 'Empresa salva.'; limparEmpresa(); }
+  catch(x){ m.className = 'msg err'; m.textContent = 'Não consegui salvar. Confira a conexão e as regras do banco.'; }
+};
+
+// ---- usuarios ----
+function desenharUsuarios(){
+  const L = $('uLista'); const us = Object.keys(S.usuarios);
+  if(!us.length){ L.innerHTML = '<p class="muted" style="margin:0">Nenhum acesso cadastrado.</p>'; return; }
+  const porEmp = {}; us.forEach(u => { const k = S.usuarios[u].eid || '?'; (porEmp[k] = porEmp[k] || []).push(u); });
+  L.innerHTML = Object.keys(porEmp).sort((a, b) => ((S.empresas[a] || {}).nome || '').localeCompare(((S.empresas[b] || {}).nome || ''), 'pt-BR')).map(k =>
+    `<div class="item"><b>${esc((S.empresas[k] || {}).nome || 'Empresa removida')}</b>` + porEmp[k].map(u => { const x = S.usuarios[u];
+      return `<div class="row" style="padding:4px 0"><span>${esc(x.nome)}</span><span class="tag gold">${x.papel === 'gestor' ? 'Gestor' : 'Solicitante'}</span><span class="tag ${x.ativo ? 'ok' : 'bad'}">${x.ativo ? 'Ativo' : 'Bloqueado'}</span><span class="muted">${esc(x.email)}${x.fone ? ' · ' + esc(x.fone) : ''}</span><span class="sp"></span>
+        <button class="btn sm" type="button" data-a="rs" data-k="${esc(u)}">Reenviar e-mail de senha</button><button class="btn sm" type="button" data-a="tg" data-k="${esc(u)}">${x.ativo ? 'Bloquear' : 'Liberar'}</button></div>`; }).join('') + '</div>').join('');
+}
+$('uLista').onclick = async e => { const b = e.target.closest('button[data-a]'); if(!b) return; const u = S.usuarios[b.dataset.k]; if(!u) return; const m = $('uMsg');
+  if(b.dataset.a === 'tg'){ try{ await db.ref('usuarios/' + b.dataset.k + '/ativo').set(!u.ativo); }catch(x){ m.className = 'msg err'; m.textContent = 'Falha ao salvar.'; } }
+  if(b.dataset.a === 'rs'){ try{ auth.languageCode = 'pt-BR'; await auth.sendPasswordResetEmail(u.email); m.className = 'msg ok'; m.textContent = 'E-mail de definição de senha enviado para ' + u.email + '.'; }catch(x){ m.className = 'msg err'; m.textContent = 'Não consegui enviar o e-mail (' + (x.code || 'erro') + ').'; } }
+};
+function senhaTemp(){ const a = new Uint32Array(24); crypto.getRandomValues(a); const cs = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%'; return [...a].map(n => cs[n % cs.length]).join('') + 'aA1!'; }
+$('fUsuario').onsubmit = async e => {
+  e.preventDefault(); const m = $('uMsg'), btn = $('uSalvar'); m.className = 'msg'; m.textContent = '';
+  const d = {eid: $('uEmp').value, nome: $('uNome').value.trim(), email: $('uEmail').value.trim().toLowerCase(), fone: $('uFone').value.trim(), papel: $('uPapel').value};
+  if(!d.eid || !S.empresas[d.eid]){ m.className = 'msg err'; m.textContent = 'Cadastre e escolha uma empresa ativa.'; return; }
+  if(!d.nome || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(d.email)){ m.className = 'msg err'; m.textContent = 'Informe nome e um e-mail válido.'; return; }
+  if(Object.values(S.usuarios).some(u => (u.email || '').toLowerCase() === d.email)){ m.className = 'msg err'; m.textContent = 'Este e-mail já está cadastrado.'; return; }
+  btn.disabled = true; m.textContent = 'Criando acesso…';
+  let sec = null;
+  try{
+    sec = firebase.initializeApp(FBC, 'sec' + Date.now());
+    const cred = await sec.auth().createUserWithEmailAndPassword(d.email, senhaTemp());
+    const uid = cred.user.uid;
+    await db.ref('usuarios/' + uid).set({eid: d.eid, nome: d.nome, email: d.email, fone: d.fone, papel: d.papel, ativo: true, c: firebase.database.ServerValue.TIMESTAMP});
+    sec.auth().languageCode = 'pt-BR';
+    let mail = true; try{ await sec.auth().sendPasswordResetEmail(d.email); }catch(x){ mail = false; }
+    m.className = 'msg ' + (mail ? 'ok' : 'err');
+    m.textContent = mail ? 'Acesso criado. Enviamos um e-mail para ' + d.email + ' definir a senha.' : 'Acesso criado, mas o e-mail não foi enviado. Use “Reenviar e-mail de senha”.';
+    $('fUsuario').reset();
+  }catch(x){
+    const c = x && x.code; m.className = 'msg err';
+    m.textContent = c === 'auth/operation-not-allowed' ? 'Ative o login por E-mail/senha em Authentication > Método de login, no console do Firebase.'
+      : c === 'auth/email-already-in-use' ? 'Este e-mail já tem uma conta no sistema. Use outro e-mail ou remova a conta antiga no console do Firebase.'
+      : c === 'auth/invalid-email' ? 'E-mail inválido.' : c === 'PERMISSION_DENIED' || /permission/i.test((x && x.message) || '') ? 'Sem permissão para gravar. Confira as regras do banco.' : 'Não consegui criar o acesso (' + (c || 'erro') + ').';
+  }finally{
+    if(sec){ try{ await sec.auth().signOut(); }catch(x){} try{ await sec.delete(); }catch(x){} }
+    btn.disabled = false;
+  }
+};
+
+// ---- corridas ----
+const mnR = r => r.minutos != null ? r.minutos : r.min, esR = r => r.esperaMin != null ? r.esperaMin : r.espera;
+const dataCor = r => r.fim || r.inicio || r.a || r.c || 0;
+function filtradas(){
+  const mes = $('fMes').value, emp = $('fEmp').value, sit = $('fSit').value; const out = [];
+  Object.keys(S.corridas).forEach(eid => { const grupo = S.corridas[eid]; if(!grupo || typeof grupo !== 'object') return;
+    Object.keys(grupo).forEach(rt => { const r = grupo[rt]; if(!r || typeof r !== 'object') return;
+      if(emp && eid !== emp) return; if(mes && dataCor(r) && mesDe(dataCor(r)) !== mes) return; if(sit && r.situacao !== sit) return;
+      out.push(Object.assign({}, r, {rt: r.rt || rt, eid: eid})); }); });
+  return out.sort((a, b) => dataCor(a) - dataCor(b));
+}
+const nomeEmp = eid => (S.empresas[eid] || {}).nome || eid;
+function desenharCorridas(){
+  if(!$('fMes').value) return;
+  const L = filtradas(), tot = L.reduce((s, r) => s + Number(r.valor || 0), 0);
+  $('cInfo').textContent = L.length + ' registro(s) no filtro';
+  const n = c => L.filter(r => r.situacao === c).length;
+  $('kpis').innerHTML = [['Corridas', L.length], ['Concluídas', n('concluida')], ['No-Show', n('noshow')], ['Canceladas', n('cancelada')], ['Total a faturar', 'R$ ' + brl(tot)], ['Empresas ativas', empAtivas().length]].map(([a, b]) => `<div class="kpi"><small>${a}</small><b>${b}</b></div>`).join('');
+  // fechamento por empresa
+  const mes = $('fMes').value, por = {}; L.forEach(r => { (por[r.eid] = por[r.eid] || {q: 0, v: 0})['q']++; por[r.eid].v += Number(r.valor || 0); });
+  const ks = Object.keys(por).sort((a, b) => nomeEmp(a).localeCompare(nomeEmp(b), 'pt-BR'));
+  const mk = mes.replace('-', '');
+  $('fech').innerHTML = ks.length ? ks.map(k => { const f = ((S.faturas[k] || {})[mk]) || {};
+    return `<div class="item"><div class="row"><b>${esc(nomeEmp(k))}</b><span class="tag gold">${por[k].q} corrida(s)</span><b style="color:var(--taxi)">R$ ${brl(por[k].v)}</b><span class="sp"></span>
+      <select data-f="st" data-k="${esc(k)}" style="width:auto"><option value="aberta"${f.status === 'aberta' || !f.status ? ' selected' : ''}>Em aberto</option><option value="faturada"${f.status === 'faturada' ? ' selected' : ''}>Faturada</option><option value="paga"${f.status === 'paga' ? ' selected' : ''}>Paga</option></select>
+      <input data-f="nf" data-k="${esc(k)}" placeholder="Nº da nota" value="${esc(f.nota || '')}" style="width:140px" maxlength="30"></div></div>`; }).join('') : '<p class="muted" style="margin:0">Sem corridas neste mês.</p>';
+  // centro de custo (quando uma empresa esta filtrada)
+  const emp = $('fEmp').value; $('ccBox').hidden = !emp;
+  if(emp){ const cc = {}; L.forEach(r => { const k = (r.cc || 'Sem centro de custo').trim(); (cc[k] = cc[k] || {q: 0, v: 0}).q++; cc[k].v += Number(r.valor || 0); });
+    $('ccTb').innerHTML = '<tr><th>Centro de custo / setor</th><th class="n">Corridas</th><th class="n">Valor (R$)</th></tr>' + Object.keys(cc).sort().map(k => `<tr><td>${esc(k)}</td><td class="n">${cc[k].q}</td><td class="n">${brl(cc[k].v)}</td></tr>`).join(''); }
+  // tabela
+  $('tbVazio').hidden = !!L.length;
+  $('tb').innerHTML = L.length ? '<tr><th>RT</th><th>Data</th><th>Empresa</th><th>Solicitante</th><th>Passageiro</th><th>Centro de custo</th><th>Origem</th><th>Destino</th><th class="n">Km</th><th class="n">Min</th><th class="n">Espera</th><th class="n">Valor (R$)</th><th>Situação</th></tr>' +
+    L.map(r => `<tr><td>${esc(r.rt)}</td><td>${esc(dt(dataCor(r)))}</td><td>${esc(nomeEmp(r.eid))}</td><td>${esc(r.solNome)}</td><td>${esc(r.pasNome)}</td><td>${esc(r.cc)}</td><td>${esc(r.partida)}</td><td>${esc(r.destino)}</td><td class="n">${r.km != null ? brl(r.km) : ''}</td><td class="n">${mnR(r) != null ? Math.round(mnR(r)) : ''}</td><td class="n">${esR(r) != null ? Math.round(esR(r)) : ''}</td><td class="n">${brl(r.valor)}</td><td><span class="tag ${r.situacao === 'concluida' ? 'ok' : r.situacao === 'noshow' ? 'gold' : 'bad'}">${esc(SIT[r.situacao] || r.situacao || '')}</span>${r.motivo ? ' <span class="muted">' + esc(r.motivo) + '</span>' : ''}</td></tr>`).join('') : '';
+}
+['fMes', 'fEmp', 'fSit'].forEach(id => $(id).onchange = desenharCorridas);
+$('fech').onchange = async e => { const el = e.target.closest('[data-f]'); if(!el) return; const k = el.dataset.k, mk = $('fMes').value.replace('-', ''); const ref = db.ref('faturas/' + k + '/' + mk);
+  try{ if(el.dataset.f === 'st') await ref.child('status').set(el.value); else await ref.child('nota').set(el.value.trim()); }catch(x){ $('cInfo').textContent = 'Falha ao salvar a fatura.'; } };
+const csvq = v => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
+$('bCsv').onclick = () => {
+  const L = filtradas(); if(!L.length){ $('cInfo').textContent = 'Nada para exportar neste filtro.'; return; }
+  const cab = ['RT', 'Data', 'Hora', 'Empresa', 'Solicitante', 'E-mail do solicitante', 'Passageiro', 'E-mail do passageiro', 'Telefone do passageiro', 'Centro de custo', 'Origem', 'Destino', 'Km', 'Tempo (min)', 'Espera (min)', 'Valor (R$)', 'Situação', 'Motivo'];
+  const f2 = v => v == null ? '' : brl(v);
+  const rows = L.map(r => { const d = new Date(dataCor(r)); return [r.rt, d.toLocaleDateString('pt-BR'), d.toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'}), nomeEmp(r.eid), r.solNome, r.solEmail, r.pasNome, r.pasEmail, r.pasFone, r.cc, r.partida, r.destino, f2(r.km), mnR(r) != null ? Math.round(mnR(r)) : '', esR(r) != null ? Math.round(esR(r)) : '', f2(r.valor), SIT[r.situacao] || r.situacao || '', r.motivo || ''].map(csvq).join(';'); });
+  const total = L.reduce((s, r) => s + Number(r.valor || 0), 0);
+  const txt = '﻿' + cab.map(csvq).join(';') + '\r\n' + rows.join('\r\n') + '\r\n' + ['TOTAL', '', '', '', '', '', '', '', '', '', '', '', '', '', '', brl(total), '', ''].map(csvq).join(';') + '\r\n';
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([txt], {type: 'text/csv;charset=utf-8'}));
+  const e = $('fEmp').value; a.download = 'extrato-' + $('fMes').value + (e ? '-' + slug(nomeEmp(e)) : '') + '.csv'; document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+};
+
+// ---- numeracao ----
+function desenharNumeracao(){
+  const c = S.cont || {}; const tem = typeof c.rt === 'number';
+  $('nRt').textContent = tem ? rtTxt(c.rt + 1) : 'não iniciada'; $('nPart').textContent = typeof c.part === 'number' ? String(c.part + 1).padStart(9, '0') : 'não iniciada';
+  $('bIniciar').hidden = tem && typeof c.part === 'number';
+}
+$('bIniciar').onclick = async () => {
+  try{ await db.ref('contadores/rt').transaction(v => v === null ? 1 : undefined); await db.ref('contadores/part').transaction(v => v === null ? 0 : undefined); toast('Numeração iniciada. A próxima RT será RT000000002.'); }
+  catch(x){ toast('Não consegui iniciar a numeração. Confira as regras do banco.', true); }
+};
+if(!$('fMes').value){ const d = new Date(); $('fMes').value = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); }
+boot();
+})();
+</script>
+</body>
+</html>
