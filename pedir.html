@@ -78,6 +78,12 @@ legend{padding:0;margin-bottom:6px;font:700 16px "Barlow Condensed",sans-serif;l
     <div class="card"><div class="tit" id="stT"></div><div class="pos" id="stP"></div><p class="eta" id="stE"></p><p id="stD"></p></div>
     <button class="lnk" type="button" id="stW">Avisar também pelo WhatsApp</button>
     <button class="lnk red" type="button" id="stC">Cancelar pedido</button>
+    <div id="stA" hidden style="display:grid;gap:8px">
+      <b>Como foi a sua corrida?</b>
+      <div class="stars" id="stS" style="display:flex;gap:4px"><button type="button" data-n="1" aria-label="1 estrela">★</button><button type="button" data-n="2" aria-label="2 estrelas">★</button><button type="button" data-n="3" aria-label="3 estrelas">★</button><button type="button" data-n="4" aria-label="4 estrelas">★</button><button type="button" data-n="5" aria-label="5 estrelas">★</button></div>
+      <input id="stAt" maxlength="250" placeholder="Comentário (opcional)">
+      <button class="lnk" type="button" id="stAe" disabled>Enviar avaliação</button>
+    </div>
     <button class="lnk" type="button" id="stN" hidden>Fazer novo pedido</button>
   </section>
   <form id="f" class="app" style="padding:0" autocomplete="off" novalidate>
@@ -108,10 +114,7 @@ legend{padding:0;margin-bottom:6px;font:700 16px "Barlow Condensed",sans-serif;l
       <div class="g2"><div class="field"><label for="sNum">Número</label><input id="sNum" inputmode="numeric" placeholder="123" autocomplete="off"></div><div class="field"><label for="sBai">Bairro</label><input id="sBai" placeholder="Bairro" autocomplete="off"></div></div>
       <div class="field"><label for="sCid">Cidade</label><input id="sCid" value="Macaé" autocomplete="off"></div>
     </fieldset>
-    <div class="field"><label>Quando?</label>
-      <div class="seg"><button type="button" id="bAgora" aria-pressed="true">Agora</button><button type="button" id="bAgend" aria-pressed="false">Agendar</button></div>
-    </div>
-    <div class="field" id="fQuando" hidden><label for="quando">Data e hora</label><input id="quando" type="datetime-local"><small id="qAv" style="display:block;margin-top:6px"></small><small style="display:block;margin-top:6px;color:var(--muted)">Corrida agendada tem <b>prioridade</b> sobre os pedidos do dia O horário fica reservado só para você, sem custo extra.</small></div>
+    <div class="field" id="fQuando"><label for="quando">Data e hora da corrida</label><input id="quando" type="datetime-local" required><small id="qAv" style="display:block;margin-top:6px"></small><small style="display:block;margin-top:6px;color:var(--muted)">Atendemos <b>somente com agendamento</b>, com pelo menos 30 minutos de antecedência e partida até as <b>21:30</b>. O horário fica reservado só para você, sem custo extra.</small></div>
     <div class="field"><button class="mini" type="button" id="bPet" aria-expanded="false">🐾 Vou levar um pet</button></div>
     <fieldset id="fPet" hidden><legend>Pet na corrida</legend>
       <p class="hint">Avise o motorista antes: pet precisa estar em <b>caixa de transporte</b> (pequeno porte) ou de <b>guia/coleira curta</b> (médio e grande). Cães-guia são sempre bem-vindos. O motorista pode pedir para você forrar o banco, e sujeira ou danos no carro causados pelo pet podem ser cobrados.</p>
@@ -127,9 +130,8 @@ legend{padding:0;margin-bottom:6px;font:700 16px "Barlow Condensed",sans-serif;l
         <li><b>Parada adicional:</b> <span id="avPar">R$ 3,00</span> fixos por parada, somados ao valor da corrida. Vale somente para embarque ou desembarque em outro endereço antes do destino final (no máximo 1 parada). O cálculo continua correndo durante a parada.</li>
         <li><b>Espera:</b> o tempo de espera do passageiro é cobrado<span id="avEsp"></span>. Se o motorista já tiver chegado e você cancelar, a espera pode ser cobrada.</li>
         <li id="avDyn" hidden></li>
-        <li><b>Ordem de atendimento:</b> é por chegada, mas o motorista pode atender antes quem estiver mais perto de onde ele termina a corrida, para não rodar vazio. Isso não deixa ninguém esperando mais de 15 minutos por causa disso. Corridas agendadas têm prioridade.</li>
-        <li><b>Alta demanda:</b> em horários de muitos pedidos o atendimento pode demorar mais que o normal. Acompanhe sua posição e a previsão na tela do pedido.</li>
-        <li><b>Corrida agendada:</b> tem prioridade sobre os pedidos comuns, o horário fica reservado (outro cliente não consegue o mesmo horário); não há acréscimo de preço por agendar.</li>
+        <li><b>Somente com agendamento:</b> não atendemos pedidos imediatos. Escolha data e hora com pelo menos 30 minutos de antecedência e partida até as 21:30. O horário fica reservado para você, sem acréscimo de preço.</li>
+        <li><b>Agenda travada:</b> cada corrida reserva o tempo estimado, mais uma folga e o tempo de deslocamento do motorista até a próxima. Se o horário escolhido estiver ocupado, o app avisa e mostra quando a agenda fica livre. Se a viagem demorar mais que o previsto (trânsito, desvio), o valor e os horários seguintes podem mudar.</li>
         <li><b>Pagamento:</b> Pix ou dinheiro<span id="avCar"></span>.</li>
         <li><b>Recibo:</b> você tem direito a recibo da corrida, enviado por WhatsApp, <b>desde que informe seu WhatsApp ao pedir</b>.</li>
       </ul>
@@ -144,7 +146,7 @@ legend{padding:0;margin-bottom:6px;font:700 16px "Barlow Condensed",sans-serif;l
     <button class="mini" type="button" id="bEst" hidden>Calcular estimativa de valor</button>
     <p class="err" id="err" hidden></p>
     <button class="go" type="submit" id="go">Enviar pedido</button>
-    <p class="hint">Você entra na fila de atendimento e acompanha sua posição aqui. O motorista confirma o valor final. A estimativa é aproximada: o valor final é calculado pelo app.</p>
+    <p class="hint">Seu pedido fica agendado e você acompanha o status aqui. O motorista confirma o valor final. A estimativa é aproximada: o valor final é calculado pelo app.</p>
   </form>
 </div>
 <script>
@@ -172,40 +174,51 @@ document.getElementById('parAv').innerHTML = `Parada adicional: <b>${parTxt}</b>
 const temTarifa = T.band > 0 || T.km > 0 || T.min > 0;
 if(nm) $('sub').textContent = `Pedido para ${nm}. Informe partida e destino e envie o pedido.`;
 if(!W){ $('err').hidden = false; $('err').textContent = 'Link incompleto: peça ao motorista um novo link.'; }
-let agendar = false, pO = null, pD = null, est = null, par = false;
+let agendar = true, pO = null, pD = null, est = null, par = false;
 function setPar(v){ par = v; $('fPar').hidden = !v; $('bPar').textContent = v ? '− Remover parada' : '+ Adicionar parada'; showEst(); }
 $('bPar').onclick = () => setPar(!par);
 const brl = v => v.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
 function showEst(){ if(!est) return; $('est').hidden = false;
   $('est').innerHTML = `<small>Estimativa${est.aprox ? ' aproximada' : ''}</small><b>≈ R$ ${brl(est.v + (par ? PAR : 0))}</b><small>${est.km.toLocaleString('pt-BR',{maximumFractionDigits:1})} km · cerca de ${Math.round(est.min)} min${par ? ' · inclui parada ' + parTxt : ''}</small>`; }
-function setQuando(a){ agendar = a; $('bAgora').setAttribute('aria-pressed', !a); $('bAgend').setAttribute('aria-pressed', a); $('fQuando').hidden = !a;
-  if(a){ const d = new Date(Date.now() + 30*60000), p = n => String(n).padStart(2, '0'); $('quando').min = `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`; chkSlot(); }
-  showEst(); }
-const SLOT_ANTES = 15*60000, SLOT_DEPOIS = 10*60000; // deslocamento até você + folga após a corrida
+function setQuando(){ const d = new Date(Date.now() + 30*60000), p = n => String(n).padStart(2, '0'); $('quando').min = `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`; showEst(); }
+const rd = (p, k) => p ? {[k + 'La']: Math.round(p.la*100)/100, [k + 'Lo']: Math.round(p.lo*100)/100} : {}; // coordenadas arredondadas (~1 km): só para calcular o deslocamento da agenda
+const margem = min => Math.max(5, Math.ceil(min*0.10)); // folga após a corrida: 10% da duração, mínimo 5 min
+const durTotal = min => Math.ceil(min + margem(min)); // duração + folga, em minutos
+const tv = (a, b) => (a && b) ? Math.max(5, Math.ceil(hav(a, b)*1.35/35*60)) : 10; // deslocamento entre o destino de uma corrida e a origem da próxima (min)
 async function ocupado(ts, mins){
   const db = await Promise.race([loadFB(), new Promise((_, rj) => setTimeout(() => rj(new Error('t')), 6000))]);
   const sn = await Promise.race([db.ref('pub').once('value'), new Promise((_, rj) => setTimeout(() => rj(new Error('t')), 6000))]);
-  const v = sn.val() || {}, ini = ts - SLOT_ANTES, fim = ts + mins*60000 + SLOT_DEPOIS, now = Date.now();
+  const v = sn.val() || {}, now = Date.now(), fimN = ts + mins*60000;
+  const pt = (la, lo) => (typeof la === 'number' && typeof lo === 'number') ? {la, lo} : null;
   for(const k of Object.keys(v)){ const x = v[k];
     if(!x || !x.a || !ATIVOS.includes(x.s) || x.a < now - 3*3600*1000) continue;
     if(cur && cur.pid === k) continue;
-    const i2 = x.a - SLOT_ANTES, f2 = x.a + (x.m || 35)*60000 + SLOT_DEPOIS;
-    if(ini < f2 && i2 < fim) return {de: i2 + SLOT_ANTES, ate: f2};
+    const fimX = x.a + (x.m || 35)*60000;
+    if(ts < x.a){ // a nova corrida vem antes: precisa terminar e chegar na origem da outra
+      const gap = tv(pD, pt(x.oLa, x.oLo))*60000;
+      if(fimN + gap > x.a) return {antes: true, x: x.a, ate: fimN + gap};
+    }else{ // a nova vem depois: o motorista termina a outra e se desloca até a sua origem
+      const gap = tv(pt(x.dLa, x.dLo), pO)*60000;
+      if(ts < fimX + gap) return {antes: false, x: x.a, ate: fimX + gap};
+    }
   }
   return null;
 }
 let slotTk = 0;
+const horaOk = ts => { const d = new Date(ts); return d.getHours()*60 + d.getMinutes() <= 21*60 + 30; };
+const HORA_MSG = 'Os agendamentos são aceitos somente até as 21:30. Escolha um horário de partida até as 21:30.';
 async function chkSlot(){
   const el = $('qAv'), v = $('quando').value; el.textContent = ''; if(!agendar || !v) return true;
   const ts = new Date(v).getTime(); if(ts < Date.now() + 25*60000){ el.style.color = '#e5484d'; el.textContent = 'Escolha um horário com pelo menos 30 minutos de antecedência.'; return false; }
+  if(!horaOk(ts)){ el.style.color = '#e5484d'; el.textContent = HORA_MSG; return false; }
   const tk = ++slotTk;
-  try{ const o = await ocupado(ts, Math.round(est ? est.min : 30) + 5); if(tk !== slotTk) return true;
-    if(o){ const h = t => new Date(t).toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'}); el.style.color = '#e5484d'; el.textContent = `Horário indisponível: já existe corrida agendada por volta das ${h(o.de)} (ocupado até ${h(o.ate)}). Escolha outro horário.`; return false; }
+  try{ const o = await ocupado(ts, durTotal(est ? est.min : 30)); if(tk !== slotTk) return true;
+    if(o){ const h = t => new Date(t).toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'}); el.style.color = '#e5484d'; el.textContent = o.antes ? `Horário indisponível: há outra corrida agendada às ${h(o.x)} e não haveria tempo de terminar a sua e se deslocar até lá. Escolha um horário anterior ou depois das ${h(o.ate)}.` : `Horário indisponível: a agenda está travada até as ${h(o.ate)} (duração da corrida em andamento e deslocamento até você). Escolha um horário a partir desse.`; return false; }
     el.style.color = '#2fb36d'; el.textContent = 'Horário disponível ✓'; return true;
   }catch(x){ return true; }
 }
 $('quando').onchange = chkSlot; $('quando').oninput = chkSlot;
-$('bAgora').onclick = () => setQuando(false); $('bAgend').onclick = () => setQuando(true);
+setQuando();
 if(temTarifa) $('bEst').hidden = false;
 { let dp = null; const st = (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone;
   if(!st){
@@ -298,7 +311,7 @@ async function calcular(){
   }catch(e){ km = hav(pO, pD)*1.3; min = km/25*60; aprox = true; }
   const v = Math.max(T.band, km*T.km) + min*T.min;
   est = {km, min, v, aprox};
-  showEst();
+  showEst(); chkSlot();
   return est;
 }
 async function estimar(){
@@ -343,14 +356,14 @@ $('f').onsubmit = async e => {
   try{
     const db = await Promise.race([loadFB(), new Promise((_, rj) => setTimeout(() => rj(new Error('t')), 8000))]);
     const sid = db.ref().push().key, pid = db.ref().push().key, TS = firebase.database.ServerValue.TIMESTAMP;
-    const m = Math.round(est ? est.min : (agendar ? 30 : 15)) + 5;
+    const m = durTotal(est ? est.min : 30);
     const f = {nome, fone, passageiro: outro ? $('pNome').value.trim() : '', foneP: outro ? $('pFone').value.trim() : '', partida: o, destino: d, obs: obsFinal(), quando, estim: est ? `R$ ${brl(est.v + (par ? PAR : 0))} · ${est.km.toLocaleString('pt-BR',{maximumFractionDigits:1})} km` : '', pid, c: TS, s: 'aguardando'};
     if(par) f.parada = addr('s').slice(0, 200);
     if(agendar){ f.a = new Date($('quando').value).getTime(); }
     if(pO){ f.oLa = pO.la; f.oLo = pO.lo; } if(pD){ f.dLa = pD.la; f.dLo = pD.lo; }
     for(const k of ['nome', 'passageiro']) f[k] = f[k].slice(0, 80);
     f.partida = f.partida.slice(0, 200); f.destino = f.destino.slice(0, 200); f.obs = f.obs.slice(0, 300);
-    const up = {}; up['fila/' + sid] = f; up['pub/' + pid] = agendar ? {c: TS, s: 'aguardando', m, a: f.a} : {c: TS, s: 'aguardando', m};
+    const up = {}; up['fila/' + sid] = f; up['pub/' + pid] = agendar ? Object.assign({c: TS, s: 'aguardando', m, a: f.a}, rd(pO, 'o'), rd(pD, 'd')) : {c: TS, s: 'aguardando', m};
     await Promise.race([db.ref().update(up), new Promise((_, rj) => setTimeout(() => rj(new Error('t')), 8000))]);
     avisar(agendar ? 'Novo AGENDAMENTO de corrida' : 'Novo pedido de corrida');
     const sv = {sid, pid, wa, t: Date.now()}; if(f.a) sv.a = f.a;
@@ -419,6 +432,7 @@ function desenhar(all){
   if(MSG[s]){
     $('stT').textContent = MSG[s][0]; $('stP').textContent = ''; $('stE').textContent = ''; $('stD').textContent = MSG[s][1];
     if(s === 'concluido' || s === 'cancelado'){ $('stC').hidden = true; $('stN').hidden = false; }
+    if(s === 'concluido') avalInit();
     return;
   }
   const ahead = Object.values(all).filter(x => x && ATIVOS.includes(x.s) && !x.a && x.c > lim && x.c < me.c);
@@ -429,6 +443,21 @@ function desenhar(all){
   const prox = Object.values(all).filter(x => x && x.a && ['aguardando', 'aceito'].includes(x.s) && x.a > now - 15*60000 && x.a - 30*60000 < now + (min + (me.m || 15))*60000).sort((p, q) => p.a - q.a)[0];
   $('stD').textContent = canc ? 'Cancelamento enviado ao motorista.' : 'Atendimento por ordem de chegada, com ajuste pela proximidade do motorista para evitar deslocamento vazio (ninguém espera mais de 15 min por isso). Esta tela se atualiza sozinha.' + (demOn ? ' Alta demanda no momento: o atendimento pode demorar mais que o normal.' : '') + (prox ? ' Atenção: há uma corrida agendada com prioridade por volta das ' + new Date(prox.a).toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'}) + '; seu atendimento pode atrasar ou ficar para depois dela.' : '');
 }
+let avNota = 0;
+const avKey = () => 'sm_aval_' + (cur && cur.pid);
+function avalInit(){
+  let feito = false; try{ feito = !!localStorage.getItem(avKey()); }catch(x){}
+  if(feito){ $('stA').hidden = true; return; }
+  if(!$('stA').hidden) return; $('stA').hidden = false; avNota = 0; $('stAe').disabled = true;
+  document.querySelectorAll('#stS button').forEach(b => b.style.cssText = 'background:none;border:0;font-size:32px;line-height:1;color:#4a5a78;cursor:pointer;padding:2px');
+}
+$('stS').onclick = e => { const b = e.target.closest('button[data-n]'); if(!b) return; avNota = +b.dataset.n; document.querySelectorAll('#stS button').forEach(x => x.style.color = +x.dataset.n <= avNota ? '#DDB066' : '#4a5a78'); $('stAe').disabled = false; };
+$('stAe').onclick = async () => {
+  if(!cur || !avNota) return; $('stAe').disabled = true;
+  try{ const db = await loadFB(); const t = $('stAt').value.trim().slice(0, 250); await Promise.race([db.ref('avalp/' + cur.pid).set(Object.assign({n: avNota, c: firebase.database.ServerValue.TIMESTAMP}, t ? {t} : {})), new Promise((_, rj) => setTimeout(() => rj(new Error('t')), 8000))]);
+    try{ localStorage.setItem(avKey(), '1'); }catch(x){} $('stA').innerHTML = '<b>Obrigado pela avaliação!</b>'; }
+  catch(x){ $('stAe').disabled = false; $('stAe').textContent = 'Não enviou. Tentar de novo'; }
+};
 $('stW').onclick = () => { if(cur) location.href = cur.wa; };
 $('stN').onclick = limpar;
 $('stC').onclick = async () => {
