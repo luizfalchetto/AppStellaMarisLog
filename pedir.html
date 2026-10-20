@@ -164,7 +164,7 @@ const fmt = v => v.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFra
 { const e = pc('e'), d = pc('d'), td = pc('td'), tc = pc('tc');
   if(e) document.getElementById('avEsp').textContent = ` por minuto (R$ ${fmt(e)}/min)`;
   { const dc = pc('dc'), f = d != null ? d : 50, c = dc != null ? dc : 30, li = document.getElementById('avDyn'), z = v => String(v).replace('.', ','); li.hidden = false; li.innerHTML = `<b>Tarifa dinâmica:</b> em dias de chuva o valor tem acréscimo de ${z(c)}%, e em feriados, de ${z(f)}%.`; }
-  if(td != null && tc != null) document.getElementById('avCar').textContent = `; cartão de débito (taxa de ${String(td).replace('.', ',')}%) ou crédito (${String(tc).replace('.', ',')}%), acrescida ao valor`;
+  { const dd = pc('dd'), x = dd != null ? dd : 5; document.getElementById('avCar').innerHTML = `, ou cartão de débito/crédito, sem taxa adicional. <b>Pagando em dinheiro você tem ${String(x).replace('.', ',')}% de desconto</b> (o desconto vale só para dinheiro, não para Pix nem cartão)`; }
   const emp = q.get('n'); if(emp) document.getElementById('avEmp').textContent = emp; }
 const PAR = q.has('pa') ? num('pa') : 3, parTxt = 'R$ ' + fmt(PAR);
 document.getElementById('avPar').textContent = parTxt;
