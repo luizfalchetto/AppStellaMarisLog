@@ -418,6 +418,7 @@ const cfgOk = () => cfg.band>0 || cfg.km>0 || cfg.min>0;
 let ride = store.get('tx_ride', null);
 const save = () => store.set('tx_ride', ride);
 
+const CUT_TAXA = Date.UTC(2026, 9, 20, 9, 30); // taxa de cartão extinta: só corridas encerradas antes disso mantêm a taxa
 function calc(r, now){
   const c = r.cfg, t = now || Date.now();
   const km = (r.kmManual != null ? r.kmManual : r.m/1000);
@@ -438,7 +439,7 @@ function calc(r, now){
   const vPar = r.par ? (c.par != null ? Number(c.par) : 3) : 0; sub += vPar;
   const arr = Number(c.arred)||0;
   if(arr > 0 && sub > 0) sub = Math.ceil(sub/arr - 1e-9)*arr;
-  const pct = c.semTaxa ? 0 : (r.pag === 'deb' ? (c.taxaDeb != null ? c.taxaDeb : cfg.taxaDeb) : r.pag === 'cre' ? (c.taxaCre != null ? c.taxaCre : cfg.taxaCre) : 0);
+  const pct = (c.semTaxa || !r.fim || r.fim >= CUT_TAXA) ? 0 : (r.pag === 'deb' ? (c.taxaDeb != null ? c.taxaDeb : cfg.taxaDeb) : r.pag === 'cre' ? (c.taxaCre != null ? c.taxaCre : cfg.taxaCre) : 0);
   const taxa = Math.round(sub*(pct||0))/100;
   const descPct = (c.desc != null && (r.pag === 'din' || (!r.pag && r.fim))) ? Number(c.desc) : 0;
   const vDesc = Math.round(sub*descPct)/100;
