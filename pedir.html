@@ -112,12 +112,19 @@ legend{padding:0;margin-bottom:6px;font:700 16px "Barlow Condensed",sans-serif;l
       <div class="seg"><button type="button" id="bAgora" aria-pressed="true">Agora</button><button type="button" id="bAgend" aria-pressed="false">Agendar</button></div>
     </div>
     <div class="field" id="fQuando" hidden><label for="quando">Data e hora</label><input id="quando" type="datetime-local"><small id="qAv" style="display:block;margin-top:6px"></small><small style="display:block;margin-top:6px;color:var(--muted)">Corrida agendada tem <b>prioridade</b> sobre os pedidos do dia O horário fica reservado só para você, sem custo extra.</small></div>
+    <div class="field"><button class="mini" type="button" id="bPet" aria-expanded="false">🐾 Vou levar um pet</button></div>
+    <fieldset id="fPet" hidden><legend>Pet na corrida</legend>
+      <p class="hint">Avise o motorista antes: pet precisa estar em <b>caixa de transporte</b> (pequeno porte) ou de <b>guia/coleira curta</b> (médio e grande). Cães-guia são sempre bem-vindos. O motorista pode pedir para você forrar o banco, e sujeira ou danos no carro causados pelo pet podem ser cobrados.</p>
+      <div class="g2"><div class="field"><label for="petTipo">Animal</label><select id="petTipo"><option>Cachorro</option><option>Gato</option><option>Outro</option></select></div>
+      <div class="field"><label for="petPorte">Porte</label><select id="petPorte"><option value="pequeno">Pequeno (até 10 kg)</option><option value="médio">Médio (10 a 25 kg)</option><option value="grande">Grande (mais de 25 kg)</option></select></div></div>
+      <div class="field"><label for="petCx">Como vai viajar?</label><select id="petCx"><option value="em caixa de transporte">Em caixa de transporte</option><option value="de guia/coleira">De guia/coleira</option></select></div>
+    </fieldset>
     <div class="field"><label for="obs">Observações (opcional)</label><textarea id="obs" placeholder="Ponto de referência, nº de passageiros, bagagem…"></textarea></div>
     <div class="aviso" id="aviso">
       <b class="t">Antes de pedir, saiba que</b>
       <ul>
-        <li><b>O valor final é o do taxímetro</b> (distância e tempo da corrida). A estimativa é aproximada e o trânsito pode alterá-la.</li>
-        <li><b>Parada adicional:</b> <span id="avPar">R$ 3,00</span> fixos por parada, somados ao valor da corrida. Vale somente para embarque ou desembarque em outro endereço antes do destino final (no máximo 1 parada). O taxímetro continua correndo durante a parada.</li>
+        <li><b>O valor final é calculado pelo app</b> (distância e tempo da corrida). A estimativa é aproximada e o trânsito pode alterá-la.</li>
+        <li><b>Parada adicional:</b> <span id="avPar">R$ 3,00</span> fixos por parada, somados ao valor da corrida. Vale somente para embarque ou desembarque em outro endereço antes do destino final (no máximo 1 parada). O cálculo continua correndo durante a parada.</li>
         <li><b>Espera:</b> o tempo de espera do passageiro é cobrado<span id="avEsp"></span>. Se o motorista já tiver chegado e você cancelar, a espera pode ser cobrada.</li>
         <li id="avDyn" hidden></li>
         <li><b>Ordem de atendimento:</b> é por chegada, mas o motorista pode atender antes quem estiver mais perto de onde ele termina a corrida, para não rodar vazio. Isso não deixa ninguém esperando mais de 15 minutos por causa disso. Corridas agendadas têm prioridade.</li>
@@ -137,13 +144,16 @@ legend{padding:0;margin-bottom:6px;font:700 16px "Barlow Condensed",sans-serif;l
     <button class="mini" type="button" id="bEst" hidden>Calcular estimativa de valor</button>
     <p class="err" id="err" hidden></p>
     <button class="go" type="submit" id="go">Enviar pedido</button>
-    <p class="hint">Você entra na fila de atendimento e acompanha sua posição aqui. O motorista confirma o valor final. A estimativa é aproximada: o valor final é o do taxímetro.</p>
+    <p class="hint">Você entra na fila de atendimento e acompanha sua posição aqui. O motorista confirma o valor final. A estimativa é aproximada: o valor final é calculado pelo app.</p>
   </form>
 </div>
 <script>
 (() => {
 'use strict';
 const $ = id => document.getElementById(id);
+const petOn = () => !$('fPet').hidden;
+const obsFinal = () => { const o = $('obs').value.trim(); if(!petOn()) return o; const p = `🐾 PET: ${$('petTipo').value.toLowerCase()} ${$('petPorte').value}, ${$('petCx').value}.`; return (p + (o ? ' ' + o : '')).slice(0, 300); };
+$('bPet').onclick = () => { const f = $('fPet'); f.hidden = !f.hidden; $('bPet').setAttribute('aria-expanded', String(!f.hidden)); $('bPet').textContent = f.hidden ? '🐾 Vou levar um pet' : '🐾 Remover pet'; };
 const q = new URLSearchParams(location.search);
 const W = (q.get('w') || '5522999299851').replace(/\D/g, '');
 const nm = q.get('n') || '';
@@ -158,7 +168,7 @@ const fmt = v => v.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFra
   const emp = q.get('n'); if(emp) document.getElementById('avEmp').textContent = emp; }
 const PAR = q.has('pa') ? num('pa') : 3, parTxt = 'R$ ' + fmt(PAR);
 document.getElementById('avPar').textContent = parTxt;
-document.getElementById('parAv').innerHTML = `Parada adicional: <b>${parTxt}</b> fixos, cobrados além do taxímetro. Serve <b>somente para embarque ou desembarque</b> em outro endereço antes do destino final. No máximo 1 parada por corrida.`;
+document.getElementById('parAv').innerHTML = `Parada adicional: <b>${parTxt}</b> fixos, cobrados além do valor da corrida. Serve <b>somente para embarque ou desembarque</b> em outro endereço antes do destino final. No máximo 1 parada por corrida.`;
 const temTarifa = T.band > 0 || T.km > 0 || T.min > 0;
 if(nm) $('sub').textContent = `Pedido para ${nm}. Informe partida e destino e envie o pedido.`;
 if(!W){ $('err').hidden = false; $('err').textContent = 'Link incompleto: peça ao motorista um novo link.'; }
@@ -326,7 +336,7 @@ $('f').onsubmit = async e => {
   L.push(`Destino: ${d}`);
   if(est) L.push(`Estimativa: ≈ R$ ${brl(est.v + (par ? PAR : 0))} (${est.km.toLocaleString('pt-BR',{maximumFractionDigits:1})} km${est.aprox ? ', aproximada' : ''})`);
   else if(temTarifa) L.push('Estimativa: a confirmar');
-  const obs = $('obs').value.trim(); if(obs) L.push(`Obs.: ${obs}`);
+  const obs = obsFinal(); if(obs) L.push(`Obs.: ${obs}`);
   L.push(`Rota: ${mapa}`);
   const msg = L.join('\n'), wa = `https://wa.me/${W}?text=${encodeURIComponent(msg)}`;
   const g = $('go'); g.disabled = true; g.textContent = 'Enviando…';
@@ -334,7 +344,7 @@ $('f').onsubmit = async e => {
     const db = await Promise.race([loadFB(), new Promise((_, rj) => setTimeout(() => rj(new Error('t')), 8000))]);
     const sid = db.ref().push().key, pid = db.ref().push().key, TS = firebase.database.ServerValue.TIMESTAMP;
     const m = Math.round(est ? est.min : (agendar ? 30 : 15)) + 5;
-    const f = {nome, fone, passageiro: outro ? $('pNome').value.trim() : '', foneP: outro ? $('pFone').value.trim() : '', partida: o, destino: d, obs, quando, estim: est ? `R$ ${brl(est.v + (par ? PAR : 0))} · ${est.km.toLocaleString('pt-BR',{maximumFractionDigits:1})} km` : '', pid, c: TS, s: 'aguardando'};
+    const f = {nome, fone, passageiro: outro ? $('pNome').value.trim() : '', foneP: outro ? $('pFone').value.trim() : '', partida: o, destino: d, obs: obsFinal(), quando, estim: est ? `R$ ${brl(est.v + (par ? PAR : 0))} · ${est.km.toLocaleString('pt-BR',{maximumFractionDigits:1})} km` : '', pid, c: TS, s: 'aguardando'};
     if(par) f.parada = addr('s').slice(0, 200);
     if(agendar){ f.a = new Date($('quando').value).getTime(); }
     if(pO){ f.oLa = pO.la; f.oLo = pO.lo; } if(pD){ f.dLa = pD.la; f.dLo = pD.lo; }
