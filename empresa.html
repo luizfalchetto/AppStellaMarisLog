@@ -1,0 +1,807 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<title>Stella Maris Ride · Empresas</title>
+<meta name="theme-color" content="#020D1F">
+<link rel="icon" href="icon-192.png">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@600;700&display=swap">
+<style>
+:root{--bg:#020D1F;--panel:#0A1830;--line:#1D3258;--fg:#ECEFF5;--muted:#8C9BB5;--taxi:#DDB066;--ink:#1A1204;--ok:#3DD68C;color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.4 "Barlow",system-ui,sans-serif;padding:env(safe-area-inset-top,0) 0 env(safe-area-inset-bottom,0)}
+.app{max-width:520px;margin:0 auto;padding:20px 16px 40px;display:grid;gap:16px}
+h1{margin:0;font:700 30px/1 "Barlow Condensed",sans-serif;letter-spacing:.04em;text-transform:uppercase}
+h1 span{color:var(--taxi)}
+.sub{color:var(--muted);margin:4px 0 0}
+.field{display:grid;gap:6px}
+label{font-size:14px;color:var(--muted)}
+input,textarea{background:var(--panel);border:1px solid var(--line);border-radius:12px;min-height:52px;padding:0 14px;font:inherit;font-size:18px;color:var(--fg);width:100%}
+textarea{padding:12px 14px;min-height:72px;resize:vertical}
+input:focus,textarea:focus{outline:2px solid var(--taxi);outline-offset:1px}
+.row{display:flex;gap:8px}.row input{flex:1}
+.mini{border:1px solid var(--line);background:var(--panel);color:var(--fg);border-radius:12px;padding:0 14px;min-height:52px;font:600 14px "Barlow",sans-serif;cursor:pointer;white-space:nowrap}
+.seg{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px}
+.dias{display:flex;gap:6px;flex-wrap:wrap}.dias label{display:flex;gap:4px;align-items:center;border:1px solid var(--line);border-radius:10px;padding:6px 10px;color:var(--fg);font-size:14px}.dias input{width:18px;min-height:18px;height:18px;accent-color:#DDB066}
+.stars{display:flex;gap:4px}.stars button{background:none;border:0;font-size:30px;line-height:1;color:#4a5a78;cursor:pointer;padding:2px}.stars button.on{color:#DDB066}
+.orc{display:grid;gap:8px}.orc .r{display:grid;grid-template-columns:1fr 110px auto;gap:8px;align-items:center}.orc .b{height:8px;background:#10213F;border-radius:4px;overflow:hidden}.orc .b i{display:block;height:100%;background:#DDB066}
+.orc input{min-height:40px}.apr{border-left:3px solid #DDB066}
+.app.wide{max-width:980px}
+.seg button{min-height:52px;border-radius:12px;border:1px solid var(--line);background:var(--panel);color:var(--fg);font:700 16px "Barlow Condensed",sans-serif;letter-spacing:.06em;text-transform:uppercase;cursor:pointer}
+.seg button[aria-pressed=true]{background:var(--taxi);color:var(--ink);border-color:var(--taxi)}
+.go{border:0;border-radius:14px;min-height:60px;background:var(--taxi);color:var(--ink);font:700 20px "Barlow Condensed",sans-serif;letter-spacing:.06em;text-transform:uppercase;cursor:pointer}
+.go:disabled{opacity:.6}
+.est{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px;display:grid;gap:4px}
+.est b{font:700 28px "Barlow Condensed",sans-serif;color:var(--taxi)}
+.est small{color:var(--muted)}
+.hint{color:var(--muted);font-size:13px;margin:0}
+.err{color:#ff8a80;font-size:14px;margin:0}
+.lg{display:flex;margin-bottom:8px}.lg .logo{width:44px;height:44px}
+fieldset{border:0;padding:0;margin:0;display:grid;gap:10px}
+legend{padding:0;margin-bottom:6px;font:700 16px "Barlow Condensed",sans-serif;letter-spacing:.08em;text-transform:uppercase;color:var(--taxi)}
+.g2{display:grid;grid-template-columns:100px 1fr;gap:8px}
+#st{display:grid;gap:14px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:18px;display:grid;gap:8px;text-align:center}
+.card .pos{font:700 54px/1 "Barlow Condensed",sans-serif;color:var(--taxi)}
+.card .tit{font:700 22px/1.1 "Barlow Condensed",sans-serif;letter-spacing:.04em;text-transform:uppercase}
+.card p{margin:0;color:var(--muted)}
+.card .eta{color:var(--fg);font-size:18px}
+.disp{display:flex;align-items:center;gap:10px;border:1px solid var(--line);background:var(--panel);border-radius:12px;padding:10px 14px;font-size:15px}
+.disp i{width:12px;height:12px;border-radius:50%;background:var(--muted);flex:none}
+.disp.on i{background:var(--ok);box-shadow:0 0 8px var(--ok)}
+.disp.off i{background:#ff8a80}
+.disp small{color:var(--muted);display:block}
+.aviso{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px;display:grid;gap:8px;font-size:14px}
+.aviso b.t{font:700 16px "Barlow Condensed",sans-serif;letter-spacing:.08em;text-transform:uppercase;color:var(--taxi)}
+.aviso ul{margin:0;padding-left:18px;display:grid;gap:6px;color:var(--fg)}
+.aviso details{color:var(--muted)}
+.aviso summary{cursor:pointer;color:var(--fg);font-weight:600}
+.aviso details p{margin:8px 0 0}
+.ck{display:flex;gap:10px;align-items:flex-start;font-size:14px;color:var(--fg)}
+.ck input{width:22px;min-height:22px;height:22px;flex:none;margin-top:1px;accent-color:#DDB066}
+.lnk{display:block;text-align:center;text-decoration:none;border:1px solid var(--line);background:var(--panel);color:var(--fg);border-radius:12px;padding:14px;font:600 15px "Barlow",sans-serif;cursor:pointer;width:100%}
+.lnk.red{color:#ff8a80}
+[hidden]{display:none!important}
+
+select{background:var(--panel);border:1px solid var(--line);border-radius:12px;min-height:52px;padding:0 14px;font:inherit;font-size:17px;color:var(--fg);width:100%}
+.g2b{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.card2{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:18px;display:grid;gap:12px}
+.card2 legend{font:700 20px "Barlow Condensed",sans-serif;letter-spacing:.08em;text-transform:uppercase;color:var(--taxi)}
+#f{display:grid;gap:16px}
+.who{display:flex;justify-content:space-between;align-items:center;gap:10px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:10px 14px}
+.who b{display:block;font:700 18px "Barlow Condensed",sans-serif;letter-spacing:.04em;text-transform:uppercase}.who small{color:var(--muted)}
+.card3{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px;display:grid;gap:6px;margin-bottom:10px}
+.card3 p{margin:0;font-size:15px}.card3 small{color:var(--muted)}
+.rtc{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.rtc b{font:700 20px "Barlow Condensed",sans-serif;color:var(--taxi);letter-spacing:.04em}
+.tag{display:inline-block;border-radius:999px;padding:2px 10px;font-size:12px;font-weight:700;background:#10213F;color:var(--taxi);margin-left:6px}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="lg"><svg class="logo" viewBox="0 0 100 100" aria-hidden="true"><defs><linearGradient id="lg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#F1D18D"/><stop offset="1" stop-color="#C8933A"/></linearGradient></defs><path fill="url(#lg)" fill-rule="evenodd" d="M50 0L58.7 40.9L98.2 50L58.7 59.1L50 100L41.3 59.1L1.8 50L41.3 40.9ZM50 0L53.6 44L98.2 50L53.6 56L50 100L46.4 56L1.8 50L46.4 44Z"/></svg></div>
+    <h1>Stella Maris <span>Ride</span></h1>
+    <p class="sub" id="sub">Transporte executivo para empresas</p>
+  </header>
+
+  <!-- LOGIN -->
+  <section id="vLogin" hidden>
+    <form id="fLogin" class="card2" autocomplete="on">
+      <legend>Acesso da empresa</legend>
+      <div class="field"><label for="lEmail">E-mail</label><input id="lEmail" type="email" autocomplete="username" required></div>
+      <div class="field"><label for="lSenha">Senha</label><input id="lSenha" type="password" autocomplete="current-password" required></div>
+      <p class="err" id="lErr" hidden></p>
+      <button class="go" type="submit" id="lGo">Entrar</button>
+      <button class="lnk" type="button" id="lEsq">Esqueci minha senha</button>
+      <p class="hint">O acesso é criado pela Stella Maris para a sua empresa. Não tem acesso? Fale com o seu gestor ou com a Stella Maris.</p>
+    </form>
+  </section>
+
+  <!-- APP -->
+  <section id="vApp" hidden>
+    <div class="who"><div><b id="wEmp"></b><small id="wUser"></small></div><button class="mini" type="button" id="bSair">Sair</button></div>
+    <div class="seg" id="tabs"><button type="button" data-t="nova" aria-pressed="true">Nova requisição</button><button type="button" data-t="lista" aria-pressed="false">Requisições</button><button type="button" data-t="painel" aria-pressed="false">Painel</button><button type="button" data-t="aprov" id="tabAprov" aria-pressed="false" hidden>Aprovações <span id="aprN"></span></button></div>
+
+    <!-- NOVA -->
+    <form id="f" autocomplete="off">
+      <fieldset><legend>Solicitante</legend>
+        <div class="field"><label for="sNome">Nome *</label><input id="sNome" maxlength="80" required></div>
+        <div class="field"><label for="sMail">E-mail *</label><input id="sMail" type="email" maxlength="120" required></div>
+        <div class="field"><label for="sFone">Telefone *</label><input id="sFone" type="tel" inputmode="tel" maxlength="30" required></div>
+      </fieldset>
+      <fieldset><legend>Passageiro</legend>
+        <div class="field"><label for="pNome">Nome *</label><input id="pNome" maxlength="80" required></div>
+        <div class="field"><label for="pMail">E-mail *</label><input id="pMail" type="email" maxlength="120" required></div>
+        <div class="field"><label for="pFone">Telefone *</label><input id="pFone" type="tel" inputmode="tel" maxlength="30" required></div>
+        <div class="field"><label for="cc">Centro de custo / setor do passageiro *</label><input id="cc" maxlength="80" required placeholder="Ex.: Operações, CC 1234"><small id="orcAv" style="display:block;margin-top:6px"></small></div>
+      </fieldset>
+      <fieldset><legend>Origem</legend>
+        <div class="field"><label for="oRua">Rua *</label><input id="oRua" placeholder="Nome da rua" autocomplete="off"></div>
+        <div class="g2"><div class="field"><label for="oNum">Número</label><input id="oNum" inputmode="numeric" autocomplete="off"></div><div class="field"><label for="oBai">Bairro</label><input id="oBai" autocomplete="off"></div></div>
+        <div class="field"><label for="oCid">Cidade</label><input id="oCid" value="Macaé" autocomplete="off"></div>
+      </fieldset>
+      <fieldset><legend>Destino</legend>
+        <div class="field"><label for="dRua">Rua *</label><input id="dRua" placeholder="Nome da rua" autocomplete="off"></div>
+        <div class="g2"><div class="field"><label for="dNum">Número</label><input id="dNum" inputmode="numeric" autocomplete="off"></div><div class="field"><label for="dBai">Bairro</label><input id="dBai" autocomplete="off"></div></div>
+        <div class="field"><label for="dCid">Cidade</label><input id="dCid" value="Macaé" autocomplete="off"></div>
+      </fieldset>
+      <div class="field"><label for="quando">Data e hora da corrida *</label><input id="quando" type="datetime-local" required><small id="qAv" style="display:block;margin-top:6px"></small>
+        <small style="display:block;margin-top:6px;color:var(--muted)">Atendemos <b>somente com agendamento</b>, com pelo menos 30 minutos de antecedência e partida até as <b>21:30</b>.</small></div>
+      <div class="field"><button class="mini" type="button" id="bSerie" aria-expanded="false">🔁 Repetir esta corrida (recorrente / pacote do mês)</button></div>
+      <fieldset id="fSerie" hidden><legend>Corridas recorrentes</legend>
+        <p class="hint" id="serDesc"></p>
+        <div class="field"><label>Dias da semana (a primeira corrida é a data escolhida acima)</label><div class="dias" id="serDias"><label><input type="checkbox" value="1">Seg</label><label><input type="checkbox" value="2">Ter</label><label><input type="checkbox" value="3">Qua</label><label><input type="checkbox" value="4">Qui</label><label><input type="checkbox" value="5">Sex</label><label><input type="checkbox" value="6">Sáb</label><label><input type="checkbox" value="0">Dom</label></div></div>
+        <div class="field"><label for="serQtd">Quantidade total de corridas (2 a 40)</label><input id="serQtd" type="number" min="2" max="40" value="4" inputmode="numeric"></div>
+        <button class="mini" type="button" id="serVer">Ver datas e conferir a agenda</button>
+        <div id="serLista" style="display:grid;gap:8px"></div>
+      </fieldset>
+      <div class="field"><button class="mini" type="button" id="bPet" aria-expanded="false">🐾 O passageiro levará um pet</button></div>
+      <fieldset id="fPet" hidden><legend>Pet na corrida</legend>
+        <p class="hint">O pet precisa estar em <b>caixa de transporte</b> (pequeno porte) ou de <b>guia/coleira curta</b> (médio e grande). Cães-guia são sempre bem-vindos. Sujeira ou danos no carro causados pelo pet podem ser cobrados.</p>
+        <div class="g2b"><div class="field"><label for="petTipo">Animal</label><select id="petTipo"><option>Cachorro</option><option>Gato</option><option>Outro</option></select></div>
+        <div class="field"><label for="petPorte">Porte</label><select id="petPorte"><option value="pequeno">Pequeno (até 10 kg)</option><option value="médio">Médio (10 a 25 kg)</option><option value="grande">Grande (mais de 25 kg)</option></select></div></div>
+        <div class="field"><label for="petCx">Como vai viajar?</label><select id="petCx"><option value="em caixa de transporte">Em caixa de transporte</option><option value="de guia/coleira">De guia/coleira</option></select></div>
+      </fieldset>
+      <div class="field"><label for="obs">Observações (opcional)</label><textarea id="obs" maxlength="250" placeholder="Ponto de referência, bagagem, nº do voo…"></textarea></div>
+
+      <div class="aviso">
+        <b class="t">Condições do serviço</b>
+        <ul>
+          <li><b>Estimativa de valor:</b> o valor estimado aparece antes de você enviar. Se o tempo de viagem for maior que o previsto, ou o trajeto aumentar em mais de 10 km (engarrafamento, desvio ou qualquer outro motivo), o valor final pode ser alterado.</li>
+          <li><b>Tarifa:</b> <span id="avTar"></span> Chuva não gera acréscimo. Em feriados há acréscimo de <span id="avDyn"></span>%.</li>
+          <li><b>Cancelamento:</b> sem custo se cancelado com até <b><span id="avCan"></span> horas</b> de antecedência da corrida. Depois disso, o cancelamento pode ser cobrado.</li>
+          <li><b>No-Show:</b> se, após <b>30 minutos de espera</b> no local, o passageiro ou a empresa não responderem, a corrida é considerada No-Show e é cobrado <b><span id="avNs"></span>% do valor estimado</b> da viagem. O motorista registra o motivo.</li>
+          <li id="avApr" hidden><b>Aprovação:</b> <span id="avAprT"></span></li>
+          <li><b>Agenda:</b> cada corrida reserva o tempo estimado, uma folga e o deslocamento do motorista até a próxima. Se o horário estiver ocupado, o app avisa.</li>
+          <li><b>Cobrança:</b> as corridas da empresa são somadas e cobradas em fatura mensal, com extrato por requisição e centro de custo.</li>
+        </ul>
+        <details><summary>Privacidade e dados pessoais (LGPD)</summary>
+          <p>Tratamos nome, e-mail, telefone e endereços do solicitante e do passageiro <b>somente</b> para atender a requisição, contatar as pessoas envolvidas, faturar e comprovar as corridas contratadas. Ao informar dados de um passageiro, você declara que ele foi comunicado desta finalidade.</p>
+          <p>Os dados ficam em serviço de nuvem do Google (Firebase), cujos servidores podem estar fora do Brasil, e são guardados pelo tempo necessário para faturamento e obrigações legais. A empresa só vê as requisições da própria empresa. Não vendemos nem compartilhamos dados com terceiros para publicidade.</p>
+          <p>Controlador: Stella Maris Technology. Para acessar, corrigir ou pedir a exclusão de dados, fale com a Stella Maris pelo WhatsApp.</p>
+        </details>
+      </div>
+      <label class="ck"><input type="checkbox" id="ciente"><span>Li as condições acima e informo que os dados do passageiro podem ser usados para esta requisição.</span></label>
+      <div class="est" id="est" hidden></div>
+      <button class="mini" type="button" id="bEst">Calcular estimativa de valor</button>
+      <p class="err" id="err" hidden></p>
+      <button class="go" type="submit" id="go">Enviar requisição</button>
+    </form>
+
+    <!-- LISTA -->
+    <div id="vAprov" hidden>
+      <p class="hint" id="aprMsg"></p>
+      <div id="aprItens"></div>
+      <p class="hint">As requisições abaixo só entram na agenda depois da sua aprovação. Elas ficam aqui quando o valor passa do limite por corrida ou o orçamento do centro de custo seria excedido.</p>
+    </div>
+
+    <div id="vPainel" hidden>
+      <div class="card3" id="orcBox" hidden>
+        <b>Orçamento mensal por centro de custo</b>
+        <p class="hint">Defina o limite de cada setor. Ao chegar a 80% o solicitante recebe um aviso; acima de 100%, as novas requisições aguardam a sua aprovação.</p>
+        <div class="field"><label for="orcMes">Mês</label><input id="orcMes" type="month"></div>
+        <div class="orc" id="orcLista"></div>
+      </div>
+      <p class="hint" id="pnMsg"></p>
+      <div id="pnRoot"></div>
+      <p class="hint">Considera as corridas já realizadas (concluídas, No-Show e canceladas com cobrança). Gestor vê toda a empresa; solicitante vê apenas as suas.</p>
+    </div>
+
+    <div id="vLista" hidden>
+      <p class="hint" id="lMsg" hidden></p>
+      <div class="field" id="boxTodas" hidden><label class="ck"><input type="checkbox" id="ckTodas"><span>Mostrar todas as requisições da empresa (gestor)</span></label></div>
+      <p class="hint" id="lVazio" hidden>Nenhuma requisição ainda.</p>
+      <div id="lItens"></div>
+    </div>
+  </section>
+
+  <p class="hint" style="text-align:center">Stella Maris Technology</p>
+</div>
+
+<script>
+/* Painel interativo — Stella Maris Ride. Uso: const P = Painel(el, {admin:bool}); P.setRows(rows)
+   row: {rt, eid, emp, d(ts), valor, km, min, sit('concluida'|'noshow'|'cancelada'), cc, sol, pas, orig, dest} */
+(function(){
+const brl = v => Number(v || 0).toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+const brl0 = v => Number(v || 0).toLocaleString('pt-BR', {maximumFractionDigits: 0});
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const MES = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'], DIA = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+const SIT = {concluida: 'Concluída', noshow: 'No-Show', cancelada: 'Cancelada'};
+const ym = t => { const d = new Date(t); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); };
+const ymLbl = k => MES[+k.slice(5) - 1] + '/' + k.slice(2, 4);
+const SEM = 'Sem informação';
+const csvq = v => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
+
+const CSS = `
+.pn{--pn-bar:#DDB066;--pn-bar2:#F0CF98;--pn-surf:var(--panel,#0A1830);--pn-surf2:var(--panel2,#10213F);--pn-line:var(--line,#1D3258);--pn-fg:var(--fg,#ECEFF5);--pn-mut:var(--muted,#8C9BB5);display:grid;gap:12px;color:var(--pn-fg)}
+.pn *{box-sizing:border-box}
+.pn .pn-card{align-content:start;overflow:hidden;background:var(--pn-surf);border:1px solid var(--pn-line);border-radius:14px;padding:14px;display:grid;gap:10px;min-width:0}
+.pn h3{margin:0;font:700 18px/1.1 "Barlow Condensed",sans-serif;letter-spacing:.06em;text-transform:uppercase;color:var(--taxi,#DDB066)}
+.pn small.h{color:var(--pn-mut);font-size:12px}
+.pn .pn-f{display:grid;gap:8px;grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
+.pn .pn-f label{display:grid;gap:4px;font-size:12px;color:var(--pn-mut)}
+.pn select,.pn input[type=month]{background:var(--bg,#020D1F);border:1px solid var(--pn-line);border-radius:10px;min-height:42px;padding:0 10px;font:inherit;font-size:15px;color:var(--pn-fg);width:100%}
+.pn select:focus,.pn input:focus,.pn button:focus-visible{outline:2px solid var(--pn-bar);outline-offset:1px}
+.pn .pn-row{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.pn .pn-b{min-height:36px;padding:0 12px;border-radius:999px;border:1px solid var(--pn-line);background:var(--pn-surf2);color:var(--pn-fg);font:700 13px "Barlow Condensed",sans-serif;letter-spacing:.05em;text-transform:uppercase;cursor:pointer}
+.pn .pn-b[aria-pressed=true]{background:var(--pn-bar);color:#1A1204;border-color:var(--pn-bar)}
+.pn .pn-chip{display:inline-flex;gap:6px;align-items:center;min-height:32px;padding:0 10px;border-radius:999px;background:rgba(221,176,102,.15);color:var(--pn-bar);border:1px solid rgba(221,176,102,.4);font-size:13px;cursor:pointer}
+.pn .pn-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(135px,1fr));gap:8px}
+.pn .pn-kpi{background:var(--pn-surf2);border-radius:12px;padding:10px 12px;min-width:0}
+.pn .pn-kpi small{display:block;color:var(--pn-mut);font:600 11px "Barlow Condensed",sans-serif;letter-spacing:.1em;text-transform:uppercase}
+.pn .pn-kpi b{display:block;font:700 22px/1.2 "Barlow Condensed",sans-serif;color:var(--pn-bar);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pn .pn-kpi span{font-size:12px;color:var(--pn-mut)}
+.pn .pn-ins{margin:0;font-size:14px;color:var(--pn-mut)}
+.pn .pn-ins b{color:var(--pn-fg)}
+.pn .pn-g2{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr))}
+.pn .pn-cols{display:flex;align-items:flex-end;gap:6px;height:170px;border-bottom:1px solid var(--pn-line);padding-top:18px;position:relative}
+.pn .pn-col{flex:1;min-width:0;height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:stretch;background:none;border:0;padding:0;cursor:pointer;color:var(--pn-mut);font:inherit}
+.pn .pn-col i{display:block;background:var(--pn-bar);border-radius:4px 4px 0 0;min-height:2px;transition:opacity .15s}
+.pn .pn-col.dim i{opacity:.3}
+.pn .pn-col:hover i,.pn .pn-col:focus-visible i{background:var(--pn-bar2)}
+.pn .pn-col em{font-style:normal;font-size:11px;text-align:center;color:var(--pn-fg);height:16px;line-height:16px;white-space:nowrap;overflow:visible}
+.pn .pn-lbls{display:flex;gap:6px}
+.pn .pn-lbls span{flex:1;min-width:0;text-align:center;font-size:11px;color:var(--pn-mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pn .pn-rk{display:grid;gap:4px;width:100%;background:none;border:0;padding:6px 0;text-align:left;color:var(--pn-fg);font:inherit;cursor:pointer;border-radius:8px}
+.pn .pn-rk:hover .pn-bar i,.pn .pn-rk:focus-visible .pn-bar i{background:var(--pn-bar2)}
+.pn .pn-rk .t{display:flex;justify-content:space-between;gap:10px;font-size:14px}
+.pn .pn-rk .t span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pn .pn-rk .t span:last-child{color:var(--pn-mut);white-space:nowrap;font-variant-numeric:tabular-nums}
+.pn .pn-bar{height:10px;background:var(--pn-surf2);border-radius:5px;overflow:hidden}
+.pn .pn-bar i{display:block;height:100%;background:var(--pn-bar);border-radius:0 5px 5px 0}
+.pn .pn-rk.dim{opacity:.45}
+.pn .pn-more{justify-self:start}
+.pn .pn-tb{overflow-x:auto;border:1px solid var(--pn-line);border-radius:12px}
+.pn table{border-collapse:collapse;width:100%;font-size:13px}
+.pn th,.pn td{padding:7px 9px;border-bottom:1px solid var(--pn-line);text-align:left;white-space:nowrap}
+.pn th{color:var(--pn-mut);font:600 11px "Barlow Condensed",sans-serif;letter-spacing:.1em;text-transform:uppercase}
+.pn td.n,.pn th.n{text-align:right;font-variant-numeric:tabular-nums}
+.pn tr.clk{cursor:pointer}.pn tr.clk:hover td{background:var(--pn-surf2)}
+.pn .pn-vazio{margin:0;color:var(--pn-mut);font-size:14px}
+.pn-tip{position:fixed;z-index:99;pointer-events:none;background:#020D1F;color:#ECEFF5;border:1px solid #1D3258;border-radius:8px;padding:6px 9px;font:13px/1.3 "Barlow",sans-serif;box-shadow:0 4px 14px rgba(0,0,0,.5);max-width:240px}
+`;
+
+window.Painel = function(root, opt){
+  opt = opt || {};
+  const ADM = !!opt.admin;
+  if(!document.getElementById('pn-css')){ const s = document.createElement('style'); s.id = 'pn-css'; s.textContent = CSS; document.head.append(s); }
+  let tip = document.querySelector('.pn-tip'); if(!tip){ tip = document.createElement('div'); tip.className = 'pn-tip'; tip.hidden = true; document.body.append(tip); }
+  root.classList.add('pn');
+  let rows = [], F = {de: '', ate: '', sit: '', emp: '', cc: '', sol: '', pas: '', mes: '', dia: ''}, more = {}, preset = '';
+  const money = ADM ? 'Faturamento' : 'Gasto total';
+
+  root.innerHTML = `
+  <div class="pn-card">
+    <div class="pn-row" id="pn-pre"><span class="small h" style="color:var(--pn-mut);font-size:12px">Período:</span>
+      <button class="pn-b" data-p="3" type="button">3 meses</button><button class="pn-b" data-p="6" type="button">6 meses</button><button class="pn-b" data-p="12" type="button">12 meses</button><button class="pn-b" data-p="" type="button">Tudo</button></div>
+    <div class="pn-f">
+      <label>De<input type="month" data-f="de"></label>
+      <label>Até<input type="month" data-f="ate"></label>
+      <label>Situação<select data-f="sit"><option value="">Todas</option><option value="concluida">Concluídas</option><option value="noshow">No-Show</option><option value="cancelada">Canceladas</option></select></label>
+      ${ADM ? '<label>Empresa<select data-f="emp"></select></label>' : ''}
+      <label>Centro de custo<select data-f="cc"></select></label>
+      <label>Colaborador (solicitante)<select data-f="sol"></select></label>
+      <label>Passageiro<select data-f="pas"></select></label>
+    </div>
+    <div class="pn-row" id="pn-chips"></div>
+  </div>
+  <div class="pn-kpis" id="pn-kpis"></div>
+  <p class="pn-ins" id="pn-ins"></p>
+  <div class="pn-card"><h3>Evolução mensal (R$) <small class="h" id="pn-mt"></small></h3><div id="pn-mes"></div></div>
+  <div class="pn-g2">
+    ${ADM ? '<div class="pn-card"><h3>Ganhos por empresa</h3><div id="pn-emp"></div></div>' : ''}
+    <div class="pn-card"><h3>Por centro de custo</h3><div id="pn-cc"></div></div>
+    <div class="pn-card"><h3>Por colaborador (solicitante)</h3><div id="pn-sol"></div></div>
+    <div class="pn-card"><h3>Por passageiro</h3><div id="pn-pas"></div></div>
+    <div class="pn-card"><h3>Por dia da semana (R$)</h3><div id="pn-dia"></div></div>
+  </div>
+  ${ADM ? '<div class="pn-card"><h3>Extrato de utilização por empresa</h3><div class="pn-tb"><table id="pn-ext"></table></div></div>' : ''}
+  <div class="pn-card"><div class="pn-row"><h3 style="flex:1">Extrato das corridas</h3><button class="pn-b" id="pn-csv" type="button">Baixar CSV</button></div><div class="pn-tb"><table id="pn-tb"></table></div><p class="pn-vazio" id="pn-tbn"></p></div>`;
+
+  const $ = s => root.querySelector(s);
+  const keyOf = {cc: r => (r.cc || '').trim() || SEM, sol: r => (r.sol || '').trim() || SEM, pas: r => (r.pas || '').trim() || SEM, emp: r => r.emp || r.eid || SEM,
+    mes: r => ym(r.d), dia: r => String(new Date(r.d).getDay())};
+
+  function pass(r, skip){
+    const m = ym(r.d);
+    if(F.de && m < F.de) return false; if(F.ate && m > F.ate) return false;
+    if(F.sit && r.sit !== F.sit) return false;
+    for(const k of ['emp', 'cc', 'sol', 'pas', 'mes', 'dia']){ if(k === skip) continue; if(F[k] !== '' && keyOf[k](r) !== F[k]) return false; }
+    return true;
+  }
+  const sel = skip => rows.filter(r => pass(r, skip));
+  const sum = L => L.reduce((s, r) => s + Number(r.valor || 0), 0);
+  function group(L, kf){ const o = {}; L.forEach(r => { const k = kf(r); const g = o[k] || (o[k] = {k, v: 0, q: 0, km: 0, u: 0}); g.v += Number(r.valor || 0); g.q++; g.km += Number(r.km || 0); g.u = Math.max(g.u, r.d || 0); }); return Object.values(o); }
+
+  function fillSelect(el, items, cur, todos){
+    const h = '<option value="">' + todos + '</option>' + items.map(i => `<option value="${esc(i)}"${i === cur ? ' selected' : ''}>${esc(i)}</option>`).join('');
+    if(el.dataset.h !== h){ el.innerHTML = h; el.dataset.h = h; } el.value = cur;
+  }
+  const uniq = f => [...new Set(rows.map(f))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+
+  function draw(){
+    // controles
+    root.querySelectorAll('[data-f]').forEach(el => { if(el.tagName === 'SELECT'){ const k = el.dataset.f; if(k === 'sit') el.value = F.sit; else fillSelect(el, uniq(keyOf[k]), F[k], k === 'emp' ? 'Todas as empresas' : k === 'cc' ? 'Todos os centros' : k === 'sol' ? 'Todos' : 'Todos'); } else el.value = F[el.dataset.f]; });
+    root.querySelectorAll('#pn-pre [data-p]').forEach(b => b.setAttribute('aria-pressed', b.dataset.p === preset));
+    const nm = {de: 'De', ate: 'Até', sit: 'Situação', emp: 'Empresa', cc: 'Centro de custo', sol: 'Colaborador', pas: 'Passageiro', mes: 'Mês', dia: 'Dia'};
+    const lab = (k, v) => k === 'sit' ? SIT[v] : k === 'mes' ? ymLbl(v) : k === 'dia' ? DIA[+v] : k === 'de' || k === 'ate' ? ymLbl(v) : v;
+    $('#pn-chips').innerHTML = Object.keys(F).filter(k => F[k] !== '').map(k => `<button class="pn-chip" type="button" data-x="${k}" aria-label="Remover filtro ${nm[k]}">${nm[k]}: ${esc(lab(k, F[k]))} ✕</button>`).join('') + (Object.values(F).some(v => v !== '') ? '<button class="pn-b" type="button" data-x="*">Limpar filtros</button>' : '');
+
+    const L = sel(), tot = sum(L), q = L.length, ns = L.filter(r => r.sit === 'noshow');
+    const gcc = group(L, keyOf.cc).sort((a, b) => b.v - a.v), gemp = group(L, keyOf.emp).sort((a, b) => b.v - a.v);
+    const kp = [[money, 'R$ ' + brl(tot), ''], ['Corridas', String(q), ''], ['Ticket médio', 'R$ ' + brl(q ? tot / q : 0), ''], ['Km rodados', brl0(L.reduce((s, r) => s + Number(r.km || 0), 0)), ''],
+      ['No-Show', 'R$ ' + brl(sum(ns)), ns.length + ' ocorrência(s)']];
+    if(ADM) kp.push(['Maior cliente', gemp[0] ? gemp[0].k : '—', gemp[0] && tot ? Math.round(gemp[0].v / tot * 100) + '% do faturamento' : '']);
+    else kp.push(['Maior centro de custo', gcc[0] ? gcc[0].k : '—', gcc[0] && tot ? Math.round(gcc[0].v / tot * 100) + '% do gasto' : '']);
+    $('#pn-kpis').innerHTML = kp.map(k => `<div class="pn-kpi"><small>${k[0]}</small><b title="${esc(k[1])}">${esc(k[1])}</b><span>${esc(k[2]) || '&nbsp;'}</span></div>`).join('');
+    const gs = group(L, keyOf.sol).sort((a, b) => b.v - a.v);
+    $('#pn-ins').innerHTML = !q ? '' : ADM
+      ? `<b>${esc(gemp[0].k)}</b> lidera com R$ ${brl(gemp[0].v)} (${Math.round(gemp[0].v / (tot || 1) * 100)}%) em ${gemp[0].q} corrida(s). ${gemp.length > 1 ? 'Ao todo, ' + gemp.length + ' empresa(s) usaram o serviço neste filtro.' : ''}`
+      : `<b>${esc(gcc[0].k)}</b> concentra ${Math.round(gcc[0].v / (tot || 1) * 100)}% do gasto${gs[0] ? '; quem mais solicita é <b>' + esc(gs[0].k) + '</b> (R$ ' + brl(gs[0].v) + ')' : ''}.`;
+
+    // mensal (ignora o proprio filtro de mes)
+    const Lm = sel('mes'), gm = {}; Lm.forEach(r => { const k = ym(r.d); gm[k] = (gm[k] || 0) + Number(r.valor || 0); });
+    let ks = Object.keys(gm).sort(); if(ks.length){ const out = []; let [y, m] = ks[0].split('-').map(Number); const [y2, m2] = ks[ks.length - 1].split('-').map(Number); while(y < y2 || (y === y2 && m <= m2)){ out.push(y + '-' + String(m).padStart(2, '0')); m++; if(m > 12){ m = 1; y++; } } ks = out.slice(-24); }
+    $('#pn-mt').textContent = ks.length > 12 ? '(últimos 24 meses)' : '';
+    cols('#pn-mes', ks.map(k => ({k, l: ymLbl(k), v: gm[k] || 0, q: Lm.filter(r => ym(r.d) === k).length})), 'mes', 'Nenhuma corrida no período.');
+    // dia da semana
+    const Ld = sel('dia'), gd = DIA.map((l, i) => ({k: String(i), l, v: 0, q: 0})); Ld.forEach(r => { const g = gd[new Date(r.d).getDay()]; g.v += Number(r.valor || 0); g.q++; });
+    cols('#pn-dia', gd, 'dia', 'Nenhuma corrida no período.');
+    // rankings
+    rank('#pn-cc', 'cc'); rank('#pn-sol', 'sol'); rank('#pn-pas', 'pas'); if(ADM) rank('#pn-emp', 'emp');
+    // extrato por empresa
+    if(ADM){ const ge = gemp; $('#pn-ext').innerHTML = '<tr><th>Empresa</th><th class="n">Corridas</th><th class="n">Km</th><th class="n">Total (R$)</th><th class="n">% do total</th><th class="n">Ticket médio</th><th>Última corrida</th></tr>' +
+      (ge.map(g => `<tr class="clk" data-emp="${esc(g.k)}"><td>${esc(g.k)}</td><td class="n">${g.q}</td><td class="n">${brl0(g.km)}</td><td class="n">${brl(g.v)}</td><td class="n">${tot ? (g.v / tot * 100).toFixed(1).replace('.', ',') : '0'}%</td><td class="n">${brl(g.q ? g.v / g.q : 0)}</td><td>${g.u ? new Date(g.u).toLocaleDateString('pt-BR') : ''}</td></tr>`).join('') || '<tr><td colspan="7" style="color:var(--pn-mut)">Sem dados.</td></tr>'); }
+    // tabela
+    const T = L.slice().sort((a, b) => b.d - a.d), N = 150;
+    $('#pn-tb').innerHTML = '<tr><th>RT</th><th>Data</th>' + (ADM ? '<th>Empresa</th>' : '') + '<th>Solicitante</th><th>Passageiro</th><th>Centro de custo</th><th>Situação</th><th class="n">Km</th><th class="n">Valor (R$)</th></tr>' +
+      T.slice(0, N).map(r => `<tr><td>${esc(r.rt)}</td><td>${new Date(r.d).toLocaleDateString('pt-BR')}</td>${ADM ? '<td>' + esc(r.emp || r.eid) + '</td>' : ''}<td>${esc(r.sol)}</td><td>${esc(r.pas)}</td><td>${esc(r.cc)}</td><td>${SIT[r.sit] || esc(r.sit)}</td><td class="n">${r.km != null ? brl(r.km) : ''}</td><td class="n">${brl(r.valor)}</td></tr>`).join('');
+    $('#pn-tbn').textContent = !q ? 'Nenhuma corrida neste filtro.' : T.length > N ? 'Mostrando as ' + N + ' mais recentes de ' + T.length + '. O CSV leva todas.' : '';
+  }
+
+  function cols(sl, data, key, vazio){
+    const el = $(sl); const max = Math.max(0, ...data.map(d => d.v)); if(!data.length || !max && !data.some(d => d.q)){ el.innerHTML = `<p class="pn-vazio">${vazio}</p>`; return; }
+    const sh = data.length <= 8, imax = data.findIndex(d => d.v === max);
+    el.innerHTML = `<div class="pn-cols">` + data.map((d, i) => `<button type="button" class="pn-col${F[key] !== '' && F[key] !== d.k ? ' dim' : ''}" data-d="${key}" data-k="${esc(d.k)}" data-tip="${esc(d.l)}: R$ ${brl(d.v)} · ${d.q} corrida(s)" aria-label="${esc(d.l)}: R$ ${brl(d.v)}, ${d.q} corridas" aria-pressed="${F[key] === d.k}"><em>${sh || i === imax ? brl0(d.v) : ''}</em><i style="height:${max ? Math.max(1, d.v / max * 100) : 0}%"></i></button>`).join('') + '</div>' +
+      '<div class="pn-lbls">' + data.map(d => `<span>${esc(d.l)}</span>`).join('') + '</div>';
+  }
+  function rank(sl, key){
+    const el = $(sl), L = sel(key), tot = sum(L), g = group(L, keyOf[key]).sort((a, b) => b.v - a.v);
+    if(!g.length){ el.innerHTML = '<p class="pn-vazio">Nenhuma corrida no filtro.</p>'; return; }
+    const N = 8, vis = more[key] ? g : g.slice(0, N), max = g[0].v || 1;
+    el.innerHTML = vis.map(x => `<button type="button" class="pn-rk${F[key] !== '' && F[key] !== x.k ? ' dim' : ''}" data-d="${key}" data-k="${esc(x.k)}" aria-pressed="${F[key] === x.k}" data-tip="${esc(x.k)}: R$ ${brl(x.v)} · ${x.q} corrida(s) · ${tot ? Math.round(x.v / tot * 100) : 0}% do total"><span class="t"><span>${esc(x.k)}</span><span>R$ ${brl(x.v)} · ${x.q}</span></span><span class="pn-bar"><i style="width:${Math.max(1, x.v / max * 100)}%"></i></span></button>`).join('') +
+      (g.length > N ? `<button type="button" class="pn-b pn-more" data-more="${key}">${more[key] ? 'Mostrar menos' : 'Ver todos (' + g.length + ')'}</button>` : '');
+  }
+
+  // eventos
+  root.addEventListener('change', e => { const el = e.target.closest('[data-f]'); if(!el) return; F[el.dataset.f] = el.value; if(el.dataset.f === 'de' || el.dataset.f === 'ate') preset = '*'; draw(); });
+  root.addEventListener('click', e => {
+    const p = e.target.closest('[data-p]'); if(p){ preset = p.dataset.p; F.mes = ''; if(!preset){ F.de = ''; F.ate = ''; } else { const d = new Date(); F.ate = ''; d.setMonth(d.getMonth() - (+preset - 1)); F.de = ym(d); } draw(); return; }
+    const x = e.target.closest('[data-x]'); if(x){ if(x.dataset.x === '*'){ Object.keys(F).forEach(k => F[k] = ''); preset = ''; } else { F[x.dataset.x] = ''; if(x.dataset.x === 'de' || x.dataset.x === 'ate') preset = ''; } draw(); return; }
+    const m = e.target.closest('[data-more]'); if(m){ more[m.dataset.more] = !more[m.dataset.more]; draw(); return; }
+    const d = e.target.closest('[data-d]'); if(d){ const k = d.dataset.d, v = d.dataset.k; F[k] = F[k] === v ? '' : v; draw(); return; }
+    const t = e.target.closest('tr[data-emp]'); if(t){ F.emp = F.emp === t.dataset.emp ? '' : t.dataset.emp; draw(); }
+  });
+  const showTip = e => { const t = e.target.closest && e.target.closest('[data-tip]'); if(!t){ tip.hidden = true; return; } tip.textContent = t.dataset.tip; tip.hidden = false;
+    const r = t.getBoundingClientRect(), mx = e.clientX && e.type === 'mousemove' ? e.clientX : r.left + r.width / 2; tip.style.left = Math.max(8, Math.min(innerWidth - tip.offsetWidth - 8, mx - tip.offsetWidth / 2)) + 'px'; tip.style.top = Math.max(8, r.top - tip.offsetHeight - 8) + 'px'; };
+  root.addEventListener('mousemove', showTip); root.addEventListener('mouseleave', () => tip.hidden = true); root.addEventListener('focusin', showTip); root.addEventListener('focusout', () => tip.hidden = true); document.addEventListener('scroll', () => tip.hidden = true, true);
+  $('#pn-csv').onclick = () => {
+    const L = sel().sort((a, b) => a.d - b.d); if(!L.length) return;
+    const cab = ['RT', 'Data', 'Hora'].concat(ADM ? ['Empresa'] : [], ['Solicitante', 'Passageiro', 'Centro de custo', 'Origem', 'Destino', 'Situação', 'Km', 'Valor (R$)']);
+    const rs = L.map(r => { const d = new Date(r.d); return [r.rt, d.toLocaleDateString('pt-BR'), d.toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'})].concat(ADM ? [r.emp || r.eid] : [], [r.sol, r.pas, r.cc, r.orig, r.dest, SIT[r.sit] || r.sit, r.km != null ? brl(r.km) : '', brl(r.valor)]).map(csvq).join(';'); });
+    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['﻿' + cab.map(csvq).join(';') + '\r\n' + rs.join('\r\n') + '\r\n'], {type: 'text/csv;charset=utf-8'}));
+    a.download = 'extrato-stella-maris-ride.csv'; document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  };
+  return {setRows(r){ rows = (r || []).filter(x => x && x.d); draw(); }, state: () => F};
+};
+})();
+
+</script>
+<script>
+(() => {
+'use strict';
+const $ = id => document.getElementById(id);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const FBC = {"apiKey": "AIzaSyAMHd8SJb_Ts5Ji-_MbWDvwcjI_UGRYC4I", "authDomain": "stella-maris-ride.firebaseapp.com", "databaseURL": "https://stella-maris-ride-default-rtdb.firebaseio.com", "projectId": "stella-maris-ride", "storageBucket": "stella-maris-ride.firebasestorage.app", "messagingSenderId": "561195291545", "appId": "1:561195291545:web:3b926f9089c3d0ab3fb908"};
+const NTFY = 'https://ntfy.sh/sm-ride-bmfl2gkhevm0wvdsip3e50';
+const brl = v => Number(v || 0).toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+const z = v => String(v).replace('.', ',');
+const rtTxt = n => 'RT' + String(n).padStart(9, '0');
+const hhmm = t => new Date(t).toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'});
+const dthm = t => new Date(t).toLocaleString('pt-BR', {dateStyle: 'short', timeStyle: 'short'});
+let db = null, auth = null, me = null, emp = null, eid = null;
+
+function avisar(msg){ try{ fetch(NTFY, {method: 'POST', body: msg, headers: {'Title': 'Stella Maris Ride', 'Priority': 'high', 'Tags': 'taxi', 'Click': 'https://luizfalchetto.github.io/AppStellaMarisLog/'}}).catch(() => {}); }catch(x){} }
+const loadJs = u => new Promise((res, rej) => { const s = document.createElement('script'); s.src = u; s.onload = res; s.onerror = () => rej(new Error('sdk')); document.head.append(s); });
+const tmo = (p, ms) => Promise.race([p, new Promise((_, rj) => setTimeout(() => rj(new Error('timeout')), ms))]);
+
+async function boot(){
+  try{
+    const b = 'https://www.gstatic.com/firebasejs/10.12.5/firebase-';
+    await loadJs(b + 'app-compat.js'); await Promise.all([loadJs(b + 'database-compat.js'), loadJs(b + 'auth-compat.js')]);
+    if(!(firebase.apps && firebase.apps.length)) firebase.initializeApp(FBC);
+    auth = firebase.auth(); db = firebase.database(); auth.languageCode = 'pt-BR';
+    auth.onAuthStateChanged(onAuth);
+  }catch(e){ $('vLogin').hidden = false; $('lErr').hidden = false; $('lErr').textContent = 'Sem conexão com o serviço. Verifique a internet e recarregue.'; }
+}
+async function onAuth(u){
+  if(!u){ me = emp = eid = null; $('vApp').hidden = true; $('vLogin').hidden = false; $('lGo').disabled = false; $('lGo').textContent = 'Entrar'; return; }
+  try{
+    const us = (await tmo(db.ref('usuarios/' + u.uid).once('value'), 10000)).val();
+    if(!us || !us.ativo || !us.eid) return negar('Seu acesso ainda não foi liberado ou está bloqueado. Fale com a Stella Maris.');
+    const e = (await tmo(db.ref('empresas/' + us.eid).once('value'), 10000)).val();
+    if(!e || !e.ativo) return negar('O cadastro da sua empresa está inativo. Fale com a Stella Maris.');
+    me = Object.assign({uid: u.uid}, us); emp = e; eid = us.eid; iniciar();
+  }catch(x){ negar('Não consegui carregar seu cadastro. Tente novamente.'); }
+}
+function negar(m){ $('vApp').hidden = true; $('vLogin').hidden = false; $('lErr').hidden = false; $('lErr').textContent = m; $('lGo').disabled = false; $('lGo').textContent = 'Entrar'; if(auth) auth.signOut(); }
+
+$('fLogin').onsubmit = async e => { e.preventDefault(); const b = $('lGo'); $('lErr').hidden = true; b.disabled = true; b.textContent = 'Entrando…';
+  try{ await auth.signInWithEmailAndPassword($('lEmail').value.trim(), $('lSenha').value); }
+  catch(x){ b.disabled = false; b.textContent = 'Entrar'; $('lErr').hidden = false; const c = x && x.code;
+    $('lErr').textContent = (c === 'auth/network-request-failed') ? 'Sem conexão. Tente de novo.' : (c === 'auth/too-many-requests') ? 'Muitas tentativas. Aguarde alguns minutos ou use "Esqueci minha senha".' : 'E-mail ou senha incorretos.'; } };
+$('lEsq').onclick = async () => { const m = $('lEmail').value.trim(); $('lErr').hidden = false; if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(m)){ $('lErr').textContent = 'Digite seu e-mail acima e toque novamente.'; return; }
+  try{ await auth.sendPasswordResetEmail(m); }catch(x){} $('lErr').textContent = 'Se este e-mail tiver acesso, você receberá um link para criar uma nova senha.'; };
+$('bSair').onclick = () => auth.signOut();
+
+// ---------- app ----------
+const T = () => Object.assign({band: 0, km: 0, min: 0, esp: 0, dyn: 50}, (emp && emp.tar) || {});
+let agendar = true, pO = null, pD = null, est = null, curTab = 'nova';
+function iniciar(){
+  $('vLogin').hidden = true; $('vApp').hidden = false; $('lSenha').value = '';
+  $('wEmp').textContent = emp.nome; $('wUser').textContent = me.nome + (me.papel === 'gestor' ? ' · Gestor' : '') ;
+  const t = T();
+  $('avTar').textContent = `Bandeirada mínima de R$ ${brl(t.band)}, R$ ${brl(t.km)} por km e R$ ${brl(t.min)} por minuto de viagem. Espera: R$ ${brl(t.esp)} por minuto.`;
+  $('avDyn').textContent = z(t.dyn != null ? t.dyn : 50); $('avCan').textContent = z(emp.canH != null ? emp.canH : 6); $('avNs').textContent = z(emp.nsPct != null ? emp.nsPct : 50);
+  $('sNome').value = me.nome || ''; $('sMail').value = me.email || ''; $('sFone').value = me.fone || '';
+  const d = new Date(Date.now() + 30*60000), p = n => String(n).padStart(2, '0'); $('quando').min = `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+  $('boxTodas').hidden = me.papel !== 'gestor'; $('tabAprov').hidden = me.papel !== 'gestor';
+  const dS = descSerie(); $('serDesc').textContent = dS ? `Corridas em série têm desconto de ${z(dS)}% sobre o valor de cada corrida.` : 'Cada data vira uma requisição, com número próprio.';
+  const aA = Number(emp.aprovaAcima) || 0; $('avApr').hidden = !(aA > 0 && me.papel !== 'gestor'); $('avAprT').textContent = `requisições acima de R$ ${brl(aA)} por corrida, ou que excedam o orçamento do centro de custo, aguardam a aprovação do gestor da sua empresa.`;
+  carregarOrc().then(() => { infoOrc(); }); if(me.papel === 'gestor') contarAprov(); setTab('nova');
+}
+function setTab(t){ curTab = t; document.querySelectorAll('#tabs button').forEach(b => b.setAttribute('aria-pressed', b.dataset.t === t)); $('f').hidden = t !== 'nova'; $('vLista').hidden = t !== 'lista'; $('vPainel').hidden = t !== 'painel'; $('vAprov').hidden = t !== 'aprov'; document.querySelector('.app').classList.toggle('wide', t === 'painel'); if(t === 'lista') carregarLista(); if(t === 'painel'){ carregarPainel(); orcUI(); } if(t === 'aprov') carregarAprov(); }
+$('tabs').onclick = e => { const b = e.target.closest('button[data-t]'); if(b) setTab(b.dataset.t); };
+
+// ---- pet ----
+const petOn = () => !$('fPet').hidden;
+const obsFinal = () => { const o = $('obs').value.trim(); if(!petOn()) return o; const p = `🐾 PET: ${$('petTipo').value.toLowerCase()} ${$('petPorte').value}, ${$('petCx').value}.`; return (p + (o ? ' ' + o : '')).slice(0, 300); };
+$('bPet').onclick = () => { const f = $('fPet'); f.hidden = !f.hidden; $('bPet').setAttribute('aria-expanded', String(!f.hidden)); $('bPet').textContent = f.hidden ? '🐾 O passageiro levará um pet' : '🐾 Remover pet'; };
+
+// ---- endereços / estimativa ----
+const addr = p => { const g = id => $(p + id).value.trim(); return [[g('Rua'), g('Num')].filter(Boolean).join(', '), g('Bai'), g('Cid')].filter(Boolean).join(' - '); };
+const addrQ = (p, simples) => { const g = id => $(p + id).value.trim(); return [[g('Rua'), simples ? '' : g('Num')].filter(Boolean).join(' '), simples ? '' : g('Bai'), g('Cid'), 'Brasil'].filter(Boolean).join(', '); };
+const norm = t => String(t || '').normalize('NFD').replace(/[^\x20-\x7E]/g, '').toLowerCase();
+async function geoFwd(t){ try{ const j = await (await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&countrycodes=br&accept-language=pt-BR&q=${encodeURIComponent(t)}`)).json(); return j[0] ? {la: +j[0].lat, lo: +j[0].lon} : null; }catch(e){ return null; } }
+async function photon(q, cid){ try{ const c = norm(cid).trim(); if(!c) return null;
+  const j = await (await fetch(`https://photon.komoot.io/api/?limit=6&lat=-22.37&lon=-41.79&q=${encodeURIComponent(q)}`)).json();
+  const f = (j.features || []).find(x => { const p = x.properties || {}; return [p.city, p.county, p.locality, p.district].some(v => norm(v).includes(c)); });
+  return f ? {la: f.geometry.coordinates[1], lo: f.geometry.coordinates[0]} : null; }catch(e){ return null; } }
+async function achar(p){
+  const g = id => $(p + id).value.trim(), cid = g('Cid'), rua = g('Rua'), num = g('Num'), bai = g('Bai');
+  const tries = [() => photon([rua + (num ? ' ' + num : ''), bai, cid].filter(Boolean).join(', '), cid), () => photon([rua, cid].join(', '), cid), () => geoFwd(addrQ(p)), () => geoFwd(addrQ(p, true))];
+  for(const t of tries){ const r = await t(); if(r) return r; }
+  if(bai){ const r = await photon(bai + ', ' + cid, cid); if(r) return Object.assign(r, {aprox: true}); }
+  return null;
+}
+const hav = (a, b) => { const r = x => x*Math.PI/180, dLa = r(b.la - a.la), dLo = r(b.lo - a.lo), h = Math.sin(dLa/2)**2 + Math.cos(r(a.la))*Math.cos(r(b.la))*Math.sin(dLo/2)**2; return 2*6371*Math.asin(Math.sqrt(h)); };
+function showEst(){ if(!est) return; $('est').hidden = false;
+  $('est').innerHTML = `<small>Estimativa${est.aprox ? ' aproximada' : ''}</small><b>≈ R$ ${brl(est.v)}</b><small>${est.km.toLocaleString('pt-BR', {maximumFractionDigits: 1})} km · cerca de ${Math.round(est.min)} min</small><small>Pode variar se a viagem demorar mais que o previsto ou o trajeto aumentar mais de 10 km.</small>${serieOn() && descSerie() ? `<small>Corridas em série: ≈ R$ ${brl(vEst(true))} cada (desconto de ${z(descSerie())}%).</small>` : ''}`; }
+async function calcular(){
+  if((!$('oRua').value.trim()) || !$('dRua').value.trim()) throw new Error('Preencha a rua de origem e a de destino.');
+  if(!pO) pO = await achar('o'); if(!pD) pD = await achar('d');
+  if(!pO || !pD) throw new Error('Não achei um dos endereços no mapa. Confira a rua e o bairro.');
+  let km, min, aprox = !!(pO.aprox || pD.aprox);
+  try{ const j = await (await fetch(`https://router.project-osrm.org/route/v1/driving/${pO.lo},${pO.la};${pD.lo},${pD.la}?overview=false`)).json(); const r = j.routes && j.routes[0]; if(!r) throw new Error('x'); km = r.distance/1000; min = r.duration/60; }
+  catch(e){ km = hav(pO, pD)*1.3; min = km/25*60; aprox = true; }
+  const t = T(); est = {km, min, v: Math.max(t.band, km*t.km) + min*t.min, aprox}; showEst(); chkSlot(); return est;
+}
+['oRua', 'oNum', 'oBai', 'oCid'].forEach(id => $(id).oninput = () => { pO = null; est = null; $('est').hidden = true; });
+['dRua', 'dNum', 'dBai', 'dCid'].forEach(id => $(id).oninput = () => { pD = null; est = null; $('est').hidden = true; });
+$('bEst').onclick = async () => { const b = $('bEst'); b.disabled = true; b.textContent = 'Calculando…'; $('est').hidden = true; $('err').hidden = true;
+  try{ await calcular(); }catch(e){ $('err').hidden = false; $('err').textContent = e.message || 'Falha ao calcular.'; }
+  b.disabled = false; b.textContent = 'Calcular estimativa de valor'; };
+
+// ---- agenda (trava) ----
+const ATIVOS = ['aguardando', 'aceito', 'a_caminho', 'chegou', 'em_corrida'];
+const rd = (p, k) => p ? {[k + 'La']: Math.round(p.la*100)/100, [k + 'Lo']: Math.round(p.lo*100)/100} : {};
+const margem = min => Math.max(5, Math.ceil(min*0.10));
+const durTotal = min => Math.ceil(min + margem(min));
+const tv = (a, b) => (a && b) ? Math.max(5, Math.ceil(hav(a, b)*1.35/35*60)) : 10;
+async function ocupado(ts, mins){
+  const sn = await tmo(db.ref('pub').once('value'), 6000);
+  const v = sn.val() || {}, now = Date.now(), fimN = ts + mins*60000;
+  const pt = (la, lo) => (typeof la === 'number' && typeof lo === 'number') ? {la, lo} : null;
+  for(const k of Object.keys(v)){ const x = v[k];
+    if(!x || !x.a || !ATIVOS.includes(x.s) || x.a < now - 3*3600*1000) continue;
+    const fimX = x.a + (x.m || 35)*60000;
+    if(ts < x.a){ const gap = tv(pD, pt(x.oLa, x.oLo))*60000; if(fimN + gap > x.a) return {antes: true, x: x.a, ate: fimN + gap}; }
+    else { const gap = tv(pt(x.dLa, x.dLo), pO)*60000; if(ts < fimX + gap) return {antes: false, x: x.a, ate: fimX + gap}; }
+  }
+  return null;
+}
+let slotTk = 0;
+const horaOk = ts => { const d = new Date(ts); return d.getHours()*60 + d.getMinutes() <= 21*60 + 30; };
+const HORA_MSG = 'Os agendamentos são aceitos somente até as 21:30. Escolha um horário de partida até as 21:30.';
+async function chkSlot(){
+  const el = $('qAv'), v = $('quando').value; el.textContent = ''; if(!v) return false;
+  const ts = new Date(v).getTime(); if(ts < Date.now() + 25*60000){ el.style.color = '#e5484d'; el.textContent = 'Escolha um horário com pelo menos 30 minutos de antecedência.'; return false; }
+  if(!horaOk(ts)){ el.style.color = '#e5484d'; el.textContent = HORA_MSG; return false; }
+  const tk = ++slotTk;
+  try{ const o = await ocupado(ts, durTotal(est ? est.min : 30)); if(tk !== slotTk) return true;
+    if(o){ el.style.color = '#e5484d'; el.textContent = o.antes ? `Horário indisponível: há outra corrida às ${hhmm(o.x)} e não haveria tempo de terminar a sua e se deslocar até lá. Escolha um horário anterior ou depois das ${hhmm(o.ate)}.` : `Horário indisponível: a agenda está travada até as ${hhmm(o.ate)} (corrida em andamento e deslocamento até você). Escolha um horário a partir desse.`; return false; }
+    el.style.color = '#2fb36d'; el.textContent = 'Horário disponível ✓'; return true;
+  }catch(x){ return true; }
+}
+$('quando').onchange = chkSlot; $('quando').oninput = chkSlot;
+
+// ---- e-mail (EmailJS) — preencher EJS para ativar os e-mails automaticos ----
+const EJS = {svc: '', tpl: '', key: ''};
+async function enviarEmail(to, nome, assunto, msg){
+  if(!EJS.svc || !EJS.tpl || !EJS.key || !to) return false;
+  try{ const r = await tmo(fetch('https://api.emailjs.com/api/v1.0/email/send', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({service_id: EJS.svc, template_id: EJS.tpl, user_id: EJS.key, template_params: {to_email: to, to_name: nome, subject: assunto, message: msg}})}), 12000); return r.ok; }
+  catch(x){ return false; }
+}
+const rodapeEmail = '\n\nStella Maris Technology · Stella Maris Ride\nEsta é uma mensagem automática sobre uma requisição de transporte. Seus dados são usados apenas para esta requisição (LGPD).';
+
+// ---- orcamento / aprovacao / serie ----
+const slug = s => norm(s).replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 40) || 'sem_cc';
+const mesK = ts => { const d = new Date(ts); return d.getFullYear() + String(d.getMonth() + 1).padStart(2, '0'); };
+const mesTxt = k => ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'][+k.slice(4) - 1] + '/' + k.slice(2, 4);
+let ORC = {};
+async function carregarOrc(){ try{ ORC = (await tmo(db.ref('orc/' + eid).once('value'), 8000)).val() || {}; }catch(x){ ORC = {}; } }
+const usoDe = async (mk, k) => { try{ return Number((await tmo(db.ref('uso/' + eid + '/' + mk + '/' + k).once('value'), 6000)).val() || 0); }catch(x){ return 0; } };
+const addUso = (ts, cc, v) => db.ref('uso/' + eid + '/' + mesK(ts) + '/' + slug(cc)).transaction(c => Math.round(((c || 0) + v) * 100) / 100).catch(() => {});
+const descSerie = () => Math.max(0, Math.min(90, Number(emp && emp.recDesc) || 0));
+const vEst = serie => est ? Math.round(est.v * (serie ? (1 - descSerie()/100) : 1) * 100) / 100 : 0;
+async function motivoAprov(valor, ts, cc){
+  if(me.papel === 'gestor') return null;
+  const lim = Number(emp.aprovaAcima) || 0, m = [];
+  if(lim > 0 && valor > lim) m.push('valor acima de R$ ' + brl(lim) + ' por corrida');
+  const k = slug(cc), o = ORC[k];
+  if(o && o.v > 0){ const u = await usoDe(mesK(ts), k); if(u + valor > o.v) m.push('orçamento do centro de custo "' + o.n + '" em ' + mesTxt(mesK(ts)) + ' seria excedido (R$ ' + brl(u + valor) + ' de R$ ' + brl(o.v) + ')'); }
+  return m.length ? m.join('; ') : null;
+}
+async function infoOrc(){
+  const el = $('orcAv'); el.textContent = ''; const cc = $('cc').value.trim(), q = $('quando').value; if(!cc || !q) return;
+  const k = slug(cc), o = ORC[k]; if(!o || !(o.v > 0)) return;
+  const ts = new Date(q).getTime(), u = await usoDe(mesK(ts), k), p = Math.round(u / o.v * 100);
+  el.style.color = p >= 100 ? '#e5484d' : p >= 80 ? '#DDB066' : 'var(--muted)';
+  el.textContent = `Orçamento de "${o.n}" em ${mesTxt(mesK(ts))}: R$ ${brl(u)} de R$ ${brl(o.v)} (${p}%).` + (p >= 100 && me.papel !== 'gestor' ? ' Novas requisições ficarão aguardando aprovação do gestor.' : '');
+}
+$('cc').onchange = infoOrc; $('quando').addEventListener('change', infoOrc);
+
+// serie (recorrencia)
+let serSel = [];
+const serieOn = () => !$('fSerie').hidden;
+const SERBTN = '🔁 Repetir esta corrida (recorrente / pacote do mês)';
+$('bSerie').onclick = () => { const aberto = !$('fSerie').hidden; $('fSerie').hidden = aberto; $('bSerie').setAttribute('aria-expanded', String(!aberto)); $('bSerie').textContent = aberto ? SERBTN : '🔁 Corrida única (remover recorrência)'; serSel = []; $('serLista').innerHTML = ''; showEst(); };
+function serieDatas(){
+  const base = new Date($('quando').value); if(isNaN(base)) return [];
+  const dias = [...document.querySelectorAll('#serDias input:checked')].map(x => +x.value); if(!dias.length) dias.push(base.getDay());
+  const qtd = Math.max(2, Math.min(40, +$('serQtd').value || 2)), out = [], d = new Date(base); let guard = 0;
+  while(out.length < qtd && guard++ < 400){ if(dias.includes(d.getDay())) out.push(d.getTime()); d.setDate(d.getDate() + 1); }
+  return out;
+}
+async function serieVer(){
+  const box = $('serLista'); box.innerHTML = '<p class="hint">Verificando a agenda…</p>';
+  if(!est){ try{ await calcular(); }catch(x){ box.innerHTML = `<p class="err">${esc(x.message || 'Preencha origem e destino.')}</p>`; return []; } }
+  if(!pO) pO = await achar('o'); if(!pD) pD = await achar('d');
+  const ds = serieDatas(); if(!ds.length){ box.innerHTML = '<p class="err">Informe a data e a hora da primeira corrida.</p>'; return []; }
+  const mins = durTotal(est.min), res = [];
+  for(const ts of ds){ let o = null; if(ts < Date.now() + 25*60000 || !horaOk(ts)) o = {passado: true}; else { try{ o = await ocupado(ts, mins); }catch(x){ o = null; } } res.push({ts, o}); }
+  box.innerHTML = `<p class="hint">Cada data vira uma requisição, com número próprio. Desmarque as que não quiser. Datas indisponíveis ficam de fora.${descSerie() ? ' Desconto de ' + z(descSerie()) + '% em cada corrida.' : ''}</p>` +
+    res.map((r, i) => `<label class="ck"><input type="checkbox" data-i="${i}" ${r.o ? 'disabled' : 'checked'}><span>${esc(dthm(r.ts))}${r.o ? ' — <b style="color:#e5484d">indisponível</b>' : ''}</span></label>`).join('');
+  serSel = res; showEst(); return res;
+}
+$('serVer').onclick = serieVer;
+['serQtd', 'serDias', 'quando'].forEach(id => $(id).addEventListener('change', () => { serSel = []; $('serLista').innerHTML = ''; }));
+
+// ---- criar uma RT ----
+const erro = m => { $('err').hidden = false; $('err').textContent = m; };
+async function criarRT(A, serieId){
+  const v = id => $(id).value.trim();
+  const valor = vEst(!!serieId);
+  const motivo = await motivoAprov(valor, A, v('cc'));
+  const r = await tmo(db.ref('contadores/rt').transaction(c => c === null ? 1 : c + 1), 15000); if(!r.committed) throw Object.assign(new Error('nc'), {contador: true});
+  const n = r.snapshot.val(), RT = rtTxt(n), TS = firebase.database.ServerValue.TIMESTAMP, sid = db.ref().push().key, pid = db.ref().push().key;
+  const m = durTotal(est ? est.min : 30), obs = obsFinal();
+  const estimTxt = est ? `R$ ${brl(valor)} · ${est.km.toLocaleString('pt-BR', {maximumFractionDigits: 1})} km` : '';
+  const rt = {eid, uid: me.uid, solNome: v('sNome').slice(0, 80), solEmail: v('sMail').slice(0, 120), solFone: v('sFone').slice(0, 30), pasNome: v('pNome').slice(0, 80), pasEmail: v('pMail').slice(0, 120), pasFone: v('pFone').slice(0, 30), cc: v('cc').slice(0, 80),
+    partida: addr('o').slice(0, 200), destino: addr('d').slice(0, 200), quando: dthm(A) + ' (agendada)', a: A, sid, pid, c: TS};
+  if(serieId) rt.serie = serieId; if(motivo) rt.apr = 'pendente';
+  if(obs) rt.obs = obs; if(est){ rt.estimV = valor; rt.estimK = Math.round(est.km*10)/10; rt.estimM = Math.round(est.min); }
+  const f = Object.assign({}, rt, {rt: RT, empNome: emp.nome.slice(0, 100), nome: rt.solNome, fone: rt.solFone, passageiro: rt.pasNome, foneP: rt.pasFone, estim: estimTxt, s: 'aguardando'});
+  delete f.uid; delete f.sid; delete f.apr; if(pO){ f.oLa = pO.la; f.oLo = pO.lo; } if(pD){ f.dLa = pD.la; f.dLo = pD.lo; }
+  const p = Object.assign({c: TS, s: 'aguardando', m, a: A}, rd(pO, 'o'), rd(pD, 'd'));
+  const up = {}; up['rt/' + RT] = rt; up['rtsu/' + me.uid + '/' + RT] = true; up['rtse/' + eid + '/' + RT] = true;
+  if(motivo){ up['pend/' + eid + '/' + RT] = {f: Object.assign({}, f, {c: Date.now()}), p: Object.assign({}, p, {c: Date.now()})}; up['aprov/' + eid + '/' + RT] = {s: 'pendente', c: TS, u: me.uid, motivo: motivo.slice(0, 200)}; }
+  else { up['fila/' + sid] = f; up['pub/' + pid] = p; }
+  await tmo(db.ref().update(up), 15000);
+  addUso(A, v('cc'), valor);
+  return {RT, A, motivo, valor, rt};
+}
+function emailConfirma(c){
+  const rt = c.rt, st = c.motivo ? 'Aguardando a aprovação do gestor da sua empresa.' : 'Aguardando a confirmação da Stella Maris.';
+  const corpo = `Recebemos a requisição ${c.RT} da ${emp.nome}.\n\nData e hora: ${dthm(c.A)}\nDe: ${rt.partida}\nPara: ${rt.destino}\nPassageiro: ${rt.pasNome}\nCentro de custo: ${rt.cc}\nValor estimado: R$ ${brl(c.valor)} (pode variar se a viagem demorar mais que o previsto ou o trajeto aumentar mais de 10 km)\n\nSituação: ${st}\nCancelamento sem custo até ${z(emp.canH != null ? emp.canH : 6)} h antes da corrida.${rodapeEmail}`;
+  enviarEmail(rt.solEmail, rt.solNome, `Requisição ${c.RT} recebida`, `Olá, ${rt.solNome}.\n\n` + corpo);
+  if(!c.motivo && rt.pasEmail && rt.pasEmail !== rt.solEmail) enviarEmail(rt.pasEmail, rt.pasNome, `Corrida agendada ${c.RT}`, `Olá, ${rt.pasNome}.\n\n` + corpo);
+}
+$('f').onsubmit = async e => {
+  e.preventDefault(); $('err').hidden = true;
+  const v = id => $(id).value.trim();
+  const req = {sNome: 'nome do solicitante', sMail: 'e-mail do solicitante', sFone: 'telefone do solicitante', pNome: 'nome do passageiro', pMail: 'e-mail do passageiro', pFone: 'telefone do passageiro', cc: 'centro de custo/setor', oRua: 'rua de origem', dRua: 'rua de destino', quando: 'data e hora'};
+  for(const k of Object.keys(req)) if(!v(k)){ erro('Preencha: ' + req[k] + '.'); $(k).focus(); return; }
+  if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v('sMail')) || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v('pMail'))){ erro('Confira os e-mails informados.'); return; }
+  if(v('sFone').replace(/\D/g, '').length < 10 || v('pFone').replace(/\D/g, '').length < 10){ erro('Informe os telefones com DDD (o passageiro será avisado por esse número).'); return; }
+  if(!$('ciente').checked){ erro('Marque que leu as condições para enviar.'); $('ciente').focus(); return; }
+  const g = $('go'), fim = () => { g.disabled = false; g.textContent = 'Enviar requisição'; }; g.disabled = true; g.textContent = 'Enviando…';
+  try{
+    if(!est){ try{ await calcular(); }catch(x){} }
+    if(!pO) pO = await achar('o'); if(!pD) pD = await achar('d');
+    let alvos = [], serieId = null;
+    if(serieOn()){
+      if(!serSel.length){ await serieVer(); erro('Confira as datas da série abaixo (desmarque as que não quiser) e envie de novo.'); fim(); return; }
+      document.querySelectorAll('#serLista input[data-i]').forEach(c => { if(c.checked && !c.disabled) alvos.push(serSel[+c.dataset.i].ts); });
+      if(alvos.length < 2){ erro('Escolha ao menos 2 datas disponíveis para a série. Para uma corrida só, use "Corrida única".'); fim(); return; }
+      serieId = 'S' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    } else {
+      if(!(await chkSlot())){ erro('Esse horário não está disponível. Veja a mensagem abaixo do campo de data e escolha outro.'); fim(); return; }
+      alvos = [new Date($('quando').value).getTime()];
+    }
+    const criadas = []; let falha = null;
+    for(const ts of alvos){ try{ criadas.push(await criarRT(ts, serieId)); }catch(x){ falha = x; break; } }
+    if(!criadas.length){ erro(falha && falha.contador ? 'Não consegui gerar o número da requisição. Tente novamente. Se persistir, avise a Stella Maris.' : 'Não consegui enviar agora. Confira a conexão e tente de novo.'); fim(); return; }
+    avisar(`Nova${criadas.length > 1 ? 's' : ''} RT ${criadas.map(c => c.RT).join(', ')} · ${emp.nome} · ${dthm(criadas[0].A)}${criadas.some(c => c.motivo) ? ' (aguarda aprovação do gestor)' : ''}`);
+    criadas.forEach(emailConfirma);
+    const pend = criadas.filter(c => c.motivo).length;
+    const lm = $('lMsg'); lm.hidden = false; lm.style.color = 'var(--ok)';
+    lm.textContent = (criadas.length > 1 ? `${criadas.length} requisições criadas (${criadas[0].RT} a ${criadas[criadas.length - 1].RT}).` : `Requisição ${criadas[0].RT} enviada.`) + (pend ? ` ${pend} aguarda${pend > 1 ? 'm' : ''} a aprovação do gestor: ${criadas.find(c => c.motivo).motivo}.` : '') + (falha ? ` Atenção: a série parou na data ${dthm(alvos[criadas.length])}; confira e repita as demais.` : '');
+    $('f').reset(); est = pO = pD = null; serSel = []; $('serLista').innerHTML = ''; $('fSerie').hidden = true; $('bSerie').textContent = SERBTN; $('est').hidden = true; $('fPet').hidden = true; $('bPet').textContent = '🐾 O passageiro levará um pet'; $('sNome').value = me.nome || ''; $('sMail').value = me.email || ''; $('sFone').value = me.fone || ''; $('oCid').value = 'Macaé'; $('dCid').value = 'Macaé'; $('qAv').textContent = ''; $('orcAv').textContent = '';
+    fim(); setTab('lista'); flash(criadas[0].RT); if(me.papel === 'gestor') contarAprov();
+  }catch(x){ erro('Não consegui enviar agora. Confira a conexão e tente de novo. Se a RT já apareceu em "Requisições", não envie outra vez.'); fim(); }
+};
+
+// ---- aprovacoes (gestor) ----
+async function contarAprov(){ try{ const sn = await tmo(db.ref('pend/' + eid).once('value'), 8000); const v = sn.val() || {}; Object.keys(v).forEach(k => { if(!v[k]) delete v[k]; }); const n = Object.keys(v).length; $('aprN').textContent = n ? '(' + n + ')' : ''; return v; }catch(x){ return {}; } }
+async function carregarAprov(){
+  const L = $('aprItens'), msg = $('aprMsg'); L.innerHTML = ''; msg.textContent = 'Carregando…';
+  const P = await contarAprov(), ks = Object.keys(P).sort(); msg.textContent = ks.length ? '' : 'Nenhuma requisição aguardando aprovação.';
+  for(const RT of ks){
+    const d = P[RT], f = d.f || {}; let a = {}; try{ a = (await db.ref('aprov/' + eid + '/' + RT).once('value')).val() || {}; }catch(x){}
+    const box = document.createElement('div'); box.className = 'card3 apr';
+    box.innerHTML = `<div class="rtc"><div><b>${esc(RT)}</b> <span class="tag">Aguardando você</span></div><small>${esc(dthm(f.a))}</small></div>
+      <p><small>Solicitante:</small> ${esc(f.solNome)} · <small>Passageiro:</small> ${esc(f.pasNome)}</p><p><small>Centro de custo:</small> ${esc(f.cc)}</p>
+      <p><small>De:</small> ${esc(f.partida)}</p><p><small>Para:</small> ${esc(f.destino)}</p>
+      <p><small>Estimativa:</small> ${f.estimV ? '≈ R$ ' + brl(f.estimV) : esc(f.estim)}</p><p><small>Por que precisa de aprovação:</small> ${esc(a.motivo || '')}</p>
+      <div class="field"><label>Comentário (opcional, vai junto se recusar)</label><input maxlength="150" data-o="1"></div>
+      <div class="seg"><button type="button" data-r="1">Recusar</button><button type="button" data-a="1" style="background:#DDB066;color:#1A1204;border-color:#DDB066">Aprovar</button></div><p class="err" data-e="1" hidden></p>`;
+    L.append(box);
+    const er = t => { const x = box.querySelector('[data-e]'); x.hidden = false; x.textContent = t; };
+    box.querySelector('[data-a]').onclick = async ev => { ev.target.disabled = true; try{ await aprovar(RT, d, a); carregarAprov(); }catch(x){ er(x.message || 'Não consegui aprovar. Tente de novo.'); ev.target.disabled = false; } };
+    box.querySelector('[data-r]').onclick = async ev => { ev.target.disabled = true; try{ await recusar(RT, d, a, box.querySelector('[data-o]').value.trim()); carregarAprov(); }catch(x){ er('Não consegui recusar. Tente de novo.'); ev.target.disabled = false; } };
+  }
+}
+async function aprovar(RT, d, a){
+  const rt = (await db.ref('rt/' + RT).once('value')).val(); if(!rt) throw new Error('Requisição não encontrada.');
+  const p = d.p || {}, pt = (la, lo) => (typeof la === 'number' && typeof lo === 'number') ? {la, lo} : null;
+  if(p.a < Date.now() + 10*60000) throw new Error('A data dessa requisição já passou ou está muito próxima. Recuse e peça uma nova.');
+  const so = pO, sd = pD; pO = pt(p.oLa, p.oLo); pD = pt(p.dLa, p.dLo); let o; try{ o = await ocupado(p.a, p.m || 35); }finally{ pO = so; pD = sd; }
+  if(o) throw new Error('Esse horário não está mais disponível na agenda. Recuse e peça um novo horário.');
+  const TS = firebase.database.ServerValue.TIMESTAMP, up = {};
+  up['fila/' + rt.sid] = Object.assign({}, d.f, {c: Date.now()}); up['pub/' + rt.pid] = Object.assign({}, p, {c: Date.now()});
+  up['aprov/' + eid + '/' + RT] = {s: 'aprovada', c: a.c || Date.now(), u: a.u || rt.uid, motivo: (a.motivo || '').slice(0, 200), por: (me.nome || '').slice(0, 80), em: TS}; up['pend/' + eid + '/' + RT] = null;
+  await tmo(db.ref().update(up), 15000);
+  avisar(`Gestor aprovou ${RT} · ${emp.nome}`);
+  enviarEmail(rt.solEmail, rt.solNome, `Requisição ${RT} aprovada`, `Olá, ${rt.solNome}.\n\nSua requisição ${RT} foi aprovada pelo gestor e está na agenda da Stella Maris, para ${dthm(rt.a)}. Aguarde a confirmação do motorista.${rodapeEmail}`);
+}
+async function recusar(RT, d, a, obs){
+  const rt = (await db.ref('rt/' + RT).once('value')).val(); const TS = firebase.database.ServerValue.TIMESTAMP, up = {};
+  up['aprov/' + eid + '/' + RT] = {s: 'recusada', c: a.c || Date.now(), u: a.u || (rt && rt.uid), motivo: (a.motivo || '').slice(0, 200), obs: obs.slice(0, 200), por: (me.nome || '').slice(0, 80), em: TS}; up['pend/' + eid + '/' + RT] = null;
+  await tmo(db.ref().update(up), 15000);
+  if(rt && rt.estimV) db.ref('uso/' + eid + '/' + mesK(rt.a) + '/' + slug(rt.cc)).transaction(c => Math.max(0, Math.round(((c || 0) - rt.estimV) * 100) / 100)).catch(() => {});
+  if(rt) enviarEmail(rt.solEmail, rt.solNome, `Requisição ${RT} não aprovada`, `Olá, ${rt.solNome}.\n\nSua requisição ${RT} (${dthm(rt.a)}) não foi aprovada pelo gestor.${obs ? '\nComentário: ' + obs : ''}${rodapeEmail}`);
+}
+
+// ---- orcamento por centro de custo (gestor) ----
+async function orcUI(){
+  const box = $('orcBox'); if(me.papel !== 'gestor'){ box.hidden = true; return; } box.hidden = false;
+  if(!$('orcMes').value) $('orcMes').value = mesK(Date.now()).replace(/(\d{4})(\d{2})/, '$1-$2');
+  const mk = $('orcMes').value.replace('-', ''); await carregarOrc();
+  let uso = {}; try{ uso = (await tmo(db.ref('uso/' + eid + '/' + mk).once('value'), 8000)).val() || {}; }catch(x){}
+  const keys = [...new Set(Object.keys(ORC).concat(Object.keys(uso)))].sort((a, b) => ((ORC[a] || {}).n || a).localeCompare((ORC[b] || {}).n || b, 'pt-BR'));
+  $('orcLista').innerHTML = keys.map(k => { const o = ORC[k], u = Number(uso[k] || 0), p = o && o.v > 0 ? Math.round(u / o.v * 100) : null;
+    return `<div><div class="r"><span>${esc(o ? o.n : k.replace(/_/g, ' '))}<br><small class="hint">usado: R$ ${brl(u)}${p != null ? ' · ' + p + '%' : ''}</small></span><input inputmode="decimal" placeholder="Limite R$" data-k="${esc(k)}" value="${o ? String(o.v).replace('.', ',') : ''}"><button class="mini" type="button" data-s="${esc(k)}" data-n="${esc(o ? o.n : k.replace(/_/g, ' '))}">Salvar</button></div>${p != null ? `<div class="b"><i style="width:${Math.min(100, p)}%;${p >= 100 ? 'background:#e5484d' : ''}"></i></div>` : ''}</div>`; }).join('') +
+    `<div class="r"><input id="orcNovoN" placeholder="Novo centro de custo" maxlength="80"><input id="orcNovoV" inputmode="decimal" placeholder="Limite R$"><button class="mini" type="button" id="orcNovoB">Adicionar</button></div><p class="hint" id="orcMsg"></p>`;
+  const num = t => Number(String(t).replace(/\./g, '').replace(',', '.'));
+  const grava = async (nome, txt) => { const v = num(txt), k = slug(nome); const mm = $('orcMsg');
+    try{ if(!txt.trim()){ await db.ref('orc/' + eid + '/' + k).set(null); } else if(!(v >= 0)){ mm.textContent = 'Valor inválido.'; return; } else await db.ref('orc/' + eid + '/' + k).set({n: nome.slice(0, 80), v: Math.round(v*100)/100}); orcUI(); }catch(x){ mm.textContent = 'Não consegui salvar.'; } };
+  $('orcLista').querySelectorAll('[data-s]').forEach(b => b.onclick = () => grava(b.dataset.n, $('orcLista').querySelector(`[data-k="${b.dataset.s}"]`).value));
+  $('orcNovoB').onclick = () => { const n = $('orcNovoN').value.trim(); if(!n){ $('orcMsg').textContent = 'Informe o nome do centro de custo.'; return; } grava(n, $('orcNovoV').value); };
+}
+$('orcMes').onchange = orcUI;
+
+// ---- avaliacao da corrida ----
+async function avalUI(el, k, r){
+  if(!el) return;
+  try{
+    const [cs, as] = await Promise.all([db.ref('corridas/' + eid + '/' + k).once('value'), db.ref('aval/' + eid + '/' + k).once('value')]);
+    const c = cs.val(), a = as.val(); if(!c || c.situacao !== 'concluida') return;
+    if(a){ el.innerHTML = `<p><small>Avaliação:</small> <span style="color:#DDB066">${'★'.repeat(a.n)}${'☆'.repeat(5 - a.n)}</span>${a.t ? ' · ' + esc(a.t) : ''}</p>`; return; }
+    if(r.uid !== me.uid) return;
+    let nota = 0;
+    el.innerHTML = `<p><small>Como foi a corrida?</small></p><div class="stars">${[1, 2, 3, 4, 5].map(i => `<button type="button" data-n="${i}" aria-label="${i} estrela${i > 1 ? 's' : ''}">★</button>`).join('')}</div><input maxlength="250" placeholder="Comentário (opcional)" data-t="1"><button class="mini" type="button" data-env="1" disabled>Enviar avaliação</button><p class="err" data-e="1" hidden></p>`;
+    const st = el.querySelectorAll('.stars button'), env = el.querySelector('[data-env]');
+    st.forEach(b => b.onclick = () => { nota = +b.dataset.n; st.forEach(x => x.classList.toggle('on', +x.dataset.n <= nota)); env.disabled = false; });
+    env.onclick = async () => { env.disabled = true; try{ const t = el.querySelector('[data-t]').value.trim().slice(0, 250); await tmo(db.ref('aval/' + eid + '/' + k).set(Object.assign({n: nota, u: me.uid, c: firebase.database.ServerValue.TIMESTAMP}, t ? {t} : {})), 10000); avalUI(el, k, r); }catch(x){ const q = el.querySelector('[data-e]'); q.hidden = false; q.textContent = 'Não consegui enviar a avaliação.'; env.disabled = false; } };
+  }catch(x){}
+}
+
+// ---- lista ----
+let offs = [], flashRt = null;
+function flash(rt){ flashRt = rt; }
+
+let PN = null, pnBusy = false;
+async function carregarPainel(){
+  if(pnBusy) return; pnBusy = true; const msg = $('pnMsg'); msg.textContent = 'Carregando…';
+  try{
+    if(!PN) PN = Painel($('pnRoot'), {admin: false});
+    const gestor = me.papel === 'gestor';
+    const sn = await tmo(db.ref(gestor ? 'rtse/' + eid : 'rtsu/' + me.uid).once('value'), 12000);
+    const keys = Object.keys(sn.val() || {}), L = []; let falhas = 0, i = 0;
+    const worker = async () => { while(i < keys.length){ const k = keys[i++]; try{ const s = await tmo(db.ref('corridas/' + eid + '/' + k).once('value'), 12000); const r = s.val(); if(r && typeof r === 'object') L.push({rt: r.rt || k, eid, emp: emp.nome, d: r.fim || r.inicio || r.a || r.c || 0, valor: r.valor, km: r.km, min: r.minutos != null ? r.minutos : r.min, sit: r.situacao, cc: r.cc, sol: r.solNome, pas: r.pasNome, orig: r.partida, dest: r.destino}); }catch(x){ if(!(x && x.code === 'PERMISSION_DENIED')) falhas++; } } };
+    await Promise.all(Array.from({length: 8}, worker));
+    PN.setRows(L); msg.textContent = L.length ? '' : 'Ainda não há corridas realizadas para mostrar.'; if(falhas) msg.textContent = falhas + ' registro(s) não puderam ser lidos.';
+  }catch(x){ msg.textContent = 'Não consegui carregar o painel. Tente novamente.'; }
+  pnBusy = false;
+}
+const STAT = {aguardando: 'Agendada', aceito: 'Confirmada', a_caminho: 'Motorista a caminho', chegou: 'Motorista no local', em_corrida: 'Em viagem', concluido: 'Concluída', cancelado: 'Cancelada'};
+$('ckTodas').onchange = carregarLista;
+async function carregarLista(){
+  offs.splice(0).forEach(f => f()); const L = $('lItens'); L.innerHTML = ''; $('lVazio').hidden = true;
+  const todas = me.papel === 'gestor' && $('ckTodas').checked;
+  let keys = [];
+  try{ const sn = await tmo(db.ref(todas ? 'rtse/' + eid : 'rtsu/' + me.uid).once('value'), 10000); keys = Object.keys(sn.val() || {}).sort().reverse(); }catch(x){ L.innerHTML = '<p class="err">Não consegui carregar. Tente novamente.</p>'; return; }
+  if(!keys.length){ $('lVazio').hidden = false; return; }
+  for(const k of keys.slice(0, 60)){
+    const box = document.createElement('div'); box.className = 'card3'; box.innerHTML = `<b>${esc(k)}</b> <small class="hint">carregando…</small>`; L.append(box);
+    db.ref('rt/' + k).once('value').then(sn => { const r = sn.val(); if(!r){ box.remove(); return; } desenhar(box, k, r); }).catch(() => { box.innerHTML = `<b>${esc(k)}</b> <small class="hint">sem acesso</small>`; });
+  }
+}
+function baseCard(k, r, stt){ return `<div class="rtc"><div><b>${esc(k)}</b> <span class="tag">${esc(stt)}</span>${r.serie ? '<span class="tag">série</span>' : ''}</div><small>${esc(dthm(r.a))}</small></div>
+      <p><small>Passageiro:</small> ${esc(r.pasNome)} · ${esc(r.cc)}</p><p><small>De:</small> ${esc(r.partida)}</p><p><small>Para:</small> ${esc(r.destino)}</p>${r.estimV ? `<p><small>Estimativa:</small> ≈ R$ ${brl(r.estimV)}</p>` : ''}`; }
+function desenhar(box, k, r){
+  if(r.apr === 'pendente'){
+    const aref = db.ref('aprov/' + eid + '/' + k); let ligado = false;
+    const acb = aref.on('value', sn => { const a = sn.val() || {};
+      if(a.s === 'aprovada'){ if(!ligado){ ligado = true; aref.off('value', acb); desenharPub(box, k, r); } return; }
+      box.innerHTML = baseCard(k, r, a.s === 'recusada' ? 'Recusada pelo gestor' : 'Aguardando aprovação do gestor') + `<p><small>${a.s === 'recusada' ? 'Comentário do gestor' : 'Precisa de aprovação'}:</small> ${esc(a.s === 'recusada' ? (a.obs || '—') : (a.motivo || ''))}</p>`; });
+    offs.push(() => aref.off('value', acb)); return;
+  }
+  desenharPub(box, k, r);
+}
+function desenharPub(box, k, r){
+  const ref = db.ref('pub/' + r.pid), cb = ref.on('value', sn => { const p = sn.val(); const s = p ? p.s : 'concluido'; const stt = STAT[s] || s; const futura = r.a > Date.now(); const canH = emp.canH != null ? emp.canH : 6; const dentro = r.a - Date.now() < canH*3600000;
+    const podeCanc = r.sid && ATIVOS.includes(s) && ['aguardando', 'aceito'].includes(s) && futura;
+    box.innerHTML = `<div class="rtc"><div><b>${esc(k)}</b> <span class="tag">${esc(stt)}</span>${r.serie ? '<span class="tag">série</span>' : ''}</div><small>${esc(dthm(r.a))}</small></div>
+      <p><small>Passageiro:</small> ${esc(r.pasNome)} · ${esc(r.cc)}</p>
+      <p><small>De:</small> ${esc(r.partida)}</p><p><small>Para:</small> ${esc(r.destino)}</p>
+      ${r.estimV ? `<p><small>Estimativa:</small> ≈ R$ ${brl(r.estimV)}</p>` : ''}${r.obs ? `<p><small>Obs.:</small> ${esc(r.obs)}</p>` : ''}
+      ${me.papel === 'gestor' && r.solNome ? `<p><small>Solicitante:</small> ${esc(r.solNome)}</p>` : ''}
+      ${podeCanc ? `<div class="cx"><button class="lnk red" type="button" data-c="1">Cancelar requisição</button></div>` : ''}<div class="av"></div>`;
+    if(s === 'concluido') avalUI(box.querySelector('.av'), k, r);
+    const b = box.querySelector('[data-c]');
+    if(b) b.onclick = () => { const cx = box.querySelector('.cx'); cx.innerHTML = `<p class="hint">${dentro ? `Faltam menos de ${z(canH)} h para a corrida: o cancelamento <b>pode ser cobrado</b>.` : `Cancelamento sem custo (mais de ${z(canH)} h de antecedência).`} Confirma o cancelamento de ${esc(k)}?</p><div class="seg"><button type="button" data-n="1">Voltar</button><button type="button" data-y="1">Cancelar RT</button></div>`;
+      cx.querySelector('[data-n]').onclick = () => carregarLista(); cx.querySelector('[data-y]').onclick = async () => { try{ await tmo(db.ref('cancelar/' + r.sid).set(firebase.database.ServerValue.TIMESTAMP), 10000); avisar(`Empresa cancelou a ${k} (${emp.nome})`); cx.innerHTML = '<p class="hint">Cancelamento enviado. O status será atualizado em instantes.</p>'; }catch(x){ cx.innerHTML = '<p class="err">Não consegui cancelar agora. Avise a Stella Maris pelo WhatsApp.</p>'; } }; };
+  });
+  offs.push(() => ref.off('value', cb));
+}
+boot();
+})();
+
+</script>
+</body>
+</html>
