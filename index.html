@@ -247,6 +247,7 @@ h3{font:700 15px var(--f-cond);letter-spacing:.12em;text-transform:uppercase;col
       <div class="actions"><button class="btn primary" type="button" id="bCad">Enviar cadastro</button></div>
     </div>
     <div class="actions" id="fSair" hidden><button class="btn ghost" type="button" id="bSair">Sair da conta</button></div>
+    <div class="actions" id="fNova" hidden><button class="btn primary full" type="button" id="bNovaC">+ Nova corrida (digitar manualmente)</button></div>
     <div id="fList"></div>
   </section>
 </div>
@@ -354,6 +355,21 @@ h3{font:700 15px var(--f-cond);letter-spacing:.12em;text-transform:uppercase;col
 </div>
 
 <!-- ===== HISTORY ===== -->
+<div class="sheet" id="sNova" hidden>
+  <div class="app">
+    <header><h2>Nova corrida</h2><button class="iconbtn" type="button" data-close>Fechar</button></header>
+    <div class="field" style="padding:0 16px"><label for="nNome">Nome do passageiro</label><input id="nNome" maxlength="80"></div>
+    <div class="field" style="padding:8px 16px 0"><label for="nTel">WhatsApp (opcional)</label><input id="nTel" type="tel" inputmode="tel" maxlength="30" placeholder="(22) 99999-9999"></div>
+    <div class="field" style="padding:8px 16px 0"><label for="nP">Partida</label><input id="nP" maxlength="200" placeholder="Rua, número, bairro"><button class="iconbtn" type="button" id="nMapP" style="margin-top:6px">📍 Marcar no mapa</button></div>
+    <div class="field" style="padding:8px 16px 0"><label for="nD">Destino</label><input id="nD" maxlength="200" placeholder="Rua, número, bairro"><button class="iconbtn" type="button" id="nMapD" style="margin-top:6px">📍 Marcar no mapa</button></div>
+    <div class="field" style="padding:8px 16px 0"><label for="nQ">Data e hora (deixe vazio se for para buscar agora)</label><input id="nQ" type="datetime-local"></div>
+    <div class="field" style="padding:8px 16px 0"><label for="nPag">Pagamento</label><select id="nPag"><option>Dinheiro</option><option>Pix</option><option>Cartão</option></select></div>
+    <div class="field" style="padding:8px 16px 0"><label for="nKm">Distância em km (opcional: use se o mapa errar)</label><input id="nKm" inputmode="decimal" placeholder="Ex.: 7,5"></div>
+    <div class="hact"><button class="iconbtn" type="button" id="nCalc">Calcular valor</button><button class="iconbtn" type="button" id="nSalvar" disabled>Salvar corrida</button></div>
+    <p class="hleg" id="nRes"></p>
+    <p class="hleg" id="nMsg"></p>
+  </div>
+</div>
 <div class="sheet" id="sEnd" hidden>
   <div class="app">
     <header><h2>Editar endereços</h2><button class="iconbtn" type="button" data-close>Fechar</button></header>
@@ -1525,13 +1541,64 @@ $('eSalvar').onclick = async () => {
     const fone = foneWa(it.passageiro ? it.foneP : it.fone); if(fone){ $('eWaW').hidden = false; $('eWa').onclick = () => window.open('https://wa.me/' + fone + '?text=' + encodeURIComponent('Olá, ' + (it.passageiro || it.nome || '') + '! Ajustei os endereços do seu agendamento.\nPartida: ' + r.partida + '\nDestino: ' + r.destino + '\nNova estimativa: ' + r.estim + '.\nSe algo estiver errado, me avise.'), '_blank'); } }
   catch(e){ $('eMsg').textContent = 'Não consegui salvar. Confira a conexão.'; }
 };
+/* ---------- nova corrida digitada pelo motorista ---------- */
+let nPin = {p: null, d: null}, nvR = null;
+function abrirNova(){
+  ['nNome', 'nTel', 'nP', 'nD', 'nQ', 'nKm'].forEach(id => $(id).value = ''); $('nPag').selectedIndex = 0; nPin = {p: null, d: null}; nvR = null;
+  $('nRes').textContent = ''; $('nMsg').textContent = ''; $('nSalvar').disabled = true; show('sNova', true);
+}
+$('bNovaC').onclick = () => { if(!fready){ toast('Entre com sua conta primeiro.'); return; } abrirNova(); };
+['nNome', 'nTel', 'nP', 'nD', 'nQ', 'nPag', 'nKm'].forEach(id => $(id).oninput = () => { nvR = null; $('nSalvar').disabled = true; if(id === 'nP') nPin.p = null; if(id === 'nD') nPin.d = null; });
+function mapaNova(w){
+  mpAbrir(w === 'p' ? 'Partida: toque no ponto certo' : 'Destino: toque no ponto certo', nPin[w], r => {
+    nPin[w] = {la: r.la, lo: r.lo, nome: ptxt(r)}; $(w === 'p' ? 'nP' : 'nD').value = ptxt(r); nvR = null; $('nSalvar').disabled = true; $('nMsg').textContent = 'Ponto marcado. Toque em Calcular valor.'; });
+}
+$('nMapP').onclick = () => mapaNova('p'); $('nMapD').onclick = () => mapaNova('d');
+$('nCalc').onclick = async () => {
+  const nome = $('nNome').value.trim(), p = $('nP').value.trim(), d = $('nD').value.trim(), kmM = parseFloat(($('nKm').value || '').replace(',', '.')), q = $('nQ').value, pag = $('nPag').value;
+  if(!nome || !p || !d){ $('nMsg').textContent = 'Preencha nome, partida e destino.'; return; }
+  const ts = q ? new Date(q).getTime() : null; if(q && !isFinite(ts)){ $('nMsg').textContent = 'Data e hora inválidas.'; return; }
+  $('nMsg').textContent = 'Procurando os endereços no mapa…'; $('nCalc').disabled = true;
+  try{
+    const [a, b] = await Promise.all([nPin.p ? nPin.p : geoEnd(p), nPin.d ? nPin.d : geoEnd(d)]); let km = null, min = null;
+    if(a && b){
+      try{ const j = await (await fetch(`https://router.project-osrm.org/route/v1/driving/${a.lo},${a.la};${b.lo},${b.la}?overview=false`)).json(), r = j.routes && j.routes[0]; if(!r) throw 0; km = r.distance/1000; min = r.duration/60; }
+      catch(e){ const R = 6371, rd = x => x*Math.PI/180, dl = rd(b.la - a.la), dn = rd(b.lo - a.lo), h = Math.sin(dl/2)**2 + Math.cos(rd(a.la))*Math.cos(rd(b.la))*Math.sin(dn/2)**2; km = 2*R*Math.asin(Math.sqrt(h))*1.3; min = km/25*60; }
+    }
+    if(isFinite(kmM) && kmM > 0){ min = (km && min) ? min*(kmM/km) : kmM/25*60; km = kmM; }
+    if(km == null){ $('nMsg').textContent = 'Não achei os endereços no mapa. Marque no mapa ou informe a distância em km.'; $('nCalc').disabled = false; return; }
+    const c = cfg; let v = Math.max(Number(c.band) || 0, km*(Number(c.km) || 0)) + min*(Number(c.min) || 0);
+    const noite = ehNoite(ts || Date.now()); if(noite) v *= 1 + (Number(c.noturno != null ? c.noturno : 30) || 0)/100;
+    const din = pag.toLowerCase().startsWith('dinheiro'); if(din && Number(c.desc) > 0) v *= 1 - Number(c.desc)/100;
+    v = Math.round(v*100)/100;
+    const kmT = km.toLocaleString('pt-BR', {maximumFractionDigits: 1}), vT = v.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    nvR = {nome, fone: $('nTel').value.trim(), partida: p, destino: d, pag, ts, a: a || null, b: b || null, min, estim: 'R$ ' + vT + ' · ' + kmT + ' km'};
+    $('nRes').innerHTML = '<b>≈ R$ ' + vT + ' · ' + kmT + ' km · cerca de ' + Math.round(min) + ' min</b>' + (noite ? ' (com adicional noturno)' : '') + (din ? ' (com desconto em dinheiro)' : '')
+      + '<br><small>Partida encontrada: ' + escapeHtml(a ? a.nome : 'não achei') + '<br>Destino encontrado: ' + escapeHtml(b ? b.nome : 'não achei') + '</small>';
+    $('nMsg').textContent = (a && b) ? 'Confira os endereços e toque em Salvar corrida.' : 'Um endereço não foi achado: uso a distância informada e a corrida fica sem a localização dele.';
+    $('nSalvar').disabled = false;
+  }catch(e){ $('nMsg').textContent = 'Não consegui calcular agora. Confira a conexão.'; }
+  $('nCalc').disabled = false;
+};
+$('nSalvar').onclick = async () => {
+  const r = nvR; if(!r || !fready) return;
+  if(r.ts == null && ride && ride.fase !== 'fim'){ $('nMsg').textContent = 'Termine ou cancele a corrida em andamento antes de iniciar outra.'; return; }
+  const ref = fdb.ref(fPaths().fila).push(), sid = ref.key, rd2 = x => Math.round(x*1e6)/1e6;
+  const f = {nome: r.nome.slice(0, 80), fone: r.fone.slice(0, 30), partida: r.partida.slice(0, 200), destino: r.destino.slice(0, 200), quando: r.ts ? new Date(r.ts).toLocaleString('pt-BR', {dateStyle: 'short', timeStyle: 'short'}) + ' (agendada)' : 'Agora (digitada)', estim: r.estim.slice(0, 80), pag: r.pag, c: Date.now(), s: r.ts ? 'aceito' : 'aguardando', obs: 'Corrida digitada pelo motorista'};
+  if(r.ts) f.a = r.ts; if(r.a){ f.oLa = rd2(r.a.la); f.oLo = rd2(r.a.lo); } if(r.b){ f.dLa = rd2(r.b.la); f.dLo = rd2(r.b.lo); }
+  if(fKnown) fKnown.add(sid);
+  try{ await ref.set(f); $('nSalvar').disabled = true; nvR = null; show('sNova', false);
+    if(r.ts) toast('Corrida agendada salva. Na hora, toque em "Iniciar atendimento".');
+    else setTimeout(() => aceitar(sid), 300);
+  }catch(e){ $('nMsg').textContent = 'Não consegui salvar. Confira a conexão.'; }
+};
 function drawFila(){
   const ativos = ordenar(Object.keys(filaData).map(k => Object.assign({sid: k}, filaData[k])).filter(x => FATIVO.includes(x.s) && (x.a ? x.a > Date.now() - 6*3600*1000 : x.c > Date.now() - 12*3600*1000)));
   const nAg = ativos.filter(x => x.s === 'aguardando').length;
   const n = $('filaN'); n.textContent = nAg; n.dataset.n = nAg;
   const logged = fRole === 'owner' || fRole === 'parceiro';
   const recon = !logged && !fuser && flagOn() && !authChk && Date.now() - T0 < 7000;
-  $('fLogin').hidden = logged || recon || !!fuser; $('fSair').hidden = !fuser; $('fCad').hidden = fRole !== 'cadastro';
+  $('fNova').hidden = !logged; $('fLogin').hidden = logged || recon || !!fuser; $('fSair').hidden = !fuser; $('fCad').hidden = fRole !== 'cadastro';
   $('fMsg').textContent = logged ? (fRole === 'parceiro' ? 'Motorista parceiro' + (fPerf && fPerf.nome ? ': ' + fPerf.nome + '. ' : '. ') : '') + (ativos.length ? (refFim() ? 'Agendadas primeiro; depois por proximidade de onde você termina a corrida (ninguém espera mais de 15 min por isso).' : 'Agendadas primeiro, depois por ordem de chegada. Com uma corrida em andamento, ordeno por proximidade do destino.') : 'Nenhum pedido na fila agora.')
     : fRole === 'cadastro' ? 'Preencha o cadastro para trabalhar como motorista parceiro da Stella Maris.'
     : fRole === 'pendente' ? 'Cadastro enviado. Aguarde a aprovação da Stella Maris; depois é só entrar de novo.'
