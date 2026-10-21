@@ -292,6 +292,7 @@ h3{font:700 15px var(--f-cond);letter-spacing:.12em;text-transform:uppercase;col
     <div class="field"><label for="cPix">Chave Pix</label><input id="cPix" type="text" autocomplete="off"></div>
     <div class="field"><label for="cDyn">Tarifa dinâmica — feriado: acréscimo (%)</label><input id="cDyn" type="text" inputmode="decimal" placeholder="50"></div>
     <div class="field"><label for="cDynC">Tarifa dinâmica — chuva forte: acréscimo (%)</label><input id="cDynC" type="text" inputmode="decimal" placeholder="30"></div>
+    <div class="field"><label for="cNot">Adicional noturno — partida entre 22h e 05h (%)</label><input id="cNot" type="text" inputmode="decimal" placeholder="30"></div>
     <div class="field"><label for="cPar">Parada adicional (R$, valor fixo por parada)</label><div class="money"><input id="cPar" type="text" inputmode="decimal" placeholder="3,00"></div></div>
     <div class="field"><label for="cMeta">Meta diária (R$)</label><div class="money"><input id="cMeta" type="text" inputmode="decimal" placeholder="0,00"></div></div>
     <h3>Pedidos de clientes</h3>
@@ -399,9 +400,11 @@ const dia = t => new Date(t).toLocaleDateString('pt-BR');
 const minTxt = ms => { const m = ms/60000; return m < 10 ? m.toLocaleString('pt-BR',{maximumFractionDigits:1}) : String(Math.round(m)); };
 
 /* ---------- config ---------- */
-const DEF = {nome:'', placa:'', modelo:'', band:0, km:0, min:0, esp:0, arred:0, msg:'Obrigado pela preferência!', empresa:'Stella Maris Logistics', cnpj:'64.842.411/0001-07', taxaDeb:0, taxaCre:0, semTaxa:true, desc:5, par:3, dyn:50, dynC:30, pix:'70e9320f-2100-485f-8ad4-62dd0a868e90', meta:0};
+const DEF = {nome:'', placa:'', modelo:'', band:0, km:0, min:0, esp:0, arred:0, msg:'Obrigado pela preferência!', empresa:'Stella Maris Logistics', cnpj:'64.842.411/0001-07', taxaDeb:0, taxaCre:0, semTaxa:true, desc:5, par:3, dyn:50, dynC:30, noturno:30, pix:'70e9320f-2100-485f-8ad4-62dd0a868e90', meta:0};
 const DYN = {fer:'Feriado', chu:'Chuva forte'};
 const dynRate = (c, k) => k === 'chu' ? (c && c.dynC != null ? Number(c.dynC) : 30) : (c && c.dyn != null ? Number(c.dyn) : 50);
+const notRate = c => c && c.noturno != null ? Number(c.noturno) : 30;
+const ehNoite = ts => { const h = +new Intl.DateTimeFormat('pt-BR',{timeZone:'America/Sao_Paulo',hour:'2-digit',hour12:false}).formatToParts(new Date(ts)).find(x=>x.type==='hour').value % 24; return h >= 22 || h < 5; };
 const dynPc = r => r && r.cfg ? dynRate(r.cfg, 'fer') : 50;
 function drawDyn(el, r, fn){
   const pc = dynRate(r && r.cfg, 'fer'), pcC = dynRate(r && r.cfg, 'chu'); el.hidden = !r || (pc <= 0 && pcC <= 0); if(el.hidden) return;
@@ -422,7 +425,7 @@ const CUT_TAXA = Date.UTC(2026, 9, 20, 9, 30); // taxa de cartão extinta: só c
 function calc(r, now){
   const c = r.cfg, t = now || Date.now();
   if(r.noshow){ const e = r.emp || {}, p = e.nsPct != null ? Number(e.nsPct) : 50, v = Math.round((Number(e.estimV) || 0)*p)/100;
-    return {dynPct:0, vDyn:0, vPar:0, km:0, corrMs:0, espMs:0, espTotal:0, espStart:null, vKm:0, vMin:0, vEsp:0, corrida:0, minimoAplicado:false, sub:v, taxa:0, pct:0, vDesc:0, descPct:0, total:v, vNs:v, nsPct:p}; }
+    return {dynPct:0, vDyn:0, vNot:0, notPct:0, vPar:0, km:0, corrMs:0, espMs:0, espTotal:0, espStart:null, vKm:0, vMin:0, vEsp:0, corrida:0, minimoAplicado:false, sub:v, taxa:0, pct:0, vDesc:0, descPct:0, total:v, vNs:v, nsPct:p}; }
   const km = (r.kmManual != null ? r.kmManual : r.m/1000);
   const corrMs = r.inicio ? ((r.fim || t) - r.inicio) : 0;
   let espMs = 0, espTotal = 0, espStart = null;
@@ -437,7 +440,10 @@ function calc(r, now){
   if(r.inicio){ minimoAplicado = c.band > vKm; corrida = Math.max(c.band, vKm) + vMin; }
   let sub = corrida + vEsp;
   const dynPct = (r.dyn && !(r.emp && r.dyn === 'chu')) ? dynRate(c, r.dyn) : 0; // chuva não incide sobre empresas
-  const vDyn = Math.round(sub*dynPct)/100; sub += vDyn;
+  const refT = (r.tipo === 'agendada' && r.agendado) ? r.agendado : (r.inicio || t);
+  const notPct = (r.inicio && ehNoite(refT)) ? notRate(c) : 0;
+  const vNot = Math.round(sub*notPct)/100;
+  const vDyn = Math.round(sub*dynPct)/100; sub += vDyn + vNot;
   const vPar = r.par ? (c.par != null ? Number(c.par) : 3) : 0; sub += vPar;
   const arr = Number(c.arred)||0;
   if(arr > 0 && sub > 0) sub = Math.ceil(sub/arr - 1e-9)*arr;
@@ -446,7 +452,7 @@ function calc(r, now){
   const descPct = (r.emp && Number(r.emp.recDesc) > 0) ? Number(r.emp.recDesc) : (c.desc != null && !r.emp && (r.pag === 'din' || (!r.pag && r.fim))) ? Number(c.desc) : 0;
   const vDesc = Math.round(sub*descPct)/100;
   const total = Math.round((sub + taxa - vDesc)*100)/100;
-  return {dynPct, vDyn, vPar, km, corrMs, espMs, espTotal, espStart, vKm, vMin, vEsp, corrida, minimoAplicado, sub, taxa, pct: pct||0, vDesc, descPct, total};
+  return {dynPct, vDyn, vNot, notPct, vPar, km, corrMs, espMs, espTotal, espStart, vKm, vMin, vEsp, corrida, minimoAplicado, sub, taxa, pct: pct||0, vDesc, descPct, total};
 }
 
 /* ---------- GPS ---------- */
@@ -668,6 +674,7 @@ function receipt(r){
   }
   if(c.espMs > 0) L.push(`Espera: ${minTxt(c.espMs)} min × R$ ${brl(k.esp)} = R$ ${brl(c.vEsp)}`);
   if(c.vPar > 0) L.push(`Parada adicional${r.parEnd ? ' (' + r.parEnd + ')' : ''}: R$ ${brl(c.vPar)}`);
+  if(c.vNot > 0) L.push(`Adicional noturno (22h às 05h) +${c.notPct.toLocaleString('pt-BR')}%: R$ ${brl(c.vNot)}`);
   if(c.vDyn > 0) L.push(`Tarifa dinâmica (${DYN[r.dyn] || 'especial'}) +${c.dynPct.toLocaleString('pt-BR')}%: R$ ${brl(c.vDyn)}`);
   if(c.taxa > 0) L.push(`Taxa ${r.pag === 'deb' ? 'débito' : 'crédito'} ${c.pct.toLocaleString('pt-BR')}%: R$ ${brl(c.taxa)}`);
   if(c.vDesc > 0) L.push(`${r.emp ? 'Desconto de corrida recorrente' : 'Desconto pagamento em dinheiro'} ${c.descPct.toLocaleString('pt-BR')}%: -R$ ${brl(c.vDesc)}`);
@@ -787,13 +794,13 @@ const fmtIn = v => v ? brl(v) : '';
 function openCfg(){
   $('cNome').value = cfg.nome; $('cPlaca').value = cfg.placa; $('cModelo').value = cfg.modelo || '';
   $('cBand').value = fmtIn(cfg.band); $('cKm').value = fmtIn(cfg.km); $('cMin').value = fmtIn(cfg.min); $('cEsp').value = fmtIn(cfg.esp);
-  $('cArr').value = String(cfg.arred); $('cPar').value = String(cfg.par != null ? cfg.par : 3).replace('.', ','); $('cMsg').value = cfg.msg; $('cEmp').value = cfg.empresa || ''; $('cCnpj').value = cfg.cnpj || ''; $('cWhats').value = cfg.whats || ''; $('cDesc').value = String(cfg.desc != null ? cfg.desc : 5).replace('.', ','); $('cPix').value = cfg.pix || ''; $('cMeta').value = fmtIn(cfg.meta); $('cDyn').value = String(cfg.dyn != null ? cfg.dyn : 50).replace('.', ','); $('cDynC').value = String(cfg.dynC != null ? cfg.dynC : 30).replace('.', ',');
+  $('cArr').value = String(cfg.arred); $('cPar').value = String(cfg.par != null ? cfg.par : 3).replace('.', ','); $('cMsg').value = cfg.msg; $('cEmp').value = cfg.empresa || ''; $('cCnpj').value = cfg.cnpj || ''; $('cWhats').value = cfg.whats || ''; $('cDesc').value = String(cfg.desc != null ? cfg.desc : 5).replace('.', ','); $('cPix').value = cfg.pix || ''; $('cMeta').value = fmtIn(cfg.meta); $('cDyn').value = String(cfg.dyn != null ? cfg.dyn : 50).replace('.', ','); $('cDynC').value = String(cfg.dynC != null ? cfg.dynC : 30).replace('.', ','); $('cNot').value = String(cfg.noturno != null ? cfg.noturno : 30).replace('.', ',');
   show('sCfg', true);
 }
 $('fCfg').onsubmit = e => {
   e.preventDefault();
   cfg = {nome:$('cNome').value.trim(), placa:$('cPlaca').value.trim().toUpperCase(), modelo:$('cModelo').value.trim(), band:numIn($('cBand').value),
-         km:numIn($('cKm').value), min:numIn($('cMin').value), esp:numIn($('cEsp').value), arred:Number($('cArr').value), msg:$('cMsg').value.trim(), empresa:$('cEmp').value.trim(), cnpj:$('cCnpj').value.trim(), whats:$('cWhats').value.replace(/\D/g,''), taxaDeb:0, taxaCre:0, semTaxa:true, desc:numIn($('cDesc').value), pix:$('cPix').value.trim(), meta:numIn($('cMeta').value), dyn:numIn($('cDyn').value), dynC:numIn($('cDynC').value), par:numIn($('cPar').value)};
+         km:numIn($('cKm').value), min:numIn($('cMin').value), esp:numIn($('cEsp').value), arred:Number($('cArr').value), msg:$('cMsg').value.trim(), empresa:$('cEmp').value.trim(), cnpj:$('cCnpj').value.trim(), whats:$('cWhats').value.replace(/\D/g,''), taxaDeb:0, taxaCre:0, semTaxa:true, desc:numIn($('cDesc').value), pix:$('cPix').value.trim(), meta:numIn($('cMeta').value), dyn:numIn($('cDyn').value), dynC:numIn($('cDynC').value), noturno:numIn($('cNot').value), par:numIn($('cPar').value)};
   store.set('tx_cfg', cfg); show('sCfg', false); render();
   toast(ride && ride.fase !== 'fim' ? 'Tarifas salvas. Valem a partir da próxima corrida.' : 'Tarifas salvas');
 };
@@ -802,7 +809,7 @@ $('bLink').onclick = async () => {
   if(w.length <= 11) w = '55' + w;
   const n = s => String(s || '').replace('.', ',');
   const u = new URL('pedir.html', location.href);
-  u.search = new URLSearchParams({w, n:($('cEmp').value.trim() || 'Stella Maris Logistics'), b:n(numIn($('cBand').value)), k:n(numIn($('cKm').value)), m:n(numIn($('cMin').value)), e:n(numIn($('cEsp').value)), d:n(numIn($('cDyn').value)), dc:n(numIn($('cDynC').value)), dd:n(numIn($('cDesc').value))}).toString();
+  u.search = new URLSearchParams({w, n:($('cEmp').value.trim() || 'Stella Maris Logistics'), b:n(numIn($('cBand').value)), k:n(numIn($('cKm').value)), m:n(numIn($('cMin').value)), e:n(numIn($('cEsp').value)), d:n(numIn($('cDyn').value)), dc:n(numIn($('cDynC').value)), nt:n(numIn($('cNot').value)), dd:n(numIn($('cDesc').value))}).toString();
   try{ await navigator.clipboard.writeText(u.href); toast('Link copiado. Mande ao cliente.'); }catch(e){ prompt('Copie o link:', u.href); }
 };
 $('bCfg').onclick = openCfg; $('bCfg2').onclick = openCfg;
@@ -817,6 +824,7 @@ function linhas(r){
   }
   if(c.espMs > 0 || !r.inicio) rows.push([`Espera ${minTxt(c.espMs)} min × R$ ${brl(k.esp)}`, 'R$ '+brl(c.vEsp)]);
   if(c.vPar > 0) rows.push(['Parada adicional', 'R$ '+brl(c.vPar)]);
+  if(c.vNot > 0) rows.push([`Adicional noturno (22h às 05h) +${c.notPct.toLocaleString('pt-BR')}%`, 'R$ '+brl(c.vNot)]);
   if(c.vDyn > 0) rows.push([`Tarifa dinâmica (${DYN[r.dyn] || 'especial'}) +${c.dynPct.toLocaleString('pt-BR')}%`, 'R$ '+brl(c.vDyn)]);
   if(c.taxa > 0) rows.push([`Taxa ${r.pag === 'deb' ? 'débito' : 'crédito'} ${c.pct.toLocaleString('pt-BR')}%`, 'R$ '+brl(c.taxa)]);
   if(c.vDesc > 0) rows.push([`${r.emp ? 'Desconto recorrente' : 'Desconto em dinheiro'} ${c.descPct.toLocaleString('pt-BR')}%`, '-R$ '+brl(c.vDesc)]);

@@ -151,7 +151,7 @@ select{background:var(--panel);border:1px solid var(--line);border-radius:12px;m
         <b class="t">Condições do serviço</b>
         <ul>
           <li><b>Estimativa de valor:</b> o valor estimado aparece antes de você enviar. Se o tempo de viagem for maior que o previsto, ou o trajeto aumentar em mais de 10 km (engarrafamento, desvio ou qualquer outro motivo), o valor final pode ser alterado.</li>
-          <li><b>Tarifa:</b> <span id="avTar"></span> Chuva não gera acréscimo. Em feriados há acréscimo de <span id="avDyn"></span>%.</li>
+          <li><b>Tarifa:</b> <span id="avTar"></span> Chuva não gera acréscimo. Em feriados há acréscimo de <span id="avDyn"></span>%. Corridas com <b>partida entre 22h e 05h</b> têm adicional noturno de <span id="avNot"></span>%.</li>
           <li><b>Cancelamento:</b> sem custo se cancelado com até <b><span id="avCan"></span> horas</b> de antecedência da corrida. Depois disso, o cancelamento pode ser cobrado.</li>
           <li><b>No-Show:</b> se, após <b>30 minutos de espera</b> no local, o passageiro ou a empresa não responderem, a corrida é considerada No-Show e é cobrado <b><span id="avNs"></span>% do valor estimado</b> da viagem. O motorista registra o motivo.</li>
           <li id="avApr" hidden><b>Aprovação:</b> <span id="avAprT"></span></li>
@@ -455,7 +455,7 @@ function iniciar(){
   $('wEmp').textContent = emp.nome; $('wUser').textContent = me.nome + (me.papel === 'gestor' ? ' · Gestor' : '') ;
   const t = T();
   $('avTar').textContent = `Bandeirada mínima de R$ ${brl(t.band)}, R$ ${brl(t.km)} por km e R$ ${brl(t.min)} por minuto de viagem. Espera: R$ ${brl(t.esp)} por minuto.`;
-  $('avDyn').textContent = z(t.dyn != null ? t.dyn : 50); $('avCan').textContent = z(emp.canH != null ? emp.canH : 6); $('avNs').textContent = z(emp.nsPct != null ? emp.nsPct : 50);
+  $('avDyn').textContent = z(t.dyn != null ? t.dyn : 50); $('avNot').textContent = z(t.noturno != null ? t.noturno : 30); $('avCan').textContent = z(emp.canH != null ? emp.canH : 6); $('avNs').textContent = z(emp.nsPct != null ? emp.nsPct : 50);
   $('sNome').value = me.nome || ''; $('sMail').value = me.email || ''; $('sFone').value = me.fone || '';
   const d = new Date(Date.now() + 30*60000), p = n => String(n).padStart(2, '0'); $('quando').min = `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
   $('boxTodas').hidden = me.papel !== 'gestor'; $('tabAprov').hidden = me.papel !== 'gestor';
@@ -489,7 +489,7 @@ async function achar(p){
 }
 const hav = (a, b) => { const r = x => x*Math.PI/180, dLa = r(b.la - a.la), dLo = r(b.lo - a.lo), h = Math.sin(dLa/2)**2 + Math.cos(r(a.la))*Math.cos(r(b.la))*Math.sin(dLo/2)**2; return 2*6371*Math.asin(Math.sqrt(h)); };
 function showEst(){ if(!est) return; $('est').hidden = false;
-  $('est').innerHTML = `<small>Estimativa${est.aprox ? ' aproximada' : ''}</small><b>≈ R$ ${brl(est.v)}</b><small>${est.km.toLocaleString('pt-BR', {maximumFractionDigits: 1})} km · cerca de ${Math.round(est.min)} min</small><small>Pode variar se a viagem demorar mais que o previsto ou o trajeto aumentar mais de 10 km.</small>${serieOn() && descSerie() ? `<small>Corridas em série: ≈ R$ ${brl(vEst(true))} cada (desconto de ${z(descSerie())}%).</small>` : ''}`; }
+  $('est').innerHTML = `<small>Estimativa${est.aprox ? ' aproximada' : ''}</small><b>≈ R$ ${brl(vEst(false))}</b><small>${est.km.toLocaleString('pt-BR', {maximumFractionDigits: 1})} km · cerca de ${Math.round(est.min)} min${nAdd() ? ' · inclui adicional noturno de ' + z(NOT()) + '%' : ''}</small><small>Pode variar se a viagem demorar mais que o previsto ou o trajeto aumentar mais de 10 km.</small>${serieOn() && descSerie() ? `<small>Corridas em série: ≈ R$ ${brl(vEst(true))} cada (desconto de ${z(descSerie())}%).</small>` : ''}`; }
 async function calcular(){
   if((!$('oRua').value.trim()) || !$('dRua').value.trim()) throw new Error('Preencha a rua de origem e a de destino.');
   if(!pO) pO = await achar('o'); if(!pD) pD = await achar('d');
@@ -556,7 +556,10 @@ async function carregarOrc(){ try{ ORC = (await tmo(db.ref('orc/' + eid).once('v
 const usoDe = async (mk, k) => { try{ return Number((await tmo(db.ref('uso/' + eid + '/' + mk + '/' + k).once('value'), 6000)).val() || 0); }catch(x){ return 0; } };
 const addUso = (ts, cc, v) => db.ref('uso/' + eid + '/' + mesK(ts) + '/' + slug(cc)).transaction(c => Math.round(((c || 0) + v) * 100) / 100).catch(() => {});
 const descSerie = () => Math.max(0, Math.min(90, Number(emp && emp.recDesc) || 0));
-const vEst = serie => est ? Math.round(est.v * (serie ? (1 - descSerie()/100) : 1) * 100) / 100 : 0;
+const NOT = () => { const t = T(); return t.noturno != null ? Number(t.noturno) : 30; };
+const noite = ts => { if(!isFinite(ts)) return false; const h = +new Intl.DateTimeFormat('pt-BR', {timeZone: 'America/Sao_Paulo', hour: '2-digit', hour12: false}).formatToParts(new Date(ts)).find(x => x.type === 'hour').value % 24; return h >= 22 || h < 5; };
+const nAdd = ts => (NOT() > 0 && noite(ts == null ? new Date($('quando').value).getTime() : ts)) ? NOT() : 0;
+const vEst = (serie, ts) => est ? Math.round(est.v * (1 + nAdd(ts)/100) * (serie ? (1 - descSerie()/100) : 1) * 100) / 100 : 0;
 async function motivoAprov(valor, ts, cc){
   if(me.papel === 'gestor') return null;
   const lim = Number(emp.aprovaAcima) || 0, m = [];
@@ -572,7 +575,7 @@ async function infoOrc(){
   el.style.color = p >= 100 ? '#e5484d' : p >= 80 ? '#DDB066' : 'var(--muted)';
   el.textContent = `Orçamento de "${o.n}" em ${mesTxt(mesK(ts))}: R$ ${brl(u)} de R$ ${brl(o.v)} (${p}%).` + (p >= 100 && me.papel !== 'gestor' ? ' Novas requisições ficarão aguardando aprovação do gestor.' : '');
 }
-$('cc').onchange = infoOrc; $('quando').addEventListener('change', infoOrc);
+$('cc').onchange = infoOrc; $('quando').addEventListener('change', infoOrc); $('quando').addEventListener('change', showEst); $('quando').addEventListener('input', showEst);
 
 // serie (recorrencia)
 let serSel = [];
@@ -604,7 +607,7 @@ $('serVer').onclick = serieVer;
 const erro = m => { $('err').hidden = false; $('err').textContent = m; };
 async function criarRT(A, serieId){
   const v = id => $(id).value.trim();
-  const valor = vEst(!!serieId);
+  const valor = vEst(!!serieId, A);
   const motivo = await motivoAprov(valor, A, v('cc'));
   const r = await tmo(db.ref('contadores/rt').transaction(c => c === null ? 1 : c + 1), 15000); if(!r.committed) throw Object.assign(new Error('nc'), {contador: true});
   const n = r.snapshot.val(), RT = rtTxt(n), TS = firebase.database.ServerValue.TIMESTAMP, sid = db.ref().push().key, pid = db.ref().push().key;
