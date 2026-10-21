@@ -67,6 +67,11 @@ legend{padding:0;margin-bottom:6px;font:700 16px "Barlow Condensed",sans-serif;l
 .mot label.sel{border-color:#DDB066;box-shadow:0 0 0 1px #DDB066}
 .mot input{width:20px;min-height:20px;height:20px;flex:none;accent-color:#DDB066}
 .mot b{display:block;font-size:16px}.mot small{display:block;color:var(--muted)}
+.bsc{display:grid;gap:6px;margin:0 0 10px}
+.bsc .res{display:grid;gap:6px}
+.bsc .res button{display:block;width:100%;text-align:left;border:1px solid var(--line);background:var(--panel);color:var(--fg);border-radius:10px;padding:10px 12px;font:600 15px "Barlow",sans-serif;cursor:pointer}
+.bsc .res button small{display:block;font-weight:400;color:var(--muted)}
+.bsc .hint{margin:0}
 .mot .ph{display:flex;gap:6px;margin-top:6px}
 .mot .ph img,.vei .ph img{width:64px;height:48px;object-fit:cover;border-radius:8px;border:1px solid var(--line);cursor:zoom-in}
 .mot .ph img.rost,.vei .ph img.rost{width:48px;border-radius:50%}
@@ -116,11 +121,13 @@ legend{padding:0;margin-bottom:6px;font:700 16px "Barlow Condensed",sans-serif;l
     <fieldset id="fMot" hidden><legend>Escolha o carro</legend><div class="mot" id="motL"></div><small id="motAv" style="display:block;margin-top:6px;color:var(--muted)">Cada motorista tem a própria agenda e o mesmo preço.</small></fieldset>
     <fieldset><legend>Partida</legend>
       <button class="mini" type="button" id="loc">📍 Usar minha localização</button>
+      <div class="bsc"><div class="field"><label for="oBus">Buscar pelo nome do local (opcional)</label><input id="oBus" placeholder="Ex.: shopping, hospital, nome da empresa" autocomplete="off"></div><div class="res" id="oRes"></div></div>
       <div class="field"><label for="oRua">Rua</label><input id="oRua" placeholder="Nome da rua" autocomplete="off"></div>
       <div class="g2"><div class="field"><label for="oNum">Número</label><input id="oNum" inputmode="numeric" placeholder="123" autocomplete="off"></div><div class="field"><label for="oBai">Bairro</label><input id="oBai" placeholder="Bairro" autocomplete="off"></div></div>
       <div class="field"><label for="oCid">Cidade</label><input id="oCid" value="Macaé" autocomplete="off"></div>
     </fieldset>
     <fieldset><legend>Destino</legend>
+      <div class="bsc"><div class="field"><label for="dBus">Buscar pelo nome do local (opcional)</label><input id="dBus" placeholder="Ex.: shopping, hospital, nome da empresa" autocomplete="off"></div><div class="res" id="dRes"></div></div>
       <div class="field"><label for="dRua">Rua</label><input id="dRua" placeholder="Nome da rua" autocomplete="off"></div>
       <div class="g2"><div class="field"><label for="dNum">Número</label><input id="dNum" inputmode="numeric" placeholder="123" autocomplete="off"></div><div class="field"><label for="dBai">Bairro</label><input id="dBai" placeholder="Bairro" autocomplete="off"></div></div>
       <div class="field"><label for="dCid">Cidade</label><input id="dCid" value="Macaé" autocomplete="off"></div>
@@ -352,6 +359,33 @@ async function achar(p){
   if(bai){ const r = await photon(bai + ', ' + cid, cid); if(r) return Object.assign(r, {aprox:true}); }
   return null;
 }
+const CENTRO = {la: -22.37, lo: -41.79};
+async function buscaLocal(q){
+  const out = [], seen = new Set(), add = x => { if(!x || !isFinite(x.la) || !isFinite(x.lo) || hav(CENTRO, x) > 60) return; const k = (x.nome + '|' + x.la.toFixed(3) + '|' + x.lo.toFixed(3)); if(seen.has(k)) return; seen.add(k); out.push(x); };
+  const [a, b] = await Promise.all([
+    fetch(`https://photon.komoot.io/api/?limit=10&lat=${CENTRO.la}&lon=${CENTRO.lo}&q=${encodeURIComponent(q)}`).then(r => r.json()).catch(() => ({})),
+    fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&limit=8&countrycodes=br&accept-language=pt-BR&addressdetails=1&viewbox=-42.2,-22.1,-41.5,-22.6&bounded=1&q=${encodeURIComponent(q)}`).then(r => r.json()).catch(() => [])
+  ]);
+  ((a && a.features) || []).forEach(f => { const p = f.properties || {}, c = f.geometry && f.geometry.coordinates; if(!c) return;
+    add({nome: p.name || '', rua: p.street || '', num: p.housenumber || '', bai: p.district || p.locality || '', cid: p.city || p.county || '', la: c[1], lo: c[0]}); });
+  (Array.isArray(b) ? b : []).forEach(x => { const d = x.address || {};
+    add({nome: x.name || d.amenity || d.shop || d.building || d.tourism || '', rua: d.road || d.pedestrian || '', num: d.house_number || '', bai: d.suburb || d.neighbourhood || d.city_district || '', cid: d.city || d.town || d.village || d.municipality || '', la: +x.lat, lo: +x.lon}); });
+  return out.filter(x => x.nome || x.rua).slice(0, 7);
+}
+function ligarBusca(p){
+  const inp = $(p + 'Bus'), box = $(p + 'Res'); let tm = null, tk = 0;
+  inp.oninput = () => { clearTimeout(tm); const q = inp.value.trim(); box.replaceChildren(); if(q.length < 3) return;
+    tm = setTimeout(async () => { const my = ++tk; box.innerHTML = '<p class="hint">Procurando…</p>'; let l = []; try{ l = await buscaLocal(q + (/maca[eé]/i.test(q) ? '' : '')); }catch(e){}
+      if(my !== tk) return; box.replaceChildren();
+      if(!l.length){ box.innerHTML = '<p class="hint">Não achei esse nome no mapa. Digite a rua e o bairro nos campos abaixo, ou envie assim mesmo: o motorista confirma o endereço com você.</p>'; return; }
+      l.forEach(x => { const b = document.createElement('button'); b.type = 'button'; const t = document.createElement('span'); t.textContent = x.nome || x.rua; const s2 = document.createElement('small'); s2.textContent = [x.nome ? x.rua + (x.num ? ', ' + x.num : '') : '', x.bai, x.cid].filter(Boolean).join(' · ');
+        b.append(t, s2); b.onclick = () => { const rua = [x.nome, x.rua].filter((v, i, a) => v && a.indexOf(v) === i).join(' - ') || x.nome;
+          $(p + 'Rua').value = rua.slice(0, 120); $(p + 'Num').value = x.num || ''; $(p + 'Bai').value = x.bai || ''; $(p + 'Cid').value = x.cid || 'Macaé';
+          if(p === 'o'){ pO = {la: x.la, lo: x.lo}; gps = false; } else pD = {la: x.la, lo: x.lo};
+          est = null; $('est').hidden = true; inp.value = ''; box.replaceChildren(); box.innerHTML = '<p class="hint">✓ Local selecionado. Confira o endereço abaixo.</p>'; if(temTarifa && pO && pD) calcular().catch(() => {}); else auto(); };
+        box.appendChild(b); }); }, 450); };
+}
+ligarBusca('o'); ligarBusca('d');
 let gps = false, outro = false;
 function setOutro(v){
   outro = v; $('bMim').setAttribute('aria-pressed', !v); $('bOutro').setAttribute('aria-pressed', v);
