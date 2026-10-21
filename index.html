@@ -354,6 +354,20 @@ h3{font:700 15px var(--f-cond);letter-spacing:.12em;text-transform:uppercase;col
 </div>
 
 <!-- ===== HISTORY ===== -->
+<div class="sheet" id="sEnd" hidden>
+  <div class="app">
+    <header><h2>Editar endereços</h2><button class="iconbtn" type="button" data-close>Fechar</button></header>
+    <div class="field" style="padding:0 16px"><label for="eP">Partida</label><input id="eP" maxlength="200"></div>
+    <div class="field" id="eSw" style="padding:8px 16px 0" hidden><label for="eS">Parada</label><input id="eS" maxlength="200"></div>
+    <div class="field" style="padding:8px 16px 0"><label for="eD">Destino</label><input id="eD" maxlength="200"></div>
+    <div class="field" style="padding:8px 16px 0"><label for="eKm">Distância em km (opcional: use se o mapa errar)</label><input id="eKm" inputmode="decimal" placeholder="Ex.: 7,5"></div>
+    <div class="hact"><button class="iconbtn" type="button" id="eCalc">Recalcular valor</button><button class="iconbtn" type="button" id="eSalvar" disabled>Salvar</button></div>
+    <p class="hleg" id="eRes"></p>
+    <p class="hleg" id="eMsg"></p>
+    <div class="hact" id="eWaW" hidden><button class="iconbtn" type="button" id="eWa" style="grid-column:1/-1">Avisar o cliente pelo WhatsApp</button></div>
+    <p class="hleg">Corrija a partida ou o destino se o cliente digitou errado. O app procura os endereços no mapa, calcula a distância e o valor com a sua tarifa (adicional noturno e desconto em dinheiro incluídos). Confira os endereços encontrados antes de salvar. Se o mapa errar, informe a distância certa em km.</p>
+  </div>
+</div>
 <div class="sheet" id="sHor" hidden>
   <div class="app">
     <header><h2>Quadro de horários</h2><button class="iconbtn" type="button" data-close>Fechar</button></header>
@@ -1398,6 +1412,57 @@ function ordenar(lista){
   esp.forEach(x => { x.furou = fim.filter(y => y.s === 'aguardando' && !y.a).indexOf(x) + 1 < x.chegada; });
   return fim;
 }
+/* ---------- editar endereços de um pedido da fila ---------- */
+let endSid = null, endRes = null;
+async function geoEnd(t){
+  const bias = 'viewbox=-42.2,-22.1,-41.5,-22.6';
+  try{ const j = await (await fetch('https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&countrycodes=br&accept-language=pt-BR&' + bias + '&q=' + encodeURIComponent(t))).json(); if(j[0]) return {la: +j[0].lat, lo: +j[0].lon, nome: j[0].display_name}; }catch(e){}
+  try{ const f = ((await (await fetch('https://photon.komoot.io/api/?limit=1&lat=-22.37&lon=-41.79&q=' + encodeURIComponent(t))).json()).features || [])[0]; if(f){ const p = f.properties || {}; return {la: f.geometry.coordinates[1], lo: f.geometry.coordinates[0], nome: [p.name, p.street, p.district, p.city].filter(Boolean).join(', ')}; } }catch(e){}
+  return null;
+}
+function abrirEnd(k){
+  const it = filaData[k]; if(!it) return; endSid = k; endRes = null;
+  $('eP').value = it.partida || ''; $('eD').value = it.destino || ''; $('eS').value = it.parada || ''; $('eSw').hidden = !it.parada; $('eKm').value = '';
+  $('eRes').textContent = 'Valor atual: ' + (it.estim || 'sem estimativa'); $('eMsg').textContent = ''; $('eSalvar').disabled = true; $('eWaW').hidden = true; show('sEnd', true);
+}
+['eP', 'eD', 'eS', 'eKm'].forEach(id => $(id).oninput = () => { endRes = null; $('eSalvar').disabled = true; });
+$('eCalc').onclick = async () => {
+  const it = filaData[endSid]; if(!it) return;
+  const p = $('eP').value.trim(), d = $('eD').value.trim(), sp = $('eSw').hidden ? '' : $('eS').value.trim(), kmM = parseFloat(($('eKm').value || '').replace(',', '.'));
+  if(!p || !d){ $('eMsg').textContent = 'Preencha a partida e o destino.'; return; }
+  $('eMsg').textContent = 'Procurando os endereços no mapa…'; $('eCalc').disabled = true;
+  try{
+    const [a, b] = await Promise.all([geoEnd(p), geoEnd(d)]); let km = null, min = null;
+    if(a && b){
+      try{ const j = await (await fetch(`https://router.project-osrm.org/route/v1/driving/${a.lo},${a.la};${b.lo},${b.la}?overview=false`)).json(), r = j.routes && j.routes[0]; if(!r) throw 0; km = r.distance/1000; min = r.duration/60; }
+      catch(e){ const R = 6371, rd = x => x*Math.PI/180, dl = rd(b.la - a.la), dn = rd(b.lo - a.lo), h = Math.sin(dl/2)**2 + Math.cos(rd(a.la))*Math.cos(rd(b.la))*Math.sin(dn/2)**2; km = 2*R*Math.asin(Math.sqrt(h))*1.3; min = km/25*60; }
+    }
+    if(isFinite(kmM) && kmM > 0){ min = (km && min) ? min*(kmM/km) : kmM/25*60; km = kmM; }
+    if(km == null){ $('eMsg').textContent = 'Não achei os endereços no mapa. Informe a distância em km manualmente.'; $('eCalc').disabled = false; return; }
+    const c = cfg; let v = Math.max(Number(c.band) || 0, km*(Number(c.km) || 0)) + min*(Number(c.min) || 0);
+    const noite = it.a && ehNoite(it.a); if(noite) v *= 1 + (Number(c.noturno != null ? c.noturno : 30) || 0)/100;
+    if(sp) v += (c.par != null ? Number(c.par) : 3);
+    const din = String(it.pag || '').toLowerCase().startsWith('dinheiro'); if(din && Number(c.desc) > 0) v *= 1 - Number(c.desc)/100;
+    v = Math.round(v*100)/100;
+    const kmT = km.toLocaleString('pt-BR', {maximumFractionDigits: 1}), vT = v.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    endRes = {partida: p, destino: d, parada: sp, a: (a && b && !(isFinite(kmM) && kmM > 0)) ? a : (a && b ? a : null), b: (a && b) ? b : null, km, min, v, estim: 'R$ ' + vT + ' · ' + kmT + ' km'};
+    $('eRes').innerHTML = 'Valor atual: ' + escapeHtml(it.estim || 'sem estimativa') + '<br><b>Novo: ≈ R$ ' + vT + ' · ' + kmT + ' km · cerca de ' + Math.round(min) + ' min</b>' + (noite ? ' (com adicional noturno)' : '') + (din ? ' (com desconto em dinheiro)' : '')
+      + '<br><small>Partida encontrada: ' + escapeHtml(a ? a.nome : 'não achei') + '<br>Destino encontrado: ' + escapeHtml(b ? b.nome : 'não achei') + '</small>';
+    $('eMsg').textContent = (a && b) ? 'Confira se os endereços encontrados estão certos e toque em Salvar.' : 'Um endereço não foi achado no mapa: vou usar a distância informada e apagar as coordenadas dele.';
+    $('eSalvar').disabled = false;
+  }catch(e){ $('eMsg').textContent = 'Não consegui calcular agora. Confira a conexão.'; }
+  $('eCalc').disabled = false;
+};
+$('eSalvar').onclick = async () => {
+  const it = filaData[endSid], r = endRes; if(!it || !r || !fready) return;
+  const base = (fOwn() ? 'fila/' : 'filam/' + fMid + '/') + endSid + '/', up = {}, rd2 = x => Math.round(x*100)/100;
+  up[base + 'partida'] = r.partida.slice(0, 200); up[base + 'destino'] = r.destino.slice(0, 200); up[base + 'parada'] = r.parada ? r.parada.slice(0, 200) : (it.parada ? null : null); up[base + 'estim'] = r.estim.slice(0, 80);
+  up[base + 'oLa'] = r.a ? r.a.la : null; up[base + 'oLo'] = r.a ? r.a.lo : null; up[base + 'dLa'] = r.b ? r.b.la : null; up[base + 'dLo'] = r.b ? r.b.lo : null;
+  if(it.pid){ const m = Math.ceil(r.min + Math.max(5, Math.ceil(r.min*0.10))); up['pub/' + it.pid + '/m'] = m; up['pub/' + it.pid + '/oLa'] = r.a ? rd2(r.a.la) : null; up['pub/' + it.pid + '/oLo'] = r.a ? rd2(r.a.lo) : null; up['pub/' + it.pid + '/dLa'] = r.b ? rd2(r.b.la) : null; up['pub/' + it.pid + '/dLo'] = r.b ? rd2(r.b.lo) : null; }
+  try{ await fdb.ref().update(up); $('eMsg').textContent = 'Endereços salvos.'; $('eSalvar').disabled = true; toast('Endereços atualizados');
+    const fone = foneWa(it.passageiro ? it.foneP : it.fone); if(fone){ $('eWaW').hidden = false; $('eWa').onclick = () => window.open('https://wa.me/' + fone + '?text=' + encodeURIComponent('Olá, ' + (it.passageiro || it.nome || '') + '! Ajustei os endereços do seu agendamento.\nPartida: ' + r.partida + '\nDestino: ' + r.destino + '\nNova estimativa: ' + r.estim + '.\nSe algo estiver errado, me avise.'), '_blank'); } }
+  catch(e){ $('eMsg').textContent = 'Não consegui salvar. Confira a conexão.'; }
+};
 function drawFila(){
   const ativos = ordenar(Object.keys(filaData).map(k => Object.assign({sid: k}, filaData[k])).filter(x => FATIVO.includes(x.s) && (x.a ? x.a > Date.now() - 6*3600*1000 : x.c > Date.now() - 12*3600*1000)));
   const nAg = ativos.filter(x => x.s === 'aguardando').length;
@@ -1426,6 +1491,7 @@ function drawFila(){
     else if(meu) a += `<button class="btn primary full" data-a="vc" data-k="${x.sid}">Ir até o cliente</button>`;
     else a += `<button class="btn ghost" data-a="vc" data-k="${x.sid}">Ir até o cliente</button><button class="btn ghost" data-a="rc" data-k="${x.sid}">Cancelar</button>`;
     if(fone) a += `<button class="btn wa full" data-a="wa" data-k="${x.sid}">WhatsApp</button>`;
+    if(!meu && (x.s === 'aguardando' || x.s === 'aceito')) a += `<button class="btn ghost full" data-a="ed" data-k="${x.sid}">Editar endereços</button>`;
     const prox = x.dist != null && x.s === 'aguardando' ? `<p class="prox">${kmFila(x.dist)} de onde você termina${x.furou ? ' · passou na frente por proximidade' : ''}</p>` : '';
     return `<div class="fcard${x.a ? ' ag' : ''}"><div class="st">${x.a ? '<span class="agblink">AGENDADA</span> ' + fmtAg(x.a) + ' · prioridade · ' : ''}${FLBL[x.s]}${meu ? ' · sua corrida atual' : ''}</div><h3><span class="pos">${i + 1}º</span>${nome}</h3>
       <small>Pedido às ${hora} · ${escapeHtml(x.quando || 'Agora')}</small>
@@ -1442,6 +1508,7 @@ $('fList').onclick = e => {
   else if(b.dataset.a === 'ia') iniciarAg(k);
   else if(b.dataset.a === 'rc') recusar(k);
   else if(b.dataset.a === 'vc') irCliente(it);
+  else if(b.dataset.a === 'ed') abrirEnd(k);
   else if(b.dataset.a === 'wa') window.open('https://wa.me/' + foneWa(it.passageiro ? it.foneP : it.fone), '_blank');
 };
 setTimeout(() => fbInit().catch(() => { $('fMsg').textContent = 'Sem conexão com o serviço. Verifique a internet.'; }), 400);
