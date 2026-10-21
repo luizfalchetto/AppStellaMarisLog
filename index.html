@@ -410,7 +410,7 @@ function drawDyn(el, r, fn){
   [['', 'Normal'], ['fer', 'Feriado +' + p + '%'], ['chu', 'Chuva forte +' + pcC.toLocaleString('pt-BR') + '%']].forEach(([k, t]) => { const b = document.createElement('button'); b.type = 'button'; b.textContent = t; b.setAttribute('aria-pressed', (r.dyn || '') === k); b.onclick = () => fn(k); el.append(b); });
 }
 let dynSel = store.get('tx_dyn', null) || null;
-const PAGN = {din:'Dinheiro', pix:'Pix', deb:'Débito', cre:'Crédito'};
+const PAGN = {din:'Dinheiro', pix:'Pix', deb:'Débito', cre:'Crédito', fatura:'Fatura mensal (empresa)'};
 let cfg = Object.assign({}, DEF, store.get('tx_cfg', {}));
 const cfgOk = () => cfg.band>0 || cfg.km>0 || cfg.min>0;
 
@@ -421,6 +421,8 @@ const save = () => store.set('tx_ride', ride);
 const CUT_TAXA = Date.UTC(2026, 9, 20, 9, 30); // taxa de cartão extinta: só corridas encerradas antes disso mantêm a taxa
 function calc(r, now){
   const c = r.cfg, t = now || Date.now();
+  if(r.noshow){ const e = r.emp || {}, p = e.nsPct != null ? Number(e.nsPct) : 50, v = Math.round((Number(e.estimV) || 0)*p)/100;
+    return {dynPct:0, vDyn:0, vPar:0, km:0, corrMs:0, espMs:0, espTotal:0, espStart:null, vKm:0, vMin:0, vEsp:0, corrida:0, minimoAplicado:false, sub:v, taxa:0, pct:0, vDesc:0, descPct:0, total:v, vNs:v, nsPct:p}; }
   const km = (r.kmManual != null ? r.kmManual : r.m/1000);
   const corrMs = r.inicio ? ((r.fim || t) - r.inicio) : 0;
   let espMs = 0, espTotal = 0, espStart = null;
@@ -434,14 +436,14 @@ function calc(r, now){
   let corrida = 0, minimoAplicado = false;
   if(r.inicio){ minimoAplicado = c.band > vKm; corrida = Math.max(c.band, vKm) + vMin; }
   let sub = corrida + vEsp;
-  const dynPct = r.dyn ? dynRate(c, r.dyn) : 0;
+  const dynPct = (r.dyn && !(r.emp && r.dyn === 'chu')) ? dynRate(c, r.dyn) : 0; // chuva não incide sobre empresas
   const vDyn = Math.round(sub*dynPct)/100; sub += vDyn;
   const vPar = r.par ? (c.par != null ? Number(c.par) : 3) : 0; sub += vPar;
   const arr = Number(c.arred)||0;
   if(arr > 0 && sub > 0) sub = Math.ceil(sub/arr - 1e-9)*arr;
   const pct = (c.semTaxa || !r.fim || r.fim >= CUT_TAXA) ? 0 : (r.pag === 'deb' ? (c.taxaDeb != null ? c.taxaDeb : cfg.taxaDeb) : r.pag === 'cre' ? (c.taxaCre != null ? c.taxaCre : cfg.taxaCre) : 0);
   const taxa = Math.round(sub*(pct||0))/100;
-  const descPct = (c.desc != null && (r.pag === 'din' || (!r.pag && r.fim))) ? Number(c.desc) : 0;
+  const descPct = (r.emp && Number(r.emp.recDesc) > 0) ? Number(r.emp.recDesc) : (c.desc != null && !r.emp && (r.pag === 'din' || (!r.pag && r.fim))) ? Number(c.desc) : 0;
   const vDesc = Math.round(sub*descPct)/100;
   const total = Math.round((sub + taxa - vDesc)*100)/100;
   return {dynPct, vDyn, vPar, km, corrMs, espMs, espTotal, espStart, vKm, vMin, vEsp, corrida, minimoAplicado, sub, taxa, pct: pct||0, vDesc, descPct, total};
@@ -534,20 +536,103 @@ function avisar(){
   const t = `Olá${ride.cliente ? ', ' + ride.cliente : ''}! Cheguei para buscar você. ${[ride.cfg.nome, ride.cfg.modelo, ride.cfg.placa].filter(Boolean).join(' · ')}`.trim();
   window.open(`https://wa.me/${d}?text=${encodeURIComponent(t)}`, '_blank');
 }
+function avisarCaminho(){
+  let d = String(ride.fone || '').replace(/\D/g, ''); if(d.length === 10 || d.length === 11) d = '55' + d;
+  const t = `Olá${ride.cliente ? ', ' + ride.cliente : ''}! Aqui é ${ride.cfg.nome || 'o motorista'}, da Stella Maris Ride. Estou a caminho${ride.agendado ? ' para a sua corrida das ' + hhmm(ride.agendado) : ''}. ${[ride.cfg.modelo, ride.cfg.placa].filter(Boolean).join(' · ')}`.trim();
+  ride.avisoCam = Date.now(); save(); window.open(`https://wa.me/${d}?text=${encodeURIComponent(t)}`, '_blank');
+}
 function iniciar(){ ride.inicio = Date.now(); ride.fase = 'corrida'; ride.last = null; save(); qSync('em_corrida'); startGps(); capEnd(ride, 'orig'); render(); }
 function finalizar(){
   ride.fim = Date.now(); ride.fase = 'fim'; save(); qSync('concluido'); stopGps(); keepAwake(false);
-  lembrarCli(ride); saveHist(); render(); openFim(); if(ride.inicio) capEnd(ride, 'dest');
+  lembrarCli(ride); saveHist(); gravarCorrida(ride); emailRecibo(ride); render(); openFim(); if(ride.inicio) capEnd(ride, 'dest');
 }
 function cancelar(){
   if(!ride) return;
-  const comEspera = ride.chegada && ride.cfg.esp > 0;
+  const comEspera = ride.chegada && ride.cfg.esp > 0 && !ride.emp;
   pedirMotivo(comEspera ? 'Cancelar a corrida?' : 'Cancelar esta corrida?', motivo => {
     if(!ride) return;
     ride.motivo = motivo; ride.canceladaPor = 'motorista'; ride.fim = Date.now(); ride.fase = 'fim'; ride.cancelada = true;
     if(comEspera){ save(); qSync('cancelado'); stopGps(); keepAwake(false); saveHist(); render(); openFim(); }
-    else { qSync('cancelado'); saveHist(); ride = null; save(); stopGps(); keepAwake(false); render(); toast('Corrida cancelada e registrada no histórico.'); }
+    else { qSync('cancelado'); saveHist(); gravarCorrida(ride); emailRecibo(ride); ride = null; save(); stopGps(); keepAwake(false); render(); toast('Corrida cancelada e registrada no histórico.'); }
   }, comEspera ? 'A espera já contada fica registrada e você pode mandar o recibo dela.' : '');
+}
+
+/* ---------- empresas (RT) ---------- */
+async function aplicarEmpresa(it){
+  if(!it || !it.eid || !it.rt) return;
+  const sid = it.sid;
+  if(!fdb){ toast('Pedido de empresa: sem conexão para validar a RT. Confira a tarifa antes de iniciar.'); return; }
+  let rt = null, e = null;
+  try{ const [a, b] = await Promise.all([fdb.ref('rt/' + it.rt).once('value'), fdb.ref('empresas/' + it.eid).once('value')]); rt = a.val(); e = b.val(); }catch(x){}
+  if(!(ride && ride.fila && ride.fila.sid === sid)) return;
+  if(!(rt && e && rt.eid === it.eid && rt.sid === sid && e.ativo)){ toast('Atenção: não consegui validar a ' + it.rt + '. A tarifa normal foi mantida; confira antes de iniciar.'); return; }
+  const t = e.tar || {};
+  ride.cfg = Object.assign({}, ride.cfg, {band: Number(t.band) || 0, km: Number(t.km) || 0, min: Number(t.min) || 0, esp: Number(t.esp) || 0, dyn: t.dyn != null ? Number(t.dyn) : 50, desc: null, semTaxa: true});
+  ride.emp = {eid: it.eid, nome: e.nome, rt: it.rt, uid: rt.uid || '', cc: rt.cc || '', solNome: rt.solNome || '', solEmail: rt.solEmail || '', pasNome: rt.pasNome || '', pasEmail: rt.pasEmail || '', pasFone: rt.pasFone || '', estimV: rt.estimV != null ? Number(rt.estimV) : 0, recDesc: rt.serie ? (Number(e.recDesc) || 0) : 0, nsPct: e.nsPct != null ? Number(e.nsPct) : 50, canH: e.canH != null ? Number(e.canH) : 6, a: rt.a || null, partida: rt.partida || '', destino: rt.destino || ''};
+  ride.pag = 'fatura'; save(); render(); toast(it.rt + ' · ' + e.nome + ': tarifa da empresa aplicada.');
+}
+
+/* ---------- uso do orcamento + e-mails ---------- */
+const slugCC = s => String(s || '').normalize('NFD').replace(/[^\x20-\x7E]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 40) || 'sem_cc';
+const mesKey = ts => { const d = new Date(ts); return d.getFullYear() + String(d.getMonth() + 1).padStart(2, '0'); };
+function ajustarUso(r, valorFinal){
+  const e = r && r.emp; if(!e || !fready) return;
+  const ant = r.empUso != null ? r.empUso : (Number(e.estimV) || 0), delta = Math.round((valorFinal - ant)*100)/100; if(!delta) return;
+  r.empUso = valorFinal; save();
+  fdb.ref('uso/' + e.eid + '/' + mesKey(e.a || Date.now()) + '/' + slugCC(e.cc)).transaction(c => Math.max(0, Math.round(((c || 0) + delta)*100)/100)).catch(() => { r.empUso = ant; });
+}
+const EJS = {svc: '', tpl: '', key: ''};
+async function enviarEmail(to, nome, assunto, msg){
+  if(!EJS.svc || !EJS.tpl || !EJS.key || !to) return false;
+  try{ const r = await fetch('https://api.emailjs.com/api/v1.0/email/send', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({service_id: EJS.svc, template_id: EJS.tpl, user_id: EJS.key, template_params: {to_email: to, to_name: nome, subject: assunto, message: msg}})}); return r.ok; }
+  catch(x){ return false; }
+}
+const RODAPE_EMAIL = '\n\nStella Maris Technology · Stella Maris Ride\nMensagem automática sobre uma corrida contratada. Seus dados são usados apenas para esta corrida e para o faturamento (LGPD).';
+function emailRecibo(r){
+  if(!r || !r.emp || r.emailOk) return; r.emailOk = true; save();
+  const e = r.emp, tit = r.noshow ? 'No-Show' : r.cancelada ? 'Corrida cancelada' : 'Comprovante de corrida';
+  const corpo = receipt(r).replace(/\*/g, '') + RODAPE_EMAIL;
+  if(e.solEmail) enviarEmail(e.solEmail, e.solNome, `${tit} ${e.rt}`, `Olá, ${e.solNome || ''}.\n\n` + corpo);
+  if(e.pasEmail && e.pasEmail !== e.solEmail && !r.cancelada) enviarEmail(e.pasEmail, e.pasNome, `${tit} ${e.rt}`, `Olá, ${e.pasNome || ''}.\n\n` + corpo);
+}
+function emailConfirmado(it){
+  if(!it || !it.eid) return; const t = `Sua corrida ${it.rt} está confirmada para ${fmtAg(it.a)}.\nDe: ${it.partida || ''}\nPara: ${it.destino || ''}\nMotorista: ${[cfg.nome, cfg.modelo, cfg.placa].filter(Boolean).join(' · ')}\nO passageiro receberá um aviso por WhatsApp quando o motorista estiver a caminho.` + RODAPE_EMAIL;
+  if(it.solEmail) enviarEmail(it.solEmail, it.solNome, `Corrida ${it.rt} confirmada`, `Olá, ${it.solNome || ''}.\n\n` + t);
+  if(it.pasEmail && it.pasEmail !== it.solEmail) enviarEmail(it.pasEmail, it.pasNome, `Corrida ${it.rt} confirmada`, `Olá, ${it.pasNome || ''}.\n\n` + t);
+}
+function corridaRec(r, situacao){
+  const c = calc(r), e = r.emp;
+  return {eid: e.eid, empNome: e.nome, rt: e.rt, uid: e.uid || '', solNome: e.solNome || '', solEmail: e.solEmail || '', pasNome: e.pasNome || '', pasEmail: e.pasEmail || '', pasFone: e.pasFone || '', cc: e.cc || '',
+    partida: r.orig || e.partida || '', destino: r.dest || e.destino || '', a: e.a || 0, inicio: r.inicio || 0, fim: r.fim || Date.now(), km: Math.round(c.km*100)/100, minutos: Math.round(c.corrMs/60000), esperaMin: Math.round(c.espMs/60000),
+    valor: c.total, estimV: e.estimV || 0, situacao, motivo: r.motivo || '', c: Date.now()};
+}
+function gravarCorrida(r){
+  if(!r || !r.emp) return;
+  const rec = corridaRec(r, r.noshow ? 'noshow' : r.cancelada ? 'cancelada' : 'concluida'), p = 'corridas/' + rec.eid + '/' + rec.rt;
+  if(fready) fdb.ref(p).set(rec).catch(() => { const l = store.get('tx_pendc', []); l.push({p, rec}); store.set('tx_pendc', l.slice(-30)); });
+  else { const l = store.get('tx_pendc', []); l.push({p, rec}); store.set('tx_pendc', l.slice(-30)); }
+  ajustarUso(r, rec.valor);
+}
+function flushC(){ const l = store.get('tx_pendc', []); if(!l.length || !fready) return; store.set('tx_pendc', []); l.forEach(x => fdb.ref(x.p).set(x.rec).catch(() => { const m = store.get('tx_pendc', []); m.push(x); store.set('tx_pendc', m.slice(-30)); })); }
+async function gravarCancelFila(it, motivo){
+  if(!it || !it.eid || !it.rt) return;
+  let rt = null, e = null; try{ if(fdb){ const [a, b] = await Promise.all([fdb.ref('rt/' + it.rt).once('value'), fdb.ref('empresas/' + it.eid).once('value')]); rt = a.val(); e = b.val(); } }catch(x){}
+  const canH = e && e.canH != null ? Number(e.canH) : 6, tarde = it.a ? (it.a - Date.now()) < canH*3600000 : false;
+  const rec = {eid: it.eid, empNome: (e && e.nome) || it.empNome || '', rt: it.rt, uid: (rt && rt.uid) || '', solNome: it.solNome || '', solEmail: it.solEmail || '', pasNome: it.pasNome || '', pasEmail: it.pasEmail || '', pasFone: it.pasFone || '', cc: it.cc || '',
+    partida: it.partida || '', destino: it.destino || '', a: it.a || 0, inicio: 0, fim: Date.now(), km: 0, minutos: 0, esperaMin: 0, valor: 0, estimV: it.estimV || 0, situacao: 'cancelada', motivo: motivo + (tarde ? ' (fora do prazo sem custo: avaliar cobrança)' : ''), c: Date.now()};
+  const p = 'corridas/' + rec.eid + '/' + rec.rt;
+  if(fready) fdb.ref(p).set(rec).catch(() => { const l = store.get('tx_pendc', []); l.push({p, rec}); store.set('tx_pendc', l.slice(-30)); });
+  else { const l = store.get('tx_pendc', []); l.push({p, rec}); store.set('tx_pendc', l.slice(-30)); }
+  if(fready && it.estimV && it.a) fdb.ref('uso/' + it.eid + '/' + mesKey(it.a) + '/' + slugCC(it.cc)).transaction(c => Math.max(0, Math.round(((c || 0) - it.estimV)*100)/100)).catch(() => {});
+}
+function noShow(){
+  if(!ride || !ride.emp) return;
+  const e = ride.emp, v = Math.round((e.estimV || 0)*e.nsPct)/100;
+  pedirMotivo('Registrar No-Show?', motivo => {
+    if(!ride) return;
+    ride.noshow = true; ride.cancelada = true; ride.motivo = motivo; ride.canceladaPor = 'noshow'; ride.fim = Date.now(); ride.fase = 'fim';
+    save(); qSync('cancelado'); stopGps(); keepAwake(false); saveHist(); gravarCorrida(ride); emailRecibo(ride); render(); openFim();
+  }, `Será cobrado ${String(e.nsPct).replace('.', ',')}% do valor estimado (R$ ${brl(v)}), no lugar da espera. O motivo fica no extrato da empresa.`);
 }
 
 /* ---------- history ---------- */
@@ -564,11 +649,13 @@ function saveHist(){
 /* ---------- receipt ---------- */
 function receipt(r){
   const c = calc(r), k = r.cfg, L = [];
-  L.push(r.cancelada ? '*Recibo de espera*' : '*Recibo de corrida*');
+  L.push(r.noshow ? '*Comprovante de No-Show*' : r.cancelada ? '*Recibo de espera*' : '*Recibo de corrida*');
   if(cfg.empresa || cfg.cnpj) L.push([cfg.empresa, cfg.cnpj ? 'CNPJ ' + cfg.cnpj : ''].filter(Boolean).join(' · '));
   if(k.nome || k.placa || k.modelo) L.push([k.nome, k.modelo, k.placa].filter(Boolean).join(' · '));
   L.push(`Data: ${dia(r.fim || Date.now())}`);
   if(r.cliente) L.push(`Cliente: ${r.cliente}`);
+  if(r.emp){ L.push(`Empresa: ${r.emp.nome} · ${r.emp.rt}`); if(r.emp.cc) L.push(`Centro de custo: ${r.emp.cc}`); if(r.emp.solNome) L.push(`Solicitante: ${r.emp.solNome}`); }
+  if(r.noshow && r.motivo) L.push(`Motivo do No-Show: ${r.motivo}`);
   if(r.tipo === 'agendada' && r.agendado) L.push(`Horário marcado: ${hhmm(r.agendado)}`);
   if(r.inicio) L.push(`Embarque ${hhmm(r.inicio)} · Desembarque ${hhmm(r.fim)}`);
   if(r.orig) L.push(`Partida: ${r.orig}`);
@@ -583,7 +670,7 @@ function receipt(r){
   if(c.vPar > 0) L.push(`Parada adicional${r.parEnd ? ' (' + r.parEnd + ')' : ''}: R$ ${brl(c.vPar)}`);
   if(c.vDyn > 0) L.push(`Tarifa dinâmica (${DYN[r.dyn] || 'especial'}) +${c.dynPct.toLocaleString('pt-BR')}%: R$ ${brl(c.vDyn)}`);
   if(c.taxa > 0) L.push(`Taxa ${r.pag === 'deb' ? 'débito' : 'crédito'} ${c.pct.toLocaleString('pt-BR')}%: R$ ${brl(c.taxa)}`);
-  if(c.vDesc > 0) L.push(`Desconto pagamento em dinheiro ${c.descPct.toLocaleString('pt-BR')}%: -R$ ${brl(c.vDesc)}`);
+  if(c.vDesc > 0) L.push(`${r.emp ? 'Desconto de corrida recorrente' : 'Desconto pagamento em dinheiro'} ${c.descPct.toLocaleString('pt-BR')}%: -R$ ${brl(c.vDesc)}`);
   L.push('');
   L.push(`*Total: R$ ${brl(c.total)}*`);
   if(r.pag) L.push(`Pagamento: ${PAGN[r.pag]}`);
@@ -605,7 +692,7 @@ function render(){
   const fase = ride ? ride.fase : 'livre';
   { const rk = ride && ride.fase !== 'fim' && ride.fila ? ride.fila.sid + fase : ''; if(rk !== lastRk){ lastRk = rk; try{ drawFila(); }catch(e){} } }
   $('chip').dataset.s = fase; $('chipTxt').textContent = chipTxt[fase];
-  $('cliTxt').textContent = ride && ride.cliente ? ride.cliente : '';
+  $('cliTxt').textContent = ride && ride.cliente ? ride.cliente + (ride.emp ? ' · ' + ride.emp.rt + ' · ' + ride.emp.nome : '') : '';
   const c = ride ? calc(ride) : null;
   { const live = ride && ride.fase !== 'fim'; drawDyn($('dynMain'), {cfg: cfg, id: 'g', dyn: live ? ride.dyn : dynSel}, k => { dynSel = k || null; store.set('tx_dyn', dynSel); if(ride && ride.fase !== 'fim'){ ride.dyn = dynSel; save(); } render(); }); }
   $('total').innerHTML = '<span>R$</span>' + brl(c ? c.total : 0);
@@ -642,11 +729,13 @@ function render(){
     const r2 = document.createElement('div'); r2.className='row2';
     r2.append(btn('Cancelar', 'ghost', cancelar), btn('Já embarcou', '', iniciar)); a.append(r2);
   }
+  if(fase === 'indo' && ride && ride.fone) a.append(btn(ride.avisoCam ? 'Avisar de novo: a caminho (WhatsApp)' : 'Avisar passageiro: a caminho (WhatsApp)', '', avisarCaminho));
   if(fase === 'espera'){
     a.append(btn('Iniciar corrida', 'primary', iniciar));
     a.append(btn('Avisar cliente no WhatsApp', '', avisar));
-    a.append(btn('Cliente não veio / cancelar', 'ghost', cancelar));
+    a.append(btn(ride && ride.emp ? 'Cancelar' : 'Cliente não veio / cancelar', 'ghost', cancelar));
   }
+  if(ride && ride.emp && (fase === 'indo' || fase === 'espera')) a.append(btn('No-Show (cobra ' + String(ride.emp.nsPct).replace('.', ',') + '% do estimado)', 'danger', noShow));
   if(fase === 'corrida') a.append(btn('Finalizar corrida', 'danger', () => { if(confirm('Finalizar a corrida agora?')) finalizar(); }));
   if(ride && ride.fila && fase !== 'fim'){
     if(fase === 'indo' || fase === 'espera') a.prepend(btn('Ir até o cliente', 'wa', () => irCliente(Object.assign({sid: ride.fila.sid}, ride.fila))));
@@ -720,6 +809,7 @@ $('bCfg').onclick = openCfg; $('bCfg2').onclick = openCfg;
 
 function linhas(r){
   const c = calc(r), k = r.cfg, rows = [];
+  if(r.noshow) return {c, k, rows: [[`No-Show (${c.nsPct.toLocaleString('pt-BR')}% de R$ ${brl((r.emp || {}).estimV || 0)} estimado)`, 'R$ ' + brl(c.total)]]};
   if(r.inicio){
     if(c.minimoAplicado) rows.push([`Bandeirada (${c.km.toLocaleString('pt-BR',{maximumFractionDigits:2})} km)`, 'R$ '+brl(k.band)]);
     else rows.push([`Distância ${c.km.toLocaleString('pt-BR',{maximumFractionDigits:2})} km × R$ ${brl(k.km)}`, 'R$ '+brl(c.vKm)]);
@@ -729,7 +819,7 @@ function linhas(r){
   if(c.vPar > 0) rows.push(['Parada adicional', 'R$ '+brl(c.vPar)]);
   if(c.vDyn > 0) rows.push([`Tarifa dinâmica (${DYN[r.dyn] || 'especial'}) +${c.dynPct.toLocaleString('pt-BR')}%`, 'R$ '+brl(c.vDyn)]);
   if(c.taxa > 0) rows.push([`Taxa ${r.pag === 'deb' ? 'débito' : 'crédito'} ${c.pct.toLocaleString('pt-BR')}%`, 'R$ '+brl(c.taxa)]);
-  if(c.vDesc > 0) rows.push([`Desconto em dinheiro ${c.descPct.toLocaleString('pt-BR')}%`, '-R$ '+brl(c.vDesc)]);
+  if(c.vDesc > 0) rows.push([`${r.emp ? 'Desconto recorrente' : 'Desconto em dinheiro'} ${c.descPct.toLocaleString('pt-BR')}%`, '-R$ '+brl(c.vDesc)]);
   return {c, k, rows};
 }
 function fillFim(r){
@@ -745,15 +835,18 @@ function openFim(r){
   $('fKm').parentElement.hidden = !fimRide.inicio;
   $('fOrig').value = fimRide.orig || ''; $('fDest').value = fimRide.dest || '';
   $('fOrig').parentElement.hidden = $('fDest').parentElement.hidden = !fimRide.inicio;
+  $('fPag').parentElement.hidden = !!fimRide.emp;
   fillFim(fimRide); syncPag(); show('sFim', true); loadPdfLib().catch(() => {});
 }
 $('fKm').oninput = () => {
   fimRide.kmManual = numIn($('fKm').value);
+  if(fimRide.emp) gravarCorrida(fimRide);
   if(ride && ride.id === fimRide.id){ ride = fimRide; save(); saveHist(); render(); }
   else { const h = store.get('tx_hist', []); const i = h.findIndex(x => x.id === fimRide.id); if(i>=0){ const c = calc(fimRide); Object.assign(h[i], {km:c.km,total:c.total,ride:fimRide}); store.set('tx_hist', h); } }
   fillFim(fimRide);
 };
 function persistFim(){
+  if(fimRide.emp) gravarCorrida(fimRide);
   if(ride && ride.id === fimRide.id){ ride = fimRide; save(); saveHist(); }
   else { const h = store.get('tx_hist', []); const i = h.findIndex(x => x.id === fimRide.id); if(i>=0){ const c = calc(fimRide); Object.assign(h[i], {km:c.km, total:c.total, ride:fimRide}); store.set('tx_hist', h); } }
 }
@@ -1018,7 +1111,7 @@ const csv = v => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
 $('bCsv').onclick = () => {
   const P = periodo(), l = store.get('tx_hist', []).filter(x => { const t = x.fim || x.id; return t >= P.a && t < P.b; }).sort((a, b) => (a.fim || a.id) - (b.fim || b.id));
   const head = ['Data', 'Hora', 'Cliente', 'Partida', 'Destino', 'Km', 'Min corrida', 'Min espera', 'Pagamento', 'Taxa cartão', 'Total', 'Situação', 'Motivo do cancelamento'];
-  const rows = l.map(x => { const r = x.ride || {}, c = r.cfg ? calc(r) : {taxa:0}, t = x.fim || x.id; return [dia(t), hhmm(t), x.cliente, r.orig, r.dest, (x.km || 0).toFixed(2).replace('.', ','), minTxt(x.corrMs), minTxt(x.espMs), r.pag ? PAGN[r.pag] : 'Dinheiro', brl(c.taxa || 0), brl(x.total || 0), x.cancelada ? 'Cancelada' : 'Concluída', x.motivo || ''].map(csv).join(';'); });
+  const rows = l.map(x => { const r = x.ride || {}, c = r.cfg ? calc(r) : {taxa:0}, t = x.fim || x.id; return [dia(t), hhmm(t), x.cliente, r.orig, r.dest, (x.km || 0).toFixed(2).replace('.', ','), minTxt(x.corrMs), minTxt(x.espMs), r.pag ? PAGN[r.pag] : 'Dinheiro', brl(c.taxa || 0), brl(x.total || 0), (r.noshow ? 'No-Show' : x.cancelada ? 'Cancelada' : 'Concluída'), x.motivo || ''].map(csv).join(';'); });
   baixar(`corridas-${P.lbl.replace(/[^A-Za-z0-9]+/g, '-')}.csv`, '\ufeff' + [head.map(csv).join(';')].concat(rows).join('\r\n'), 'text/csv');
 };
 $('bClear').onclick = () => { if(confirm('Apagar TODO o histórico de corridas? Isso não pode ser desfeito.')){ store.set('tx_hist', []); renderRep(); } };
@@ -1075,7 +1168,7 @@ function startFila(){
     fKnown = new Set(ativos); drawFila(); varrerCancel();
   }, () => {});
   fdb.ref('cancelar').on('value', sn => { cancData = sn.val() || {}; varrerCancel(); }, () => {});
-  flushQ(); podarPub(); pushDisp();
+  flushQ(); flushC(); podarPub(); pushDisp();
 }
 function stopFila(){
   fready = false; fListen = false; filaData = {}; cancData = {}; fKnown = null;
@@ -1134,7 +1227,7 @@ function irDestino(f){
 }
 function aceitar(sid){
   const it = filaData[sid]; if(!it || it.s !== 'aguardando') return;
-  if(it.a){ setStatus(sid, it.pid, 'aceito').then(() => toast('Agendamento confirmado para ' + fmtAg(it.a) + '.')).catch(() => toast('Falha ao confirmar. Tente de novo.')); return; }
+  if(it.a){ setStatus(sid, it.pid, 'aceito').then(() => { toast('Agendamento confirmado para ' + fmtAg(it.a) + '.'); emailConfirmado(it); }).catch(() => toast('Falha ao confirmar. Tente de novo.')); return; }
   const pri = proxAg(sid);
   if(pri && !confirm('Há corrida AGENDADA (prioridade) às ' + hhmm(pri.a) + '. Aceitar este pedido mesmo assim?')) return;
   if(ride && ride.fase !== 'fim'){ toast('Termine ou cancele a corrida em andamento antes de aceitar outra.'); return; }
@@ -1142,7 +1235,7 @@ function aceitar(sid){
   ride.orig = it.partida || ''; ride.dest = it.destino || ''; ride.obs = it.obs || ''; if(it.parada){ ride.par = true; ride.parEnd = it.parada; }
   ride.fila = {sid, pid: it.pid, s: 'aceito', oLa: it.oLa, oLo: it.oLo, dLa: it.dLa, dLo: it.dLo, partida: it.partida, destino: it.destino, parada: it.parada || ''};
   save(); qSet(sid, it.pid, 'aceito'); render();
-  toast('Pedido aceito. Toque em "Ir até o cliente".');
+  toast('Pedido aceito. Toque em "Ir até o cliente".'); aplicarEmpresa(Object.assign({sid}, it));
 }
 const fmtAg = ts => new Date(ts).toLocaleString('pt-BR', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'});
 function proxAg(skip){
@@ -1156,7 +1249,7 @@ function iniciarAg(sid){
   ride.orig = it.partida || ''; ride.dest = it.destino || ''; ride.obs = it.obs || '';
   ride.fila = {sid, pid: it.pid, s: 'aceito', oLa: it.oLa, oLo: it.oLo, dLa: it.dLa, dLo: it.dLo, partida: it.partida, destino: it.destino};
   save(); render();
-  toast('Corrida agendada iniciada. Toque em "Ir até o cliente".');
+  toast('Corrida agendada iniciada. Toque em "Ir até o cliente".'); aplicarEmpresa(Object.assign({sid}, it));
 }
 function regCancelFila(it, motivo, quem){
   const h = store.get('tx_hist', []), id = Number(it.c) || Date.now();
@@ -1165,7 +1258,7 @@ function regCancelFila(it, motivo, quem){
   const r = {id, tipo: it.a ? 'agendada' : 'avulsa', agendado: it.a || null, cliente: nome, fone: (it.passageiro ? it.foneP : it.fone) || '', cfg: Object.assign({}, cfg), fase: 'fim', criado: id, chegada: null, inicio: null, fim: t, m: 0, last: null, kmManual: null,
     orig: it.partida || '', dest: it.destino || '', obs: it.obs || '', cancelada: true, motivo, canceladaPor: quem};
   h.unshift({id, cliente: nome, tipo: r.tipo, chegada: null, inicio: null, fim: t, km: 0, corrMs: 0, espMs: 0, total: 0, cancelada: true, motivo, canceladaPor: quem, ride: r});
-  store.set('tx_hist', h.slice(0, 500));
+  store.set('tx_hist', h.slice(0, 500)); gravarCancelFila(it, motivo);
 }
 function recusar(sid){
   const it = filaData[sid]; if(!it) return;
@@ -1220,7 +1313,7 @@ function drawFila(){
     return `<div class="fcard${x.a ? ' ag' : ''}"><div class="st">${x.a ? '<span class="agblink">AGENDADA</span> ' + fmtAg(x.a) + ' · prioridade · ' : ''}${FLBL[x.s]}${meu ? ' · sua corrida atual' : ''}</div><h3><span class="pos">${i + 1}º</span>${nome}</h3>
       <small>Pedido às ${hora} · ${escapeHtml(x.quando || 'Agora')}</small>
       <p><b>De:</b> ${escapeHtml(x.partida)}<br><b>Para:</b> ${escapeHtml(x.destino)}${x.parada ? '<br><b>Parada:</b> ' + escapeHtml(x.parada) : ''}</p>
-      ${prox}${x.estim ? `<p><small>Estimativa:</small> ${escapeHtml(x.estim)}</p>` : ''}${x.obs ? `<p><small>Obs.:</small> ${escapeHtml(x.obs)}</p>` : ''}
+      ${x.rt ? `<p><b>${escapeHtml(x.rt)}</b> · ${escapeHtml(x.empNome || 'Empresa')}${x.cc ? ' · CC: ' + escapeHtml(x.cc) : ''}</p>` : ''}${prox}${x.estim ? `<p><small>Estimativa:</small> ${escapeHtml(x.estim)}</p>` : ''}${x.obs ? `<p><small>Obs.:</small> ${escapeHtml(x.obs)}</p>` : ''}
       <div class="acts">${a}</div></div>`;
   }).join('') : '';
   if(L.dataset.h !== html){ L.dataset.h = html; L.innerHTML = html; }
