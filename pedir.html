@@ -114,7 +114,7 @@ legend{padding:0;margin-bottom:6px;font:700 16px "Barlow Condensed",sans-serif;l
       <div class="g2"><div class="field"><label for="sNum">Número</label><input id="sNum" inputmode="numeric" placeholder="123" autocomplete="off"></div><div class="field"><label for="sBai">Bairro</label><input id="sBai" placeholder="Bairro" autocomplete="off"></div></div>
       <div class="field"><label for="sCid">Cidade</label><input id="sCid" value="Macaé" autocomplete="off"></div>
     </fieldset>
-    <div class="field" id="fQuando"><label for="quando">Data e hora da corrida</label><input id="quando" type="datetime-local" required><small id="qAv" style="display:block;margin-top:6px"></small><small style="display:block;margin-top:6px;color:var(--muted)">Atendemos <b>somente com agendamento</b>, com pelo menos 30 minutos de antecedência e partida até as <b>21:30</b>. O horário fica reservado só para você, sem custo extra.</small></div>
+    <div class="field" id="fQuando"><label for="quando">Data e hora da corrida</label><input id="quando" type="datetime-local" required><small id="qAv" style="display:block;margin-top:6px"></small><small style="display:block;margin-top:6px;color:var(--muted)">Atendemos <b>somente com agendamento</b>, com pelo menos 30 minutos de antecedência e o pedido de agendamento deve ser feito até as <b>21:30</b> (a partida pode ser depois desse horário). O horário fica reservado só para você, sem custo extra.</small></div>
     <div class="field"><button class="mini" type="button" id="bPet" aria-expanded="false">🐾 Vou levar um pet</button></div>
     <fieldset id="fPet" hidden><legend>Pet na corrida</legend>
       <p class="hint">Avise o motorista antes: pet precisa estar em <b>caixa de transporte</b> (pequeno porte) ou de <b>guia/coleira curta</b> (médio e grande). Cães-guia são sempre bem-vindos. O motorista pode pedir para você forrar o banco, e sujeira ou danos no carro causados pelo pet podem ser cobrados.</p>
@@ -130,7 +130,7 @@ legend{padding:0;margin-bottom:6px;font:700 16px "Barlow Condensed",sans-serif;l
         <li><b>Parada adicional:</b> <span id="avPar">R$ 3,00</span> fixos por parada, somados ao valor da corrida. Vale somente para embarque ou desembarque em outro endereço antes do destino final (no máximo 1 parada). O cálculo continua correndo durante a parada.</li>
         <li><b>Espera:</b> o tempo de espera do passageiro é cobrado<span id="avEsp"></span>. Se o motorista já tiver chegado e você cancelar, a espera pode ser cobrada.</li>
         <li id="avDyn" hidden></li>
-        <li><b>Somente com agendamento:</b> não atendemos pedidos imediatos. Escolha data e hora com pelo menos 30 minutos de antecedência e partida até as 21:30. O horário fica reservado para você, sem acréscimo de preço.</li>
+        <li><b>Somente com agendamento:</b> não atendemos pedidos imediatos. Escolha data e hora com pelo menos 30 minutos de antecedência e o pedido de agendamento deve ser feito até as 21:30 (a partida pode ser depois). O horário fica reservado para você, sem acréscimo de preço.</li>
         <li><b>Agenda travada:</b> cada corrida reserva o tempo estimado, mais uma folga e o tempo de deslocamento do motorista até a próxima. Se o horário escolhido estiver ocupado, o app avisa e mostra quando a agenda fica livre. Se a viagem demorar mais que o previsto (trânsito, desvio), o valor e os horários seguintes podem mudar.</li>
         <li><b>Pagamento:</b> Pix ou dinheiro<span id="avCar"></span>.</li>
         <li><b>Recibo:</b> você tem direito a recibo da corrida, enviado por WhatsApp, <b>desde que informe seu WhatsApp ao pedir</b>.</li>
@@ -205,12 +205,12 @@ async function ocupado(ts, mins){
   return null;
 }
 let slotTk = 0;
-const horaOk = ts => { const d = new Date(ts); return d.getHours()*60 + d.getMinutes() <= 21*60 + 30; };
-const HORA_MSG = 'Os agendamentos são aceitos somente até as 21:30. Escolha um horário de partida até as 21:30.';
+const horaOk = () => { const p = new Intl.DateTimeFormat('pt-BR',{timeZone:'America/Sao_Paulo',hour:'2-digit',minute:'2-digit',hour12:false}).formatToParts(new Date()); const h = +p.find(x=>x.type==='hour').value % 24, m = +p.find(x=>x.type==='minute').value; return h*60 + m <= 21*60 + 30 && h >= 0; };
+const HORA_MSG = 'Os agendamentos só podem ser feitos até as 21:30. Após esse horário, volte a partir das 00:00 para agendar (a partida pode ser em qualquer horário).';
 async function chkSlot(){
   const el = $('qAv'), v = $('quando').value; el.textContent = ''; if(!agendar || !v) return true;
   const ts = new Date(v).getTime(); if(ts < Date.now() + 25*60000){ el.style.color = '#e5484d'; el.textContent = 'Escolha um horário com pelo menos 30 minutos de antecedência.'; return false; }
-  if(!horaOk(ts)){ el.style.color = '#e5484d'; el.textContent = HORA_MSG; return false; }
+  if(!horaOk()){ el.style.color = '#e5484d'; el.textContent = HORA_MSG; return false; }
   const tk = ++slotTk;
   try{ const o = await ocupado(ts, durTotal(est ? est.min : 30)); if(tk !== slotTk) return true;
     if(o){ const h = t => new Date(t).toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'}); el.style.color = '#e5484d'; el.textContent = o.antes ? `Horário indisponível: há outra corrida agendada às ${h(o.x)} e não haveria tempo de terminar a sua e se deslocar até lá. Escolha um horário anterior ou depois das ${h(o.ate)}.` : `Horário indisponível: a agenda está travada até as ${h(o.ate)} (duração da corrida em andamento e deslocamento até você). Escolha um horário a partir desse.`; return false; }
