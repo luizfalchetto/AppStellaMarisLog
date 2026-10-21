@@ -172,6 +172,15 @@ h3{font:700 15px var(--f-cond);letter-spacing:.12em;text-transform:uppercase;col
 .blabels{display:flex;gap:2px;margin-top:4px}
 .blabels span{flex:1;min-width:0;text-align:center;font-size:10px;color:var(--muted);overflow:hidden;white-space:nowrap}
 @media (prefers-reduced-motion:reduce){.chip[data-s="corrida"] b{animation:none}}
+.hgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:0 16px 8px}
+.hc{position:relative;border:1px solid var(--line);background:var(--panel);border-radius:12px;min-height:56px;font:700 17px var(--f-ui);cursor:pointer;color:var(--ink,inherit)}
+.hc small{display:block;font:500 11px var(--f-ui);color:var(--muted)}
+.hc[data-b="1"]{background:#5a1f24;border-color:#e5484d;color:#fff}
+.hc[data-b="1"] small{color:#ffd5d7}
+.hc[data-r="1"]::after{content:"";position:absolute;top:6px;right:6px;width:9px;height:9px;border-radius:50%;background:#F1D18D}
+.hact{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:8px 16px}
+.hact .iconbtn{height:auto;min-height:44px;padding:8px 10px}
+.hleg{padding:4px 16px 16px;color:var(--muted);font-size:13px;line-height:1.5}
 </style>
 </head>
 <body>
@@ -182,6 +191,7 @@ h3{font:700 15px var(--f-cond);letter-spacing:.12em;text-transform:uppercase;col
     <div class="brand" aria-label="Stella Maris Ride"><svg class="logo" viewBox="0 0 100 100" aria-hidden="true"><defs><linearGradient id="lg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#F1D18D"/><stop offset="1" stop-color="#C8933A"/></linearGradient></defs><path fill="url(#lg)" fill-rule="evenodd" d="M50 0L58.7 40.9L98.2 50L58.7 59.1L50 100L41.3 59.1L1.8 50L41.3 40.9ZM50 0L53.6 44L98.2 50L53.6 56L50 100L46.4 56L1.8 50L46.4 44Z"/></svg><span>Stella Maris<b>Ride</b></span></div>
     <div style="display:flex;gap:8px">
       <button class="iconbtn" id="bHist" type="button">Relatório</button>
+      <button class="iconbtn" id="bHor" type="button">Horários</button>
       <button class="iconbtn" id="bCfg" type="button">Tarifas</button>
     </div>
   </header>
@@ -327,6 +337,17 @@ h3{font:700 15px var(--f-cond);letter-spacing:.12em;text-transform:uppercase;col
 </div>
 
 <!-- ===== HISTORY ===== -->
+<div class="sheet" id="sHor" hidden>
+  <div class="app">
+    <header><h2>Quadro de horários</h2><button class="iconbtn" type="button" data-close>Fechar</button></header>
+    <div class="pnav"><button class="iconbtn" type="button" id="hPrev" aria-label="Dia anterior">‹</button><b id="hLbl"></b><button class="iconbtn" type="button" id="hNext" aria-label="Próximo dia">›</button></div>
+    <div class="hact"><button class="iconbtn" type="button" id="hHoje">Hoje</button><button class="iconbtn" type="button" id="hNoite">Bloquear 22h–05h</button><button class="iconbtn" type="button" id="hTudo">Bloquear o dia todo</button><button class="iconbtn" type="button" id="hLib">Liberar o dia todo</button></div>
+    <div class="hgrid" id="hGrid"></div>
+    <p class="hleg" id="hMsg"></p>
+    <p class="hleg">Toque em uma hora para bloquear ou liberar. Horário <b>bloqueado</b> (vermelho): clientes e empresas não conseguem agendar corridas que passem por ele. <b>Liberado</b>: segue as regras normais da agenda. O ponto dourado marca horas com corrida agendada.</p>
+  </div>
+</div>
+
 <div class="sheet" id="sHist" hidden>
   <div class="app">
     <header><h2>Relatório</h2><button class="iconbtn" type="button" data-close>Fechar</button></header>
@@ -813,6 +834,39 @@ $('bLink').onclick = async () => {
   try{ await navigator.clipboard.writeText(u.href); toast('Link copiado. Mande ao cliente.'); }catch(e){ prompt('Copie o link:', u.href); }
 };
 $('bCfg').onclick = openCfg; $('bCfg2').onclick = openCfg;
+/* ---------- quadro de horários (bloqueio manual da agenda) ---------- */
+let bloq = {}, horDia = null;
+const brt = t => { const p = new Intl.DateTimeFormat('en-CA', {timeZone:'America/Sao_Paulo', year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', hour12:false}).formatToParts(new Date(t)); const g = k => p.find(x => x.type === k).value; return {d: g('year') + g('month') + g('day'), h: String(+g('hour') % 24).padStart(2, '0')}; };
+const addDia = (k, n) => { const d = new Date(Date.UTC(+k.slice(0,4), +k.slice(4,6) - 1, +k.slice(6,8) + n, 12)); return d.getUTCFullYear() + String(d.getUTCMonth() + 1).padStart(2, '0') + String(d.getUTCDate()).padStart(2, '0'); };
+const diaTxt = k => new Date(Date.UTC(+k.slice(0,4), +k.slice(4,6) - 1, +k.slice(6,8), 12)).toLocaleDateString('pt-BR', {weekday:'long', day:'2-digit', month:'long', timeZone:'UTC'});
+function drawHor(){
+  if(!horDia) horDia = brt(Date.now()).d;
+  $('hLbl').textContent = diaTxt(horDia);
+  const rides = new Set(Object.values(filaData || {}).filter(x => x && x.a && FATIVO.includes(x.s)).map(x => { const b = brt(x.a); return b.d + b.h; }));
+  const g = $('hGrid'); g.replaceChildren();
+  for(let h = 0; h < 24; h++){
+    const hh = String(h).padStart(2, '0'), key = horDia + hh, b = $('hGrid').appendChild(document.createElement('button'));
+    b.type = 'button'; b.className = 'hc'; b.dataset.b = bloq[key] ? '1' : '0'; if(rides.has(key)) b.dataset.r = '1';
+    b.innerHTML = hh + 'h<small>' + (bloq[key] ? 'bloqueado' : 'liberado') + '</small>';
+    b.onclick = () => horSet({[key]: !bloq[key]});
+  }
+  $('hMsg').textContent = fready ? '' : 'Entre na sua conta (fila de pedidos) para editar o quadro.';
+}
+function horSet(m){
+  if(!fready){ toast('Entre na sua conta para editar o quadro'); return; }
+  const up = {}; Object.keys(m).forEach(k => { up['bloq/' + k] = m[k] ? true : null; });
+  Object.keys(m).forEach(k => { if(m[k]) bloq[k] = true; else delete bloq[k]; }); drawHor();
+  fdb.ref().update(up).catch(() => toast('Não consegui salvar. Confira a conexão.'));
+}
+const horDiaAll = v => { const m = {}; for(let h = 0; h < 24; h++) m[horDia + String(h).padStart(2, '0')] = v; return m; };
+$('bHor').onclick = () => { horDia = brt(Date.now()).d; show('sHor', true); drawHor();
+  if(fready){ const hoje = horDia, up = {}; Object.keys(bloq).forEach(k => { if(k.slice(0, 8) < hoje) up['bloq/' + k] = null; }); if(Object.keys(up).length) fdb.ref().update(up).catch(() => {}); } };
+$('hPrev').onclick = () => { horDia = addDia(horDia, -1); drawHor(); };
+$('hNext').onclick = () => { horDia = addDia(horDia, 1); drawHor(); };
+$('hHoje').onclick = () => { horDia = brt(Date.now()).d; drawHor(); };
+$('hTudo').onclick = () => horSet(horDiaAll(true));
+$('hLib').onclick = () => horSet(horDiaAll(false));
+$('hNoite').onclick = () => { const m = {}; for(let h = 0; h < 24; h++) if(h >= 22 || h < 5) m[horDia + String(h).padStart(2, '0')] = true; horSet(m); };
 
 function linhas(r){
   const c = calc(r), k = r.cfg, rows = [];
@@ -1176,11 +1230,12 @@ function startFila(){
     fKnown = new Set(ativos); drawFila(); varrerCancel();
   }, () => {});
   fdb.ref('cancelar').on('value', sn => { cancData = sn.val() || {}; varrerCancel(); }, () => {});
+  fdb.ref('bloq').on('value', sn => { bloq = sn.val() || {}; if(!$('sHor').hidden) drawHor(); }, () => {});
   flushQ(); flushC(); podarPub(); pushDisp();
 }
 function stopFila(){
   fready = false; fListen = false; filaData = {}; cancData = {}; fKnown = null;
-  if(fdb){ try{ fdb.ref('fila').off(); fdb.ref('cancelar').off(); }catch(e){} }
+  if(fdb){ try{ fdb.ref('fila').off(); fdb.ref('cancelar').off(); fdb.ref('bloq').off(); }catch(e){} }
 }
 function setStatus(sid, pid, st){
   const up = {}; up['fila/' + sid + '/s'] = st; if(pid) up['pub/' + pid + '/s'] = st;

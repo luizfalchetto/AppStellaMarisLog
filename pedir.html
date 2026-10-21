@@ -197,8 +197,10 @@ const rd = (p, k) => p ? {[k + 'La']: Math.round(p.la*100)/100, [k + 'Lo']: Math
 const margem = min => Math.max(5, Math.ceil(min*0.10)); // folga após a corrida: 10% da duração, mínimo 5 min
 const durTotal = min => Math.ceil(min + margem(min)); // duração + folga, em minutos
 const tv = (a, b) => (a && b) ? Math.max(5, Math.ceil(hav(a, b)*1.35/35*60)) : 10; // deslocamento entre o destino de uma corrida e a origem da próxima (min)
+const cellKey = t => { const p = new Intl.DateTimeFormat('en-CA', {timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', hour12: false}).formatToParts(new Date(t)); const g = k => p.find(x => x.type === k).value; return g('year') + g('month') + g('day') + String(+g('hour') % 24).padStart(2, '0'); };
 async function ocupado(ts, mins){
   const db = await Promise.race([loadFB(), new Promise((_, rj) => setTimeout(() => rj(new Error('t')), 6000))]);
+  try{ const bs = (await Promise.race([db.ref('bloq').once('value'), new Promise((_, rj) => setTimeout(() => rj(new Error('t')), 6000))])).val() || {}; for(let t = Math.floor(ts/3600000)*3600000; t < ts + mins*60000; t += 3600000) if(bs[cellKey(t)]) return {bloq: true, x: t, ate: t + 3600000}; }catch(e){}
   const sn = await Promise.race([db.ref('pub').once('value'), new Promise((_, rj) => setTimeout(() => rj(new Error('t')), 6000))]);
   const v = sn.val() || {}, now = Date.now(), fimN = ts + mins*60000;
   const pt = (la, lo) => (typeof la === 'number' && typeof lo === 'number') ? {la, lo} : null;
@@ -225,6 +227,7 @@ async function chkSlot(){
   if(!horaOk()){ el.style.color = '#e5484d'; el.textContent = HORA_MSG; return false; }
   const tk = ++slotTk;
   try{ const o = await ocupado(ts, durTotal(est ? est.min : 30)); if(tk !== slotTk) return true;
+    if(o && o.bloq){ el.style.color = '#e5484d'; el.textContent = 'Horário indisponível: não há atendimento nesse horário. Escolha outro horário ou outro dia.'; return false; }
     if(o){ const h = t => new Date(t).toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'}); el.style.color = '#e5484d'; el.textContent = o.antes ? `Horário indisponível: há outra corrida agendada às ${h(o.x)} e não haveria tempo de terminar a sua e se deslocar até lá. Escolha um horário anterior ou depois das ${h(o.ate)}.` : `Horário indisponível: a agenda está travada até as ${h(o.ate)} (duração da corrida em andamento e deslocamento até você). Escolha um horário a partir desse.`; return false; }
     el.style.color = '#2fb36d'; el.textContent = 'Horário disponível ✓'; return true;
   }catch(x){ return true; }
