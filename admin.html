@@ -89,6 +89,7 @@ tr:last-child td{border-bottom:0}
     <button type="button" data-t="painel" aria-pressed="false">Painel</button>
     <button type="button" data-t="empresas" aria-pressed="false">Empresas</button>
     <button type="button" data-t="usuarios" aria-pressed="false">Usuários</button>
+    <button type="button" data-t="motoristas" aria-pressed="false">Motoristas</button>
     <button type="button" data-t="numeracao" aria-pressed="false">Numeração</button>
   </nav>
 
@@ -157,6 +158,18 @@ tr:last-child td{border-bottom:0}
       <p class="msg" id="uMsg"></p>
     </form>
     <div class="card"><h2>Acessos cadastrados</h2><div id="uLista"></div></div>
+  </section>
+
+  <!-- MOTORISTAS -->
+  <section id="t-motoristas" class="wrap" style="padding:0" hidden>
+    <div class="card">
+      <h2>Meu cadastro (aparece para o cliente escolher)</h2>
+      <div class="row"><input id="mNome" maxlength="60" placeholder="Seu nome" style="flex:1;min-width:140px"><input id="mCarro" maxlength="80" placeholder="Carro (modelo e cor)" style="flex:1;min-width:160px"><input id="mPlaca" maxlength="8" placeholder="Placa" style="width:110px"></div>
+      <div class="row"><button class="btn pri" type="button" id="mSalvar">Salvar meu cadastro</button></div>
+      <p class="foot">Enquanto você for o único motorista ativo, o cliente nem vê a escolha do carro.</p>
+    </div>
+    <div class="card"><h2>Motoristas parceiros</h2><div id="mLista"></div><p class="msg" id="mMsg"></p>
+      <p class="foot">O parceiro entra no app do motorista com a conta Google dele, toca em "Sou motorista parceiro" e preenche o cadastro. Ele só começa a receber pedidos depois que você aprovar aqui. Os dados dele (nome, WhatsApp, carro e placa) são tratados só para operar o serviço (LGPD); nome, carro e placa aparecem aos clientes. Para apagar os dados dele, use Remover.</p></div>
   </section>
 
   <!-- NUMERACAO -->
@@ -389,7 +402,7 @@ const rtTxt = n => 'RT' + String(n).padStart(9, '0');
 const dt = ts => ts ? new Date(ts).toLocaleString('pt-BR', {day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit'}) : '';
 const mesDe = ts => { const d = new Date(ts); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); };
 const SIT = {concluida: 'Concluída', noshow: 'No-Show', cancelada: 'Cancelada'};
-let db = null, auth = null, S = {empresas: {}, usuarios: {}, corridas: {}, faturas: {}, cont: {}, aval: {}, avalp: {}}, ligado = false;
+let db = null, auth = null, S = {empresas: {}, usuarios: {}, corridas: {}, faturas: {}, cont: {}, aval: {}, avalp: {}, frota: {}, pendm: {}}, ligado = false;
 
 const loadJs = u => new Promise((res, rej) => { const s = document.createElement('script'); s.src = u; s.onload = res; s.onerror = () => rej(new Error('sdk')); document.head.append(s); });
 async function boot(){
@@ -431,16 +444,18 @@ function ligar(){
   on('avalp', 'avalp', desenharAval);
   on('faturas', 'faturas', desenharCorridas);
   on('contadores', 'cont', desenharNumeracao);
+  on('frota', 'frota', desenharMotoristas);
+  on('pendm', 'pendm', desenharMotoristas);
   if(!$('fMes').value) $('fMes').value = mesDe(Date.now());
 }
 function desenhar(){ desenharEmpresas(); desenharUsuarios(); desenharCorridas(); desenharNumeracao(); }
-function desligar(){ refs.splice(0).forEach(([r, cb]) => r.off('value', cb)); ligado = false; S = {empresas: {}, usuarios: {}, corridas: {}, faturas: {}, cont: {}, aval: {}, avalp: {}}; }
+function desligar(){ refs.splice(0).forEach(([r, cb]) => r.off('value', cb)); ligado = false; S = {empresas: {}, usuarios: {}, corridas: {}, faturas: {}, cont: {}, aval: {}, avalp: {}, frota: {}, pendm: {}}; }
 function toast(t, bad){ const m = $('nMsg'); if(m){ m.className = 'msg ' + (bad ? 'err' : 'ok'); m.textContent = t; } }
 
 // ---- abas ----
 $('tabs').onclick = e => { const b = e.target.closest('button[data-t]'); if(!b) return;
   document.querySelectorAll('#tabs button').forEach(x => x.setAttribute('aria-pressed', x === b));
-  ['corridas', 'painel', 'empresas', 'usuarios', 'numeracao'].forEach(t => $('t-' + t).hidden = t !== b.dataset.t); };
+  ['corridas', 'painel', 'empresas', 'usuarios', 'motoristas', 'numeracao'].forEach(t => $('t-' + t).hidden = t !== b.dataset.t); };
 
 // ---- empresas ----
 const empAtivas = () => Object.keys(S.empresas).filter(k => S.empresas[k].ativo).sort((a, b) => S.empresas[a].nome.localeCompare(S.empresas[b].nome, 'pt-BR'));
@@ -593,6 +608,34 @@ $('bCsv').onclick = () => {
   const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([txt], {type: 'text/csv;charset=utf-8'}));
   const e = $('fEmp').value; a.download = 'extrato-' + $('fMes').value + (e ? '-' + slug(nomeEmp(e)) : '') + '.csv'; document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
 };
+
+// ---- motoristas ----
+const placaOk = v => String(v || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8);
+function desenharMotoristas(){
+  const me = S.frota.luiz || {};
+  ['mNome', 'mCarro', 'mPlaca'].forEach((id, i) => { const el = $(id); if(document.activeElement !== el && !el.dataset.t) el.value = [me.nome, me.carro, me.placa][i] || ''; });
+  const L = $('mLista'), ids = Array.from(new Set(Object.keys(S.pendm).concat(Object.keys(S.frota).filter(k => k !== 'luiz'))));
+  if(!ids.length){ L.innerHTML = '<p class="muted" style="margin:0">Nenhum parceiro cadastrado ainda.</p>'; return; }
+  L.innerHTML = ids.sort((a, b) => ((S.pendm[a] || S.frota[a] || {}).nome || '').localeCompare((S.pendm[b] || S.frota[b] || {}).nome || '', 'pt-BR')).map(u => {
+    const p = S.pendm[u] || {}, f = S.frota[u], nome = (f && f.nome) || p.nome || '(sem nome)', carro = (f && f.carro) || p.carro || '', placa = (f && f.placa) || p.placa || '';
+    const st = !f ? '<span class="tag gold">Aguardando aprovação</span>' : f.ativo ? '<span class="tag ok">Ativo</span>' : '<span class="tag bad">Desativado</span>';
+    const bt = !f ? `<button class="btn sm pri" type="button" data-a="ap" data-k="${esc(u)}">Aprovar</button>` : `<button class="btn sm" type="button" data-a="tg" data-k="${esc(u)}">${f.ativo ? 'Desativar' : 'Reativar'}</button>`;
+    return `<div class="item"><div class="row"><b>${esc(nome)}</b>${st}<span class="muted">${esc(carro)}${placa ? ' · ' + esc(placa) : ''}</span><span class="sp"></span>${bt}<button class="btn sm" type="button" data-a="rm" data-k="${esc(u)}">Remover</button></div>
+      <div class="muted">${esc(p.email || '')}${p.fone ? ' · ' + esc(p.fone) : ''}</div></div>`; }).join('');
+}
+['mNome', 'mCarro', 'mPlaca'].forEach(id => $(id).oninput = () => { $(id).dataset.t = '1'; });
+$('mSalvar').onclick = async () => {
+  const nome = $('mNome').value.trim(), carro = $('mCarro').value.trim(), placa = placaOk($('mPlaca').value), m = $('mMsg');
+  if(!nome || !carro){ m.className = 'msg err'; m.textContent = 'Informe seu nome e o carro.'; return; }
+  try{ await db.ref('frota/luiz').set({nome, carro, placa, ativo: true}); ['mNome', 'mCarro', 'mPlaca'].forEach(id => delete $(id).dataset.t); m.className = 'msg ok'; m.textContent = 'Cadastro salvo.'; }
+  catch(x){ m.className = 'msg err'; m.textContent = 'Falha ao salvar.'; }
+};
+$('mLista').onclick = async e => { const b = e.target.closest('button[data-a]'); if(!b) return; const u = b.dataset.k, p = S.pendm[u] || {}, f = S.frota[u], m = $('mMsg');
+  try{
+    if(b.dataset.a === 'ap'){ await db.ref('frota/' + u).set({nome: p.nome || '', carro: p.carro || '', placa: placaOk(p.placa), ativo: true}); m.className = 'msg ok'; m.textContent = 'Parceiro aprovado. Ele já pode entrar no app.'; }
+    else if(b.dataset.a === 'tg' && f){ await db.ref('frota/' + u + '/ativo').set(!f.ativo); }
+    else if(b.dataset.a === 'rm'){ if(!confirm('Remover ' + (p.nome || (f && f.nome) || 'este motorista') + '? Os dados do cadastro dele serão apagados.')) return; await db.ref().update({['frota/' + u]: null, ['pendm/' + u]: null}); m.className = 'msg ok'; m.textContent = 'Cadastro removido.'; }
+  }catch(x){ m.className = 'msg err'; m.textContent = 'Falha ao salvar (' + (x.code || 'erro') + ').'; } };
 
 // ---- numeracao ----
 function desenharNumeracao(){

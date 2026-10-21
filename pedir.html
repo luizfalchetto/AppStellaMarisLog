@@ -62,6 +62,13 @@ legend{padding:0;margin-bottom:6px;font:700 16px "Barlow Condensed",sans-serif;l
 .ck input{width:22px;min-height:22px;height:22px;flex:none;margin-top:1px;accent-color:#DDB066}
 .lnk{display:block;text-align:center;text-decoration:none;border:1px solid var(--line);background:var(--panel);color:var(--fg);border-radius:12px;padding:14px;font:600 15px "Barlow",sans-serif;cursor:pointer;width:100%}
 .lnk.red{color:#ff8a80}
+.mot{display:grid;gap:8px}
+.mot label{display:flex;gap:10px;align-items:center;border:1px solid var(--line);background:var(--panel);border-radius:12px;padding:12px 14px;cursor:pointer}
+.mot label.sel{border-color:#DDB066;box-shadow:0 0 0 1px #DDB066}
+.mot input{width:20px;min-height:20px;height:20px;flex:none;accent-color:#DDB066}
+.mot b{display:block;font-size:16px}.mot small{display:block;color:var(--muted)}
+.mot i{width:10px;height:10px;border-radius:50%;background:var(--muted);flex:none;margin-left:auto}
+.mot i.on{background:var(--ok);box-shadow:0 0 6px var(--ok)}.mot i.off{background:#ff8a80}
 [hidden]{display:none!important}
 </style>
 </head>
@@ -96,6 +103,7 @@ legend{padding:0;margin-bottom:6px;font:700 16px "Barlow Condensed",sans-serif;l
       <div class="field"><label for="pNome">Nome do passageiro</label><input id="pNome" placeholder="Ex.: João"></div>
       <div class="field"><label for="pFone">Telefone do passageiro (opcional)</label><input id="pFone" type="tel" inputmode="tel" placeholder="(22) 99999-9999"></div>
     </fieldset>
+    <fieldset id="fMot" hidden><legend>Escolha o carro</legend><div class="mot" id="motL"></div><small id="motAv" style="display:block;margin-top:6px;color:var(--muted)">Cada motorista tem a própria agenda e o mesmo preço.</small></fieldset>
     <fieldset><legend>Partida</legend>
       <button class="mini" type="button" id="loc">📍 Usar minha localização</button>
       <div class="field"><label for="oRua">Rua</label><input id="oRua" placeholder="Nome da rua" autocomplete="off"></div>
@@ -198,15 +206,46 @@ const margem = min => Math.max(5, Math.ceil(min*0.10)); // folga após a corrida
 const durTotal = min => Math.ceil(min + margem(min)); // duração + folga, em minutos
 const tv = (a, b) => (a && b) ? Math.max(5, Math.ceil(hav(a, b)*1.35/35*60)) : 10; // deslocamento entre o destino de uma corrida e a origem da próxima (min)
 const cellKey = t => { const p = new Intl.DateTimeFormat('en-CA', {timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false}).formatToParts(new Date(t)); const g = k => p.find(x => x.type === k).value; return g('year') + g('month') + g('day') + String((+g('hour') % 24) * 2 + (+g('minute') >= 30 ? 1 : 0)).padStart(2, '0'); };
+let mid = 'luiz', frota = [], dispMap = {};
+const bPath = () => mid === 'luiz' ? 'bloq' : 'bloqm/' + mid;
+const filaPath = (m, sid) => m === 'luiz' ? 'fila/' + sid : 'filam/' + m + '/' + sid;
+const motObj = () => frota.find(x => x.id === mid) || null;
+function drawMot(){
+  const box = $('fMot'), L = $('motL');
+  if(frota.length <= 1){ box.hidden = true; mid = frota[0] ? frota[0].id : 'luiz'; bannerDisp(); return; }
+  box.hidden = false; L.replaceChildren();
+  frota.forEach(m => {
+    const lb = document.createElement('label'), d = dispMap[m.id];
+    lb.className = m.id === mid ? 'sel' : '';
+    lb.innerHTML = '<input type="radio" name="mot" value="">' + '<div><b></b><small></small></div><i></i>';
+    lb.querySelector('input').value = m.id; lb.querySelector('input').checked = m.id === mid;
+    lb.querySelector('b').textContent = m.nome; lb.querySelector('small').textContent = [m.carro, m.placa].filter(Boolean).join(' · ') || 'Carro a confirmar';
+    lb.querySelector('i').className = d && typeof d.on === 'boolean' ? (d.on ? 'on' : 'off') : '';
+    lb.querySelector('i').title = d && d.on ? 'Disponível agora' : 'Indisponível agora (você ainda pode agendar)';
+    L.appendChild(lb);
+  });
+}
+$('motL').onchange = e => { const r = e.target.closest('input[name=mot]'); if(!r) return; mid = r.value; drawMot(); bannerDisp(); chkSlot(); };
+async function loadFrota(){
+  let v = {};
+  try{ const db = await Promise.race([loadFB(), new Promise((_, rj) => setTimeout(() => rj(new Error('t')), 6000))]); v = (await Promise.race([db.ref('frota').once('value'), new Promise((_, rj) => setTimeout(() => rj(new Error('t')), 6000))])).val() || {}; }catch(e){ v = {}; }
+  const l = [], g = (k, x) => ({id: k, nome: String(x.nome || '').slice(0, 60), carro: String(x.carro || '').slice(0, 80), placa: String(x.placa || '').slice(0, 12), fone: String(x.fone || '').slice(0, 30)});
+  const L0 = v.luiz || {}; if(L0.ativo !== false) l.push(g('luiz', Object.assign({nome: 'Luiz'}, L0)));
+  Object.keys(v).filter(k => k !== 'luiz' && v[k] && v[k].ativo === true).forEach(k => l.push(g(k, v[k])));
+  frota = l.length ? l : [g('luiz', {nome: 'Luiz'})];
+  mid = frota.length > 1 ? '' : frota[0].id;
+  drawMot(); watchDisp();
+}
 async function ocupado(ts, mins){
   const db = await Promise.race([loadFB(), new Promise((_, rj) => setTimeout(() => rj(new Error('t')), 6000))]);
-  try{ const bs = (await Promise.race([db.ref('bloq').once('value'), new Promise((_, rj) => setTimeout(() => rj(new Error('t')), 6000))])).val() || {}; for(let t = Math.floor(ts/1800000)*1800000; t < ts + mins*60000; t += 1800000) if(bs[cellKey(t)]) return {bloq: true, x: t, ate: t + 1800000}; }catch(e){}
+  try{ const bs = (await Promise.race([db.ref(bPath()).once('value'), new Promise((_, rj) => setTimeout(() => rj(new Error('t')), 6000))])).val() || {}; for(let t = Math.floor(ts/1800000)*1800000; t < ts + mins*60000; t += 1800000) if(bs[cellKey(t)]) return {bloq: true, x: t, ate: t + 1800000}; }catch(e){}
   const sn = await Promise.race([db.ref('pub').once('value'), new Promise((_, rj) => setTimeout(() => rj(new Error('t')), 6000))]);
   const v = sn.val() || {}, now = Date.now(), fimN = ts + mins*60000;
   const pt = (la, lo) => (typeof la === 'number' && typeof lo === 'number') ? {la, lo} : null;
   for(const k of Object.keys(v)){ const x = v[k];
     if(!x || !x.a || !ATIVOS.includes(x.s) || x.a < now - 3*3600*1000) continue;
     if(cur && cur.pid === k) continue;
+    if((x.mid || 'luiz') !== mid) continue;
     const fimX = x.a + (x.m || 35)*60000;
     if(ts < x.a){ // a nova corrida vem antes: precisa terminar e chegar na origem da outra
       const gap = tv(pD, pt(x.oLa, x.oLo))*60000;
@@ -223,6 +262,7 @@ const horaOk = () => { const p = new Intl.DateTimeFormat('pt-BR',{timeZone:'Amer
 const HORA_MSG = 'Os agendamentos só podem ser feitos entre 05:00 e 21:30. Fora desse horário, volte às 05:00 para agendar (a partida pode ser em qualquer horário).';
 async function chkSlot(){
   const el = $('qAv'), v = $('quando').value; el.textContent = ''; if(!agendar || !v) return true;
+  if(!mid){ el.style.color = '#e5484d'; el.textContent = 'Escolha o carro acima para conferir o horário.'; return false; }
   const ts = new Date(v).getTime(); if(ts < Date.now() + 25*60000){ el.style.color = '#e5484d'; el.textContent = 'Escolha um horário com pelo menos 30 minutos de antecedência.'; return false; }
   if(!horaOk()){ el.style.color = '#e5484d'; el.textContent = HORA_MSG; return false; }
   const tk = ++slotTk;
@@ -344,6 +384,7 @@ $('f').onsubmit = async e => {
   if(!nome || (!pO && !$('oRua').value.trim()) || !$('dRua').value.trim()){ $('err').hidden = false; $('err').textContent = 'Preencha nome, rua de partida e rua de destino.'; return; }
   if(outro && !$('pNome').value.trim()){ $('err').hidden = false; $('err').textContent = 'Informe o nome do passageiro.'; return; }
   if(par && !$('sRua').value.trim()){ $('err').hidden = false; $('err').textContent = 'Informe a rua da parada ou remova a parada.'; return; }
+  if(!mid){ $('err').hidden = false; $('err').textContent = 'Escolha o carro em que você quer ir.'; $('fMot').scrollIntoView({block: 'center'}); return; }
   if(!$('pag').value){ $('err').hidden = false; $('err').textContent = 'Selecione a forma de pagamento.'; $('pag').focus(); return; }
   if(!$('ciente').checked){ $('err').hidden = false; $('err').textContent = 'Marque que leu os avisos para enviar o pedido.'; $('ciente').focus(); return; }
   $('err').hidden = true;
@@ -360,6 +401,7 @@ $('f').onsubmit = async e => {
   const L = ['*Stella Maris Ride · Pedido de corrida*', outro ? `Pedido feito por: ${nome}` : `Nome: ${nome}`];
   const fone = $('fone').value.trim(); if(fone) L.push(outro ? `Telefone de quem pediu: ${fone}` : `Telefone: ${fone}`);
   if(outro){ L.push(`*Passageiro: ${$('pNome').value.trim()}*`); const pf = $('pFone').value.trim(); if(pf) L.push(`Telefone do passageiro: ${pf}`); }
+  if(frota.length > 1 && motObj()) L.push(`Motorista: ${motObj().nome}${motObj().carro ? ' (' + motObj().carro + ')' : ''}`);
   L.push(`Quando: ${quando}`, `Partida: ${o}`);
   if(par) L.push(`Parada: ${addr('s')} (+${parTxt})`);
   L.push(`Destino: ${d}`);
@@ -368,7 +410,7 @@ $('f').onsubmit = async e => {
   L.push(`Pagamento: ${pagTxt()}`);
   const obs = obsFinal(); if(obs) L.push(`Obs.: ${obs}`);
   L.push(`Rota: ${mapa}`);
-  const msg = L.join('\n'), wa = `https://wa.me/${W}?text=${encodeURIComponent(msg)}`;
+  const msg = L.join('\n'), mf = motObj() ? String(motObj().fone || '').replace(/\D/g, '') : '', WN = mid !== 'luiz' && mf.length >= 10 ? (mf.startsWith('55') ? mf : '55' + mf) : W, wa = `https://wa.me/${WN}?text=${encodeURIComponent(msg)}`;
   const g = $('go'); g.disabled = true; g.textContent = 'Enviando…';
   try{
     const db = await Promise.race([loadFB(), new Promise((_, rj) => setTimeout(() => rj(new Error('t')), 8000))]);
@@ -380,10 +422,11 @@ $('f').onsubmit = async e => {
     if(pO){ f.oLa = pO.la; f.oLo = pO.lo; } if(pD){ f.dLa = pD.la; f.dLo = pD.lo; }
     for(const k of ['nome', 'passageiro']) f[k] = f[k].slice(0, 80);
     f.partida = f.partida.slice(0, 200); f.destino = f.destino.slice(0, 200); f.obs = ('Pgto: ' + pagTxt() + (f.obs ? '. ' + f.obs : '')).slice(0, 300);
-    const up = {}; up['fila/' + sid] = f; up['pub/' + pid] = agendar ? Object.assign({c: TS, s: 'aguardando', m, a: f.a}, rd(pO, 'o'), rd(pD, 'd')) : {c: TS, s: 'aguardando', m};
+    const up = {}; up[filaPath(mid, sid)] = f; up['pub/' + pid] = agendar ? Object.assign({c: TS, s: 'aguardando', m, a: f.a}, rd(pO, 'o'), rd(pD, 'd')) : {c: TS, s: 'aguardando', m};
+    up['pub/' + pid].mid = mid;
     await Promise.race([db.ref().update(up), new Promise((_, rj) => setTimeout(() => rj(new Error('t')), 8000))]);
-    avisar(agendar ? 'Novo AGENDAMENTO de corrida' : 'Novo pedido de corrida');
-    const sv = {sid, pid, wa, t: Date.now()}; if(f.a) sv.a = f.a;
+    if(mid === 'luiz') avisar(agendar ? 'Novo AGENDAMENTO de corrida' : 'Novo pedido de corrida');
+    const sv = {sid, pid, wa, mid, t: Date.now()}; if(f.a) sv.a = f.a;
     try{ localStorage.setItem('sm_ped', JSON.stringify(sv)); }catch(x){}
     g.disabled = false; g.textContent = 'Enviar pedido';
     mostrar(sv);
@@ -452,12 +495,12 @@ function desenhar(all){
     if(s === 'concluido') avalInit();
     return;
   }
-  const ahead = Object.values(all).filter(x => x && ATIVOS.includes(x.s) && !x.a && x.c > lim && x.c < me.c);
+  const cm = cur.mid || 'luiz', ahead = Object.values(all).filter(x => x && (x.mid || 'luiz') === cm && ATIVOS.includes(x.s) && !x.a && x.c > lim && x.c < me.c);
   const pos = ahead.length + 1, min = ahead.reduce((a, x) => a + (x.m || 15), 0);
   $('stT').textContent = pos === 1 ? 'Você é o próximo' : 'Você está na fila';
   $('stP').textContent = pos + 'º';
   $('stE').textContent = pos === 1 && !ahead.length ? 'Previsão de atendimento: em breve' : 'Previsão de atendimento: cerca de ' + Math.max(5, Math.round(min / 5) * 5) + ' min';
-  const prox = Object.values(all).filter(x => x && x.a && ['aguardando', 'aceito'].includes(x.s) && x.a > now - 15*60000 && x.a - 30*60000 < now + (min + (me.m || 15))*60000).sort((p, q) => p.a - q.a)[0];
+  const prox = Object.values(all).filter(x => x && (x.mid || 'luiz') === cm && x.a && ['aguardando', 'aceito'].includes(x.s) && x.a > now - 15*60000 && x.a - 30*60000 < now + (min + (me.m || 15))*60000).sort((p, q) => p.a - q.a)[0];
   $('stD').textContent = canc ? 'Cancelamento enviado ao motorista.' : 'Atendimento por ordem de chegada, com ajuste pela proximidade do motorista para evitar deslocamento vazio (ninguém espera mais de 15 min por isso). Esta tela se atualiza sozinha.' + (demOn ? ' Alta demanda no momento: o atendimento pode demorar mais que o normal.' : '') + (prox ? ' Atenção: há uma corrida agendada com prioridade por volta das ' + new Date(prox.a).toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'}) + '; seu atendimento pode atrasar ou ficar para depois dela.' : '');
 }
 let avNota = 0;
@@ -479,20 +522,28 @@ $('stW').onclick = () => { if(cur) location.href = cur.wa; };
 $('stN').onclick = limpar;
 $('stC').onclick = async () => {
   if(!cur || !confirm('Cancelar o pedido?')) return;
-  try{ const db = await loadFB(); await Promise.race([db.ref('cancelar/' + cur.sid).set(firebase.database.ServerValue.TIMESTAMP), new Promise((_, rj) => setTimeout(() => rj(new Error('t')), 8000))]); canc = true; avisar('Cliente cancelou o pedido'); $('stC').hidden = true; $('stD').textContent = 'Cancelamento enviado ao motorista.'; }
+  try{ const db = await loadFB(); await Promise.race([db.ref((cur.mid && cur.mid !== 'luiz' ? 'cancelarm/' + cur.mid + '/' : 'cancelar/') + cur.sid).set(firebase.database.ServerValue.TIMESTAMP), new Promise((_, rj) => setTimeout(() => rj(new Error('t')), 8000))]); canc = true; if(!cur.mid || cur.mid === 'luiz') avisar('Cliente cancelou o pedido'); $('stC').hidden = true; $('stD').textContent = 'Cancelamento enviado ao motorista.'; }
   catch(x){ alert('Não consegui cancelar agora. Avise o motorista pelo WhatsApp.'); }
 };
 try{ const sv = JSON.parse(localStorage.getItem('sm_ped') || 'null'); if(sv && sv.pid && (Date.now() - sv.t < 12*3600*1000 || (sv.a && Date.now() < sv.a + 3*3600*1000))) mostrar(sv); else if(sv) localStorage.removeItem('sm_ped'); }catch(x){}
-function watchDisp(){
-  loadFB().then(db => db.ref('disp').on('value', sn => {
-    const v = sn.val(), el = $('disp'); if(!v || typeof v.on !== 'boolean'){ el.hidden = true; return; }
-    demOn = !!v.dem; el.hidden = false; el.className = 'disp ' + (v.on ? 'on' : 'off');
-    $('dispT').textContent = v.on ? 'Motorista disponível agora' + (demOn ? ' · alta demanda' : '') : 'Motorista indisponível no momento';
-    $('dispS').textContent = (v.on ? (demOn ? 'Muitos pedidos no momento: o atendimento pode demorar mais que o normal. ' : '') : 'Você pode enviar o pedido: ele entra na fila e é atendido quando o motorista voltar. ') + (v.t ? 'Atualizado às ' + new Date(v.t).toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'}) + '.' : '');
-    if(cur && lastAll) desenhar(lastAll);
-  })).catch(() => {});
+let dispOff = [];
+function bannerDisp(){
+  const m = (cur && cur.mid) || mid || (frota.length <= 1 ? 'luiz' : ''), v = m ? dispMap[m] : null, el = $('disp');
+  if(!v || typeof v.on !== 'boolean'){ el.hidden = true; return; }
+  demOn = !!v.dem; el.hidden = false; el.className = 'disp ' + (v.on ? 'on' : 'off');
+  $('dispT').textContent = v.on ? 'Motorista disponível agora' + (demOn ? ' · alta demanda' : '') : 'Motorista indisponível no momento';
+  $('dispS').textContent = (v.on ? (demOn ? 'Muitos pedidos no momento: o atendimento pode demorar mais que o normal. ' : '') : 'Você pode enviar o pedido: ele entra na fila e é atendido quando o motorista voltar. ') + (v.t ? 'Atualizado às ' + new Date(v.t).toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'}) + '.' : '');
+  if(cur && lastAll) desenhar(lastAll);
 }
-watchDisp();
+function watchDisp(){
+  dispOff.forEach(f => f()); dispOff = [];
+  loadFB().then(db => {
+    const ids = new Set(frota.map(x => x.id)); if(cur && cur.mid) ids.add(cur.mid); if(!ids.size) ids.add('luiz');
+    ids.forEach(id => { const r = db.ref(id === 'luiz' ? 'disp' : 'dispm/' + id), cb = r.on('value', sn => { dispMap[id] = sn.val(); if(frota.length > 1 && !$('fMot').hidden){ const keep = mid; drawMot(); } bannerDisp(); }); dispOff.push(() => r.off('value', cb)); });
+  }).catch(() => {});
+}
+loadFrota();
+
 
 })();
 </script>

@@ -231,7 +231,16 @@ h3{font:700 15px var(--f-cond);letter-spacing:.12em;text-transform:uppercase;col
   <section id="sFila" aria-label="Fila de pedidos" style="display:grid;gap:8px">
     <div class="filabar" style="justify-content:flex-start;font:700 18px var(--f-cond);letter-spacing:.06em;text-transform:uppercase;margin-top:6px">Fila de pedidos <b id="filaN" data-n="0">0</b></div>
     <p class="hint" id="fMsg"></p>
-    <div class="actions" id="fLogin"><button class="btn primary" type="button" id="bEntrar">Entrar com Google</button></div>
+    <div class="actions" id="fLogin"><button class="btn primary" type="button" id="bEntrar">Entrar com Google</button><button class="btn ghost" type="button" id="bParc">Sou motorista parceiro</button></div>
+    <div id="fCad" hidden style="display:grid;gap:8px">
+      <b>Cadastro de motorista parceiro</b>
+      <div class="field"><label>Nome completo</label><input id="cNome" maxlength="60" autocomplete="name"></div>
+      <div class="field"><label>WhatsApp</label><input id="cFone" maxlength="30" type="tel" inputmode="tel" autocomplete="tel"></div>
+      <div class="field"><label>Carro (modelo e cor)</label><input id="cCarro" maxlength="80" placeholder="Ex.: Corolla preto"></div>
+      <div class="field"><label>Placa</label><input id="cPlaca" maxlength="8" placeholder="ABC1D23" autocapitalize="characters"></div>
+      <label class="ck" style="display:flex;gap:10px;align-items:flex-start;font-size:13px;color:var(--muted)"><input id="cOk" type="checkbox" style="width:22px;height:22px;flex:none"><span>Autorizo a Stella Maris Technology a guardar meus dados (nome, telefone, carro e placa) para operar o serviço, e a mostrar meu nome, carro e placa aos clientes que escolherem o meu carro. Posso pedir a exclusão a qualquer momento (LGPD).</span></label>
+      <div class="actions"><button class="btn primary" type="button" id="bCad">Enviar cadastro</button></div>
+    </div>
     <div class="actions" id="fSair" hidden><button class="btn ghost" type="button" id="bSair">Sair da conta</button></div>
     <div id="fList"></div>
   </section>
@@ -865,7 +874,7 @@ function drawHor(){
 }
 function horSet(m){
   if(!fready){ toast('Entre na sua conta para editar o quadro'); return; }
-  const up = {}; Object.keys(m).forEach(k => { up['bloq/' + k] = m[k] ? true : null; });
+  const up = {}, bb = fOwn() ? 'bloq/' : 'bloqm/' + fMid + '/'; Object.keys(m).forEach(k => { up[bb + k] = m[k] ? true : null; });
   Object.keys(m).forEach(k => { if(m[k]) bloq[k] = true; else delete bloq[k]; }); drawHor();
   fdb.ref().update(up).catch(() => toast('Não consegui salvar. Confira a conexão.'));
 }
@@ -883,7 +892,7 @@ function horRange(v, todo){
   horSet(m);
 }
 $('bHor').onclick = () => { horDia = brt(Date.now()).d; show('sHor', true); drawHor();
-  if(fready){ const hoje = horDia, up = {}; Object.keys(bloq).forEach(k => { if(k.slice(0, 8) < hoje) up['bloq/' + k] = null; }); if(Object.keys(up).length) fdb.ref().update(up).catch(() => {}); } };
+  if(fready){ const hoje = horDia, up = {}; Object.keys(bloq).forEach(k => { if(k.slice(0, 8) < hoje) up[(fOwn() ? 'bloq/' : 'bloqm/' + fMid + '/') + k] = null; }); if(Object.keys(up).length) fdb.ref().update(up).catch(() => {}); } };
 $('hPrev').onclick = () => { horDia = addDia(horDia, -1); drawHor(); };
 $('hNext').onclick = () => { horDia = addDia(horDia, 1); drawHor(); };
 $('hHoje').onclick = () => { horDia = brt(Date.now()).d; drawHor(); };
@@ -1226,7 +1235,7 @@ let fErr = '';
 const T0 = Date.now();
 setTimeout(() => { try{ drawFila(); }catch(e){} }, 7200);
 const flagOn = () => { try{ return localStorage.getItem('tx_fila_on') === '1'; }catch(e){ return false; } };
-let authChk = false, fdb = null, fauth = null, fuser = null, fready = false, fp = null, filaData = {}, cancData = {}, fKnown = null, fListen = false;
+let fRole = null, fMid = null, fPerf = null, authChk = false, fdb = null, fauth = null, fuser = null, fready = false, fp = null, filaData = {}, cancData = {}, fKnown = null, fListen = false;
 const loadJs = u => new Promise((res, rej) => { const el = document.createElement('script'); el.src = u; el.onload = res; el.onerror = () => rej(new Error('sdk')); document.head.append(el); });
 function fbInit(){
   if(fp) return fp;
@@ -1234,9 +1243,20 @@ function fbInit(){
     const b = 'https://www.gstatic.com/firebasejs/10.12.5/firebase-';
     await loadJs(b + 'app-compat.js'); await Promise.all([loadJs(b + 'database-compat.js'), loadJs(b + 'auth-compat.js')]);
     if(!(firebase.apps && firebase.apps.length)) firebase.initializeApp(FBC); fauth = firebase.auth(); fdb = firebase.database();
-    fauth.onAuthStateChanged(u => {
-      fuser = u; authChk = true; const ok = !!u && u.email === EMAIL && u.emailVerified;
-      if(ok){ try{ localStorage.setItem('tx_fila_on', '1'); }catch(e){} startFila(); } else stopFila();
+    fauth.onAuthStateChanged(async u => {
+      fuser = u; authChk = true; fRole = null; fMid = null; fPerf = null;
+      if(u && u.emailVerified){
+        if(u.email === EMAIL){ fRole = 'owner'; fMid = 'luiz'; }
+        else{
+          try{
+            const f = (await fdb.ref('frota/' + u.uid).once('value')).val();
+            if(f && f.ativo === true){ fRole = 'parceiro'; fMid = u.uid; fPerf = f; }
+            else if(f) fRole = 'inativo';
+            else fRole = (await fdb.ref('pendm/' + u.uid).once('value')).val() ? 'pendente' : 'cadastro';
+          }catch(e){ fRole = 'cadastro'; }
+        }
+      }
+      if(fRole === 'owner' || fRole === 'parceiro'){ try{ localStorage.setItem('tx_fila_on', '1'); }catch(e){} startFila(); } else stopFila();
       drawFila();
     });
     try{ fauth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(() => {}); }catch(e){}
@@ -1244,24 +1264,26 @@ function fbInit(){
   fp.catch(e => { fp = null; fErr = (e && (e.code || e.message)) || 'erro'; drawFila(); if(flagOn()) setTimeout(() => fbInit().catch(() => {}), 5000); });
   return fp;
 }
+const fOwn = () => fRole === 'owner';
+const fPaths = () => fOwn() ? {fila: 'fila', canc: 'cancelar', bloq: 'bloq', disp: 'disp'} : {fila: 'filam/' + fMid, canc: 'cancelarm/' + fMid, bloq: 'bloqm/' + fMid, disp: 'dispm/' + fMid};
 function startFila(){
-  if(fListen) return; fListen = true; fready = true;
-  fdb.ref('fila').on('value', sn => {
+  if(fListen) return; fListen = true; fready = true; const P = fPaths();
+  fdb.ref(P.fila).on('value', sn => {
     filaData = sn.val() || {};
     const ativos = Object.keys(filaData).filter(k => FATIVO.includes(filaData[k].s));
     if(fKnown){ ativos.forEach(k => { if(!fKnown.has(k) && filaData[k].s === 'aguardando') alertaNovo(filaData[k]); }); }
     fKnown = new Set(ativos); drawFila(); varrerCancel();
   }, () => {});
-  fdb.ref('cancelar').on('value', sn => { cancData = sn.val() || {}; varrerCancel(); }, () => {});
-  fdb.ref('bloq').on('value', sn => { bloq = sn.val() || {}; if(!$('sHor').hidden) drawHor(); }, () => {});
+  fdb.ref(P.canc).on('value', sn => { cancData = sn.val() || {}; varrerCancel(); }, () => {});
+  fdb.ref(P.bloq).on('value', sn => { bloq = sn.val() || {}; if(!$('sHor').hidden) drawHor(); }, () => {});
   flushQ(); flushC(); podarPub(); pushDisp();
 }
 function stopFila(){
   fready = false; fListen = false; filaData = {}; cancData = {}; fKnown = null;
-  if(fdb){ try{ fdb.ref('fila').off(); fdb.ref('cancelar').off(); fdb.ref('bloq').off(); }catch(e){} }
+  if(fdb && fMid){ try{ const P = fPaths(); fdb.ref(P.fila).off(); fdb.ref(P.canc).off(); fdb.ref(P.bloq).off(); }catch(e){} }
 }
 function setStatus(sid, pid, st){
-  const up = {}; up['fila/' + sid + '/s'] = st; if(pid) up['pub/' + pid + '/s'] = st;
+  const up = {}; up[(fOwn() ? 'fila/' : 'filam/' + fMid + '/') + sid + '/s'] = st; if(pid) up['pub/' + pid + '/s'] = st;
   return fdb.ref().update(up);
 }
 function qSet(sid, pid, st){
@@ -1280,8 +1302,8 @@ function varrerCancel(){
 }
 function podarPub(){
   fdb.ref('pub').once('value').then(sn => { const v = sn.val() || {}, lim = Date.now() - 24*3600*1000, up = {};
-    Object.keys(v).forEach(k => { if((v[k].a || v[k].c) < lim) up['pub/' + k] = null; });
-    Object.keys(filaData).forEach(k => { if((filaData[k].a || filaData[k].c) < lim) up['fila/' + k] = null; });
+    Object.keys(v).forEach(k => { if((v[k].a || v[k].c) < lim && (fOwn() || v[k].mid === fMid)) up['pub/' + k] = null; });
+    Object.keys(filaData).forEach(k => { if((filaData[k].a || filaData[k].c) < lim) up[(fOwn() ? 'fila/' : 'filam/' + fMid + '/') + k] = null; });
     if(Object.keys(up).length) fdb.ref().update(up).catch(() => {}); }).catch(() => {});
 }
 let dispOn = store.get('tx_disp', false) === true;
@@ -1289,7 +1311,7 @@ function drawDisp(){ const b = $('bDisp'); b.setAttribute('aria-pressed', dispOn
 let demOn = store.get('tx_dem', false) === true;
 function drawDem(){ const b = $('bDem'); b.setAttribute('aria-pressed', demOn); b.textContent = demOn ? 'Alta demanda: ligada (cliente avisado)' : 'Alta demanda: desligada'; }
 $('bDem').onclick = () => { demOn = !demOn; store.set('tx_dem', demOn); drawDem(); if(fready) pushDisp(); else { toast('Entre com Google em "Fila" para o cliente ver'); fbInit().catch(() => {}); } };
-function pushDisp(){ if(fready) fdb.ref('disp').set({on: dispOn, dem: demOn, t: firebase.database.ServerValue.TIMESTAMP}).catch(() => toast('Não consegui atualizar a disponibilidade.')); }
+function pushDisp(){ if(fready) fdb.ref(fPaths().disp).set({on: dispOn, dem: demOn, t: firebase.database.ServerValue.TIMESTAMP}).catch(() => toast('Não consegui atualizar a disponibilidade.')); }
 $('bDisp').onclick = () => {
   dispOn = !dispOn; store.set('tx_disp', dispOn); drawDisp();
   if(fready) pushDisp();
@@ -1375,11 +1397,15 @@ function drawFila(){
   const ativos = ordenar(Object.keys(filaData).map(k => Object.assign({sid: k}, filaData[k])).filter(x => FATIVO.includes(x.s) && (x.a ? x.a > Date.now() - 6*3600*1000 : x.c > Date.now() - 12*3600*1000)));
   const nAg = ativos.filter(x => x.s === 'aguardando').length;
   const n = $('filaN'); n.textContent = nAg; n.dataset.n = nAg;
-  const logged = !!fuser && fuser.email === EMAIL && fuser.emailVerified;
+  const logged = fRole === 'owner' || fRole === 'parceiro';
   const recon = !logged && !fuser && flagOn() && !authChk && Date.now() - T0 < 7000;
-  $('fLogin').hidden = logged || recon; $('fSair').hidden = !(fuser && !logged);
-  $('fMsg').textContent = logged ? (ativos.length ? (refFim() ? 'Agendadas primeiro; depois por proximidade de onde você termina a corrida (ninguém espera mais de 15 min por isso).' : 'Agendadas primeiro, depois por ordem de chegada. Com uma corrida em andamento, ordeno por proximidade do destino.') : 'Nenhum pedido na fila agora.')
-    : fuser ? 'Esta conta (' + fuser.email + ') não é a do motorista. Saia e entre com a conta certa.'
+  $('fLogin').hidden = logged || recon || !!fuser; $('fSair').hidden = !fuser; $('fCad').hidden = fRole !== 'cadastro';
+  $('fMsg').textContent = logged ? (fRole === 'parceiro' ? 'Motorista parceiro' + (fPerf && fPerf.nome ? ': ' + fPerf.nome + '. ' : '. ') : '') + (ativos.length ? (refFim() ? 'Agendadas primeiro; depois por proximidade de onde você termina a corrida (ninguém espera mais de 15 min por isso).' : 'Agendadas primeiro, depois por ordem de chegada. Com uma corrida em andamento, ordeno por proximidade do destino.') : 'Nenhum pedido na fila agora.')
+    : fRole === 'cadastro' ? 'Preencha o cadastro para trabalhar como motorista parceiro da Stella Maris.'
+    : fRole === 'pendente' ? 'Cadastro enviado. Aguarde a aprovação da Stella Maris; depois é só entrar de novo.'
+    : fRole === 'inativo' ? 'Seu acesso de motorista está desativado. Fale com a Stella Maris.'
+    : fuser && !fuser.emailVerified ? 'O e-mail dessa conta não está verificado. Entre com outra conta Google.'
+    : fuser ? 'Conectando…'
     : recon ? 'Reconectando sua conta…'
     : !fuser && flagOn() && !authChk ? 'Não consegui reconectar a conta' + (fErr ? ' (' + fErr + ')' : '') + '. Toque em Entrar com Google.'
     : authChk || !fp ? 'Entre com sua conta Google para ver os pedidos dos clientes.' : 'Conectando…';
@@ -1415,12 +1441,22 @@ $('fList').onclick = e => {
 };
 setTimeout(() => fbInit().catch(() => { $('fMsg').textContent = 'Sem conexão com o serviço. Verifique a internet.'; }), 400);
 setInterval(() => { try{ drawFila(); }catch(e){} }, 30000);
-$('bEntrar').onclick = async () => {
-  try{ await fbInit(); const p = new firebase.auth.GoogleAuthProvider(); p.setCustomParameters({login_hint: EMAIL});
+$('bCad').onclick = async () => {
+  const v = id => $(id).value.trim(), nome = v('cNome'), fone = v('cFone'), carro = v('cCarro'), placa = v('cPlaca').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  if(!nome || !fone || !carro || placa.length < 7){ toast('Preencha nome, WhatsApp, carro e placa'); return; }
+  if(!$('cOk').checked){ toast('Marque a autorização dos dados (LGPD)'); return; }
+  if(!fuser || fRole !== 'cadastro') return;
+  try{ await fdb.ref('pendm/' + fuser.uid).set({nome, fone, carro, placa, email: (fuser.email || '').slice(0, 120), t: firebase.database.ServerValue.TIMESTAMP}); fRole = 'pendente'; drawFila(); toast('Cadastro enviado'); }
+  catch(e){ toast('Não consegui enviar. Confira a conexão.'); }
+};
+async function entrar(hint){
+  try{ await fbInit(); const p = new firebase.auth.GoogleAuthProvider(); if(hint) p.setCustomParameters({login_hint: EMAIL}); else p.setCustomParameters({prompt: 'select_account'});
     try{ await fauth.signInWithPopup(p); }
     catch(e){ if(e && (e.code === 'auth/popup-blocked' || e.code === 'auth/operation-not-supported-in-this-environment' || e.code === 'auth/cancelled-popup-request')) await fauth.signInWithRedirect(p); else throw e; }
   }catch(e){ $('fMsg').textContent = 'Não consegui entrar: ' + (e && e.code ? e.code : 'erro') ; }
-};
+}
+$('bEntrar').onclick = () => entrar(true);
+$('bParc').onclick = () => entrar(false);
 $('bSair').onclick = () => { try{ localStorage.removeItem('tx_fila_on'); }catch(e){} if(fauth) fauth.signOut(); };
 let wasOn = false; try{ wasOn = localStorage.getItem('tx_fila_on') === '1'; }catch(e){}
 if(wasOn) setTimeout(() => fbInit().catch(() => {}), 300);

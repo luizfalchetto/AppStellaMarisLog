@@ -519,6 +519,7 @@ async function ocupado(ts, mins){
   const pt = (la, lo) => (typeof la === 'number' && typeof lo === 'number') ? {la, lo} : null;
   for(const k of Object.keys(v)){ const x = v[k];
     if(!x || !x.a || !ATIVOS.includes(x.s) || x.a < now - 3*3600*1000) continue;
+    if(x.mid && x.mid !== 'luiz') continue;
     const fimX = x.a + (x.m || 35)*60000;
     if(ts < x.a){ const gap = tv(pD, pt(x.oLa, x.oLo))*60000; if(fimN + gap > x.a) return {antes: true, x: x.a, ate: fimN + gap}; }
     else { const gap = tv(pt(x.dLa, x.dLo), pO)*60000; if(ts < fimX + gap) return {antes: false, x: x.a, ate: fimX + gap}; }
