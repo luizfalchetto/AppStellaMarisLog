@@ -357,9 +357,9 @@ h3{font:700 15px var(--f-cond);letter-spacing:.12em;text-transform:uppercase;col
 <div class="sheet" id="sEnd" hidden>
   <div class="app">
     <header><h2>Editar endereços</h2><button class="iconbtn" type="button" data-close>Fechar</button></header>
-    <div class="field" style="padding:0 16px"><label for="eP">Partida</label><input id="eP" maxlength="200"></div>
+    <div class="field" style="padding:0 16px"><label for="eP">Partida</label><input id="eP" maxlength="200"><button class="iconbtn" type="button" id="eMapP" style="margin-top:6px">📍 Marcar no mapa</button></div>
     <div class="field" id="eSw" style="padding:8px 16px 0" hidden><label for="eS">Parada</label><input id="eS" maxlength="200"></div>
-    <div class="field" style="padding:8px 16px 0"><label for="eD">Destino</label><input id="eD" maxlength="200"></div>
+    <div class="field" style="padding:8px 16px 0"><label for="eD">Destino</label><input id="eD" maxlength="200"><button class="iconbtn" type="button" id="eMapD" style="margin-top:6px">📍 Marcar no mapa</button></div>
     <div class="field" style="padding:8px 16px 0"><label for="eKm">Distância em km (opcional: use se o mapa errar)</label><input id="eKm" inputmode="decimal" placeholder="Ex.: 7,5"></div>
     <div class="hact"><button class="iconbtn" type="button" id="eCalc">Recalcular valor</button><button class="iconbtn" type="button" id="eSalvar" disabled>Salvar</button></div>
     <p class="hleg" id="eRes"></p>
@@ -1413,7 +1413,62 @@ function ordenar(lista){
   return fim;
 }
 /* ---------- editar endereços de um pedido da fila ---------- */
-let endSid = null, endRes = null;
+let endSid = null, endRes = null, ePin = {p: null, d: null};
+/* ---------- marcar ponto no mapa ---------- */
+function mpLeaflet(){
+  return window.L ? Promise.resolve() : new Promise((res, rej) => {
+    const c = document.createElement('link'); c.rel = 'stylesheet'; c.href = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css'; document.head.appendChild(c);
+    const s = document.createElement('script'); s.src = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js'; s.onload = () => res(); s.onerror = () => rej(new Error('leaflet')); document.head.appendChild(s);
+  });
+}
+async function mpRev(la, lo){
+  let r = {rua: '', num: '', bai: '', cid: '', nome: ''};
+  try{
+    const j = await (await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=18&addressdetails=1&accept-language=pt-BR&lat=${la}&lon=${lo}`)).json(), a = j.address || {};
+    r = {rua: a.road || a.pedestrian || a.footway || a.residential || '', num: a.house_number || '', bai: a.suburb || a.neighbourhood || a.city_district || '', cid: a.city || a.town || a.village || a.municipality || '', nome: a.amenity || a.shop || a.building || a.tourism || ''};
+  }catch(e){}
+  if(!r.rua){
+    try{ const f = ((await (await fetch(`https://photon.komoot.io/reverse?lat=${la}&lon=${lo}&limit=3`)).json()).features || []).map(x => x.properties || {}).find(p => p.street || p.name) || {};
+      r = {rua: f.street || (f.type === 'street' ? f.name : '') || '', num: f.housenumber || '', bai: f.district || f.locality || '', cid: f.city || f.county || '', nome: r.nome}; }catch(e){}
+  }
+  return r;
+}
+let mpMap = null, mpPin = null, mpSel = null, mpCb = null;
+async function mpAbrir(tit, ini, cb){
+  mpCb = cb; mpSel = null;
+  let ov = document.getElementById('mpOv');
+  if(!ov){
+    ov = document.createElement('div'); ov.id = 'mpOv'; ov.style.cssText = 'position:fixed;left:0;top:0;right:0;bottom:0;z-index:99999;background:#fff;color:#111;display:flex;flex-direction:column;font-family:system-ui,sans-serif';
+    ov.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:10px 14px"><b id="mpT" style="font-size:17px"></b><button type="button" id="mpX" style="border:1px solid #bbb;background:#fff;border-radius:10px;padding:8px 14px;font-size:15px">Fechar</button></div>'
+      + '<div id="mpB" style="flex:1;min-height:240px"></div>'
+      + '<div style="padding:10px 14px"><div id="mpA" style="font-size:14px;min-height:38px;margin-bottom:8px"></div><button type="button" id="mpOk" disabled style="width:100%;border:0;border-radius:12px;padding:14px;font-size:17px;font-weight:700;background:#0a7d4f;color:#fff">Usar este ponto</button></div>';
+    document.body.appendChild(ov);
+    document.getElementById('mpX').onclick = () => { ov.style.display = 'none'; };
+    document.getElementById('mpOk').onclick = () => { if(!mpSel) return; ov.style.display = 'none'; const c = mpCb; if(c) c(mpSel); };
+  }
+  ov.style.display = 'flex';
+  document.getElementById('mpT').textContent = tit;
+  const A = document.getElementById('mpA'), OK = document.getElementById('mpOk'); OK.disabled = true;
+  A.textContent = 'Carregando o mapa…';
+  try{ await mpLeaflet(); }catch(e){ A.textContent = 'Não consegui carregar o mapa. Confira a internet.'; return; }
+  const c0 = ini && isFinite(ini.la) && isFinite(ini.lo) ? [ini.la, ini.lo] : [-22.37, -41.79];
+  if(!mpMap){
+    mpMap = L.map('mpB', {zoomControl: true}).setView(c0, ini ? 16 : 13);
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom: 19, attribution: '© OpenStreetMap'}).addTo(mpMap);
+    mpMap.on('click', async e => {
+      const la = Math.round(e.latlng.lat*1e6)/1e6, lo = Math.round(e.latlng.lng*1e6)/1e6;
+      if(mpPin) mpPin.setLatLng(e.latlng); else mpPin = L.circleMarker(e.latlng, {radius: 11, color: '#fff', weight: 3, fillColor: '#d11', fillOpacity: 1}).addTo(mpMap);
+      mpSel = {la, lo, rua: '', num: '', bai: '', cid: '', nome: ''}; OK.disabled = false; A.textContent = 'Procurando o endereço desse ponto…';
+      const my = mpSel, r = await mpRev(la, lo); if(mpSel !== my) return;
+      Object.assign(mpSel, r); A.textContent = 'Ponto: ' + ([r.nome, r.rua + (r.num ? ', ' + r.num : ''), r.bai, r.cid].filter(Boolean).join(' · ') || 'sem nome de rua; vou guardar a posição exata') + '. Toque em outro lugar para mudar.';
+    });
+  } else { mpMap.setView(c0, ini ? 16 : 13); }
+  if(mpPin){ mpMap.removeLayer(mpPin); mpPin = null; }
+  if(ini && isFinite(ini.la)){ mpPin = L.circleMarker(c0, {radius: 11, color: '#fff', weight: 3, fillColor: '#36c', fillOpacity: 1}).addTo(mpMap); A.textContent = 'Ponto azul: posição atual guardada no pedido. Toque no mapa para marcar o ponto certo.'; }
+  else A.textContent = 'Toque no mapa, no lugar exato, para marcar o ponto.';
+  setTimeout(() => mpMap.invalidateSize(), 150);
+}
+
 async function geoEnd(t){
   const bias = 'viewbox=-42.2,-22.1,-41.5,-22.6';
   try{ const j = await (await fetch('https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&countrycodes=br&accept-language=pt-BR&' + bias + '&q=' + encodeURIComponent(t))).json(); if(j[0]) return {la: +j[0].lat, lo: +j[0].lon, nome: j[0].display_name}; }catch(e){}
@@ -1421,18 +1476,25 @@ async function geoEnd(t){
   return null;
 }
 function abrirEnd(k){
-  const it = filaData[k]; if(!it) return; endSid = k; endRes = null;
+  const it = filaData[k]; if(!it) return; endSid = k; endRes = null; ePin = {p: null, d: null};
   $('eP').value = it.partida || ''; $('eD').value = it.destino || ''; $('eS').value = it.parada || ''; $('eSw').hidden = !it.parada; $('eKm').value = '';
   $('eRes').textContent = 'Valor atual: ' + (it.estim || 'sem estimativa'); $('eMsg').textContent = ''; $('eSalvar').disabled = true; $('eWaW').hidden = true; show('sEnd', true);
 }
-['eP', 'eD', 'eS', 'eKm'].forEach(id => $(id).oninput = () => { endRes = null; $('eSalvar').disabled = true; });
+['eP', 'eD', 'eS', 'eKm'].forEach(id => $(id).oninput = () => { endRes = null; $('eSalvar').disabled = true; if(id === 'eP') ePin.p = null; if(id === 'eD') ePin.d = null; });
+function ptxt(r){ return ([r.nome, r.rua && (r.rua + (r.num ? ', ' + r.num : '')), r.bai].filter(Boolean).join(' - ') || 'Ponto marcado no mapa').slice(0, 200); }
+function mapaEnd(w){
+  const it = filaData[endSid]; if(!it) return; const la = w === 'p' ? it.oLa : it.dLa, lo = w === 'p' ? it.oLo : it.dLo;
+  mpAbrir(w === 'p' ? 'Partida: toque no ponto certo' : 'Destino: toque no ponto certo', (ePin[w] || (isFinite(la) && isFinite(lo) ? {la: +la, lo: +lo} : null)), r => {
+    ePin[w] = {la: r.la, lo: r.lo, nome: ptxt(r)}; $(w === 'p' ? 'eP' : 'eD').value = ptxt(r); endRes = null; $('eSalvar').disabled = true; $('eMsg').textContent = 'Ponto marcado. Toque em Recalcular valor.'; });
+}
+$('eMapP').onclick = () => mapaEnd('p'); $('eMapD').onclick = () => mapaEnd('d');
 $('eCalc').onclick = async () => {
   const it = filaData[endSid]; if(!it) return;
   const p = $('eP').value.trim(), d = $('eD').value.trim(), sp = $('eSw').hidden ? '' : $('eS').value.trim(), kmM = parseFloat(($('eKm').value || '').replace(',', '.'));
   if(!p || !d){ $('eMsg').textContent = 'Preencha a partida e o destino.'; return; }
   $('eMsg').textContent = 'Procurando os endereços no mapa…'; $('eCalc').disabled = true;
   try{
-    const [a, b] = await Promise.all([geoEnd(p), geoEnd(d)]); let km = null, min = null;
+    const [a, b] = await Promise.all([ePin.p ? ePin.p : geoEnd(p), ePin.d ? ePin.d : geoEnd(d)]); let km = null, min = null;
     if(a && b){
       try{ const j = await (await fetch(`https://router.project-osrm.org/route/v1/driving/${a.lo},${a.la};${b.lo},${b.la}?overview=false`)).json(), r = j.routes && j.routes[0]; if(!r) throw 0; km = r.distance/1000; min = r.duration/60; }
       catch(e){ const R = 6371, rd = x => x*Math.PI/180, dl = rd(b.la - a.la), dn = rd(b.lo - a.lo), h = Math.sin(dl/2)**2 + Math.cos(rd(a.la))*Math.cos(rd(b.la))*Math.sin(dn/2)**2; km = 2*R*Math.asin(Math.sqrt(h))*1.3; min = km/25*60; }
@@ -1491,11 +1553,11 @@ function drawFila(){
     else if(meu) a += `<button class="btn primary full" data-a="vc" data-k="${x.sid}">Ir até o cliente</button>`;
     else a += `<button class="btn ghost" data-a="vc" data-k="${x.sid}">Ir até o cliente</button><button class="btn ghost" data-a="rc" data-k="${x.sid}">Cancelar</button>`;
     if(fone) a += `<button class="btn wa full" data-a="wa" data-k="${x.sid}">WhatsApp</button>`;
-    if(!meu && (x.s === 'aguardando' || x.s === 'aceito')) a += `<button class="btn ghost full" data-a="ed" data-k="${x.sid}">Editar endereços</button>`;
     const prox = x.dist != null && x.s === 'aguardando' ? `<p class="prox">${kmFila(x.dist)} de onde você termina${x.furou ? ' · passou na frente por proximidade' : ''}</p>` : '';
     return `<div class="fcard${x.a ? ' ag' : ''}"><div class="st">${x.a ? '<span class="agblink">AGENDADA</span> ' + fmtAg(x.a) + ' · prioridade · ' : ''}${FLBL[x.s]}${meu ? ' · sua corrida atual' : ''}</div><h3><span class="pos">${i + 1}º</span>${nome}</h3>
       <small>Pedido às ${hora} · ${escapeHtml(x.quando || 'Agora')}</small>
       <p><b>De:</b> ${escapeHtml(x.partida)}<br><b>Para:</b> ${escapeHtml(x.destino)}${x.parada ? '<br><b>Parada:</b> ' + escapeHtml(x.parada) : ''}</p>
+      <button class="btn ghost full" data-a="ed" data-k="${x.sid}" style="margin:2px 0 8px;border-color:#e0a800;color:#e0a800">✎ Editar endereços / marcar no mapa</button>
       ${x.rt ? `<p><b>${escapeHtml(x.rt)}</b> · ${escapeHtml(x.empNome || 'Empresa')}${x.cc ? ' · CC: ' + escapeHtml(x.cc) : ''}</p>` : ''}${prox}${x.estim ? `<p><small>Estimativa:</small> ${escapeHtml(x.estim)}</p>` : ''}${x.obs ? `<p><small>Obs.:</small> ${escapeHtml(x.obs)}</p>` : ''}
       <div class="acts">${a}</div></div>`;
   }).join('') : '';
