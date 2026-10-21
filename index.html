@@ -172,14 +172,17 @@ h3{font:700 15px var(--f-cond);letter-spacing:.12em;text-transform:uppercase;col
 .blabels{display:flex;gap:2px;margin-top:4px}
 .blabels span{flex:1;min-width:0;text-align:center;font-size:10px;color:var(--muted);overflow:hidden;white-space:nowrap}
 @media (prefers-reduced-motion:reduce){.chip[data-s="corrida"] b{animation:none}}
-.hgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:0 16px 8px}
-.hc{position:relative;border:1px solid var(--line);background:var(--panel);border-radius:12px;min-height:56px;font:700 17px var(--f-ui);cursor:pointer;color:var(--ink,inherit)}
+.hgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;padding:0 16px 8px}
+.hc{position:relative;border:1px solid var(--line);background:var(--panel);border-radius:10px;min-height:44px;font:700 15px var(--f-ui);cursor:pointer;color:var(--ink,inherit)}
 .hc small{display:block;font:500 11px var(--f-ui);color:var(--muted)}
 .hc[data-b="1"]{background:#5a1f24;border-color:#e5484d;color:#fff}
 .hc[data-b="1"] small{color:#ffd5d7}
 .hc[data-r="1"]::after{content:"";position:absolute;top:6px;right:6px;width:9px;height:9px;border-radius:50%;background:#F1D18D}
 .hact{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:8px 16px}
 .hact .iconbtn{height:auto;min-height:44px;padding:8px 10px}
+.hform{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:8px 16px}
+.hform label{display:block;font-size:12px;color:var(--muted)}
+.hform input{width:100%;min-height:44px;font-size:16px;box-sizing:border-box}
 .hleg{padding:4px 16px 16px;color:var(--muted);font-size:13px;line-height:1.5}
 </style>
 </head>
@@ -341,10 +344,16 @@ h3{font:700 15px var(--f-cond);letter-spacing:.12em;text-transform:uppercase;col
   <div class="app">
     <header><h2>Quadro de horários</h2><button class="iconbtn" type="button" data-close>Fechar</button></header>
     <div class="pnav"><button class="iconbtn" type="button" id="hPrev" aria-label="Dia anterior">‹</button><b id="hLbl"></b><button class="iconbtn" type="button" id="hNext" aria-label="Próximo dia">›</button></div>
-    <div class="hact"><button class="iconbtn" type="button" id="hHoje">Hoje</button><button class="iconbtn" type="button" id="hNoite">Bloquear 22h–05h</button><button class="iconbtn" type="button" id="hTudo">Bloquear o dia todo</button><button class="iconbtn" type="button" id="hLib">Liberar o dia todo</button></div>
+    <div class="hform">
+      <label>De<input type="time" id="hDe" step="1800" value="06:30"></label>
+      <label>Até<input type="time" id="hAte" step="1800" value="16:00"></label>
+      <label>Repetir por quantos dias<input type="number" id="hDias" min="1" max="60" value="1" inputmode="numeric"></label>
+      <label>A partir de<input type="text" id="hIni" readonly></label>
+    </div>
+    <div class="hact"><button class="iconbtn" type="button" id="hBlk">Bloquear esse intervalo</button><button class="iconbtn" type="button" id="hLib">Liberar esse intervalo</button><button class="iconbtn" type="button" id="hTudo">Bloquear o dia todo</button><button class="iconbtn" type="button" id="hHoje">Voltar para hoje</button></div>
     <div class="hgrid" id="hGrid"></div>
     <p class="hleg" id="hMsg"></p>
-    <p class="hleg">Toque em uma hora para bloquear ou liberar. Horário <b>bloqueado</b> (vermelho): clientes e empresas não conseguem agendar corridas que passem por ele. <b>Liberado</b>: segue as regras normais da agenda. O ponto dourado marca horas com corrida agendada.</p>
+    <p class="hleg">Cada quadrado é meia hora (o dia vai de 00:00 a 23:59). Toque num quadrado para bloquear ou liberar só ele, ou use De/Até para um intervalo (e repita por vários dias). Horário <b>bloqueado</b> (vermelho): clientes e empresas não conseguem agendar corridas que passem por ele. <b>Liberado</b>: segue as regras normais da agenda. O ponto dourado marca meias horas com corrida agendada.</p>
   </div>
 </div>
 
@@ -836,18 +845,20 @@ $('bLink').onclick = async () => {
 $('bCfg').onclick = openCfg; $('bCfg2').onclick = openCfg;
 /* ---------- quadro de horários (bloqueio manual da agenda) ---------- */
 let bloq = {}, horDia = null;
-const brt = t => { const p = new Intl.DateTimeFormat('en-CA', {timeZone:'America/Sao_Paulo', year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', hour12:false}).formatToParts(new Date(t)); const g = k => p.find(x => x.type === k).value; return {d: g('year') + g('month') + g('day'), h: String(+g('hour') % 24).padStart(2, '0')}; };
+const brt = t => { const p = new Intl.DateTimeFormat('en-CA', {timeZone:'America/Sao_Paulo', year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit', hour12:false}).formatToParts(new Date(t)); const g = k => p.find(x => x.type === k).value; return {d: g('year') + g('month') + g('day'), s: String((+g('hour') % 24) * 2 + (+g('minute') >= 30 ? 1 : 0)).padStart(2, '0')}; };
+const slotTxt = n => String(Math.floor(n / 2)).padStart(2, '0') + ':' + (n % 2 ? '30' : '00');
 const addDia = (k, n) => { const d = new Date(Date.UTC(+k.slice(0,4), +k.slice(4,6) - 1, +k.slice(6,8) + n, 12)); return d.getUTCFullYear() + String(d.getUTCMonth() + 1).padStart(2, '0') + String(d.getUTCDate()).padStart(2, '0'); };
 const diaTxt = k => new Date(Date.UTC(+k.slice(0,4), +k.slice(4,6) - 1, +k.slice(6,8), 12)).toLocaleDateString('pt-BR', {weekday:'long', day:'2-digit', month:'long', timeZone:'UTC'});
 function drawHor(){
   if(!horDia) horDia = brt(Date.now()).d;
   $('hLbl').textContent = diaTxt(horDia);
-  const rides = new Set(Object.values(filaData || {}).filter(x => x && x.a && FATIVO.includes(x.s)).map(x => { const b = brt(x.a); return b.d + b.h; }));
+  const rides = new Set(Object.values(filaData || {}).filter(x => x && x.a && FATIVO.includes(x.s)).map(x => { const b = brt(x.a); return b.d + b.s; }));
   const g = $('hGrid'); g.replaceChildren();
-  for(let h = 0; h < 24; h++){
-    const hh = String(h).padStart(2, '0'), key = horDia + hh, b = $('hGrid').appendChild(document.createElement('button'));
+  $('hIni').value = horDia.slice(6,8) + '/' + horDia.slice(4,6) + '/' + horDia.slice(0,4);
+  for(let n = 0; n < 48; n++){
+    const key = horDia + String(n).padStart(2, '0'), b = g.appendChild(document.createElement('button'));
     b.type = 'button'; b.className = 'hc'; b.dataset.b = bloq[key] ? '1' : '0'; if(rides.has(key)) b.dataset.r = '1';
-    b.innerHTML = hh + 'h<small>' + (bloq[key] ? 'bloqueado' : 'liberado') + '</small>';
+    b.innerHTML = slotTxt(n) + '<small>' + (bloq[key] ? 'bloqueado' : 'livre') + '</small>';
     b.onclick = () => horSet({[key]: !bloq[key]});
   }
   $('hMsg').textContent = fready ? '' : 'Entre na sua conta (fila de pedidos) para editar o quadro.';
@@ -858,15 +869,27 @@ function horSet(m){
   Object.keys(m).forEach(k => { if(m[k]) bloq[k] = true; else delete bloq[k]; }); drawHor();
   fdb.ref().update(up).catch(() => toast('Não consegui salvar. Confira a conexão.'));
 }
-const horDiaAll = v => { const m = {}; for(let h = 0; h < 24; h++) m[horDia + String(h).padStart(2, '0')] = v; return m; };
+function horRange(v, todo){
+  let i = 0, f = 48;
+  if(!todo){
+    const t = x => { const m = /^(\d{2}):(\d{2})$/.exec(x || ''); return m ? (+m[1]) * 2 + (+m[2] >= 30 ? 1 : 0) : null; };
+    i = t($('hDe').value); f = t($('hAte').value);
+    if(i === null || f === null){ toast('Preencha os horários De e Até'); return; }
+    if(f === 0) f = 48;
+    if(f <= i){ toast('O horário Até precisa ser depois do De'); return; }
+  }
+  const nd = todo ? 1 : Math.max(1, Math.min(60, +$('hDias').value || 1)), m = {};
+  for(let d = 0; d < nd; d++){ const dia = addDia(horDia, d); for(let n = i; n < f; n++) m[dia + String(n).padStart(2, '0')] = v; }
+  horSet(m);
+}
 $('bHor').onclick = () => { horDia = brt(Date.now()).d; show('sHor', true); drawHor();
   if(fready){ const hoje = horDia, up = {}; Object.keys(bloq).forEach(k => { if(k.slice(0, 8) < hoje) up['bloq/' + k] = null; }); if(Object.keys(up).length) fdb.ref().update(up).catch(() => {}); } };
 $('hPrev').onclick = () => { horDia = addDia(horDia, -1); drawHor(); };
 $('hNext').onclick = () => { horDia = addDia(horDia, 1); drawHor(); };
 $('hHoje').onclick = () => { horDia = brt(Date.now()).d; drawHor(); };
-$('hTudo').onclick = () => horSet(horDiaAll(true));
-$('hLib').onclick = () => horSet(horDiaAll(false));
-$('hNoite').onclick = () => { const m = {}; for(let h = 0; h < 24; h++) if(h >= 22 || h < 5) m[horDia + String(h).padStart(2, '0')] = true; horSet(m); };
+$('hTudo').onclick = () => horRange(true, true);
+$('hBlk').onclick = () => horRange(true, false);
+$('hLib').onclick = () => horRange(false, false);
 
 function linhas(r){
   const c = calc(r), k = r.cfg, rows = [];
