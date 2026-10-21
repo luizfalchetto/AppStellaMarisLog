@@ -238,7 +238,12 @@ h3{font:700 15px var(--f-cond);letter-spacing:.12em;text-transform:uppercase;col
       <div class="field"><label>WhatsApp</label><input id="cFone" maxlength="30" type="tel" inputmode="tel" autocomplete="tel"></div>
       <div class="field"><label>Carro (modelo e cor)</label><input id="cCarro" maxlength="80" placeholder="Ex.: Corolla preto"></div>
       <div class="field"><label>Placa</label><input id="cPlaca" maxlength="8" placeholder="ABC1D23" autocapitalize="characters"></div>
-      <label class="ck" style="display:flex;gap:10px;align-items:flex-start;font-size:13px;color:var(--muted)"><input id="cOk" type="checkbox" style="width:22px;height:22px;flex:none"><span>Autorizo a Stella Maris Technology a guardar meus dados (nome, telefone, carro e placa) para operar o serviço, e a mostrar meu nome, carro e placa aos clientes que escolherem o meu carro. Posso pedir a exclusão a qualquer momento (LGPD).</span></label>
+      <div class="field"><label>Foto da frente do carro</label><input id="cFrente" type="file" accept="image/*" style="height:auto;padding:10px"><small id="cFrenteS" style="color:var(--muted)"></small></div>
+      <div class="field"><label>Foto da lateral do carro</label><input id="cLateral" type="file" accept="image/*" style="height:auto;padding:10px"><small id="cLateralS" style="color:var(--muted)"></small></div>
+      <div class="field"><label>Foto do motorista (rosto visível)</label><input id="cMot" type="file" accept="image/*" style="height:auto;padding:10px"><small id="cMotS" style="color:var(--muted)"></small></div>
+      <div class="field"><label>CNH do motorista (foto legível)</label><input id="cCnh" type="file" accept="image/*" style="height:auto;padding:10px"><small id="cCnhS" style="color:var(--muted)"></small></div>
+      <div class="field"><label>Documento do carro (CRLV, foto legível)</label><input id="cCrlv" type="file" accept="image/*" style="height:auto;padding:10px"><small id="cCrlvS" style="color:var(--muted)"></small></div>
+      <label class="ck" style="display:flex;gap:10px;align-items:flex-start;font-size:13px;color:var(--muted)"><input id="cOk" type="checkbox" style="width:22px;height:22px;flex:none"><span>Autorizo a Stella Maris Technology a guardar meus dados e documentos (nome, telefone, carro, placa, CNH e documento do carro) para verificar meu cadastro e operar o serviço. A CNH e o documento do carro ficam visíveis só para a administração. Autorizo mostrar meu nome, minha foto, o carro, a placa e as fotos do carro aos clientes que escolherem o meu carro. Posso pedir a exclusão a qualquer momento (LGPD).</span></label>
       <div class="actions"><button class="btn primary" type="button" id="bCad">Enviar cadastro</button></div>
     </div>
     <div class="actions" id="fSair" hidden><button class="btn ghost" type="button" id="bSair">Sair da conta</button></div>
@@ -1252,7 +1257,7 @@ function fbInit(){
             const f = (await fdb.ref('frota/' + u.uid).once('value')).val();
             if(f && f.ativo === true){ fRole = 'parceiro'; fMid = u.uid; fPerf = f; }
             else if(f) fRole = 'inativo';
-            else fRole = (await fdb.ref('pendm/' + u.uid).once('value')).val() ? 'pendente' : 'cadastro';
+            else fRole = (await fdb.ref('fotos/' + u.uid).once('value')).val() ? 'pendente' : 'cadastro';
           }catch(e){ fRole = 'cadastro'; }
         }
       }
@@ -1441,13 +1446,30 @@ $('fList').onclick = e => {
 };
 setTimeout(() => fbInit().catch(() => { $('fMsg').textContent = 'Sem conexão com o serviço. Verifique a internet.'; }), 400);
 setInterval(() => { try{ drawFila(); }catch(e){} }, 30000);
+function imgJpeg(file, maxPx, lim){
+  return new Promise((res, rej) => { const url = URL.createObjectURL(file), im = new Image();
+    im.onload = () => { URL.revokeObjectURL(url); let px = maxPx, q = 0.72;
+      for(let i = 0; i < 12; i++){ const k = Math.min(1, px / Math.max(im.width, im.height)), c = document.createElement('canvas'); c.width = Math.max(1, Math.round(im.width * k)); c.height = Math.max(1, Math.round(im.height * k));
+        c.getContext('2d').drawImage(im, 0, 0, c.width, c.height); const d = c.toDataURL('image/jpeg', q); if(d.length <= lim) return res(d); if(q > 0.45) q -= 0.1; else px = Math.round(px * 0.8); }
+      rej(new Error('grande')); };
+    im.onerror = () => { URL.revokeObjectURL(url); rej(new Error('img')); }; im.src = url; });
+}
+['cFrente', 'cLateral', 'cMot', 'cCnh', 'cCrlv'].forEach(id => $(id).onchange = () => { $(id + 'S').textContent = $(id).files[0] ? '✓ ' + $(id).files[0].name.slice(0, 30) : ''; });
 $('bCad').onclick = async () => {
   const v = id => $(id).value.trim(), nome = v('cNome'), fone = v('cFone'), carro = v('cCarro'), placa = v('cPlaca').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  const fs = ['cFrente', 'cLateral', 'cMot', 'cCnh', 'cCrlv'].map(id => $(id).files[0]);
   if(!nome || !fone || !carro || placa.length < 7){ toast('Preencha nome, WhatsApp, carro e placa'); return; }
+  if(fs.some(f => !f)){ toast('Anexe as 5 fotos: frente, lateral, motorista, CNH e documento do carro'); return; }
   if(!$('cOk').checked){ toast('Marque a autorização dos dados (LGPD)'); return; }
   if(!fuser || fRole !== 'cadastro') return;
-  try{ await fdb.ref('pendm/' + fuser.uid).set({nome, fone, carro, placa, email: (fuser.email || '').slice(0, 120), t: firebase.database.ServerValue.TIMESTAMP}); fRole = 'pendente'; drawFila(); toast('Cadastro enviado'); }
-  catch(e){ toast('Não consegui enviar. Confira a conexão.'); }
+  const b = $('bCad'); b.disabled = true; b.textContent = 'Enviando…';
+  try{
+    const [frente, lateral, motorista, cnh, crlv] = await Promise.all([imgJpeg(fs[0], 900, 150000), imgJpeg(fs[1], 900, 150000), imgJpeg(fs[2], 900, 150000), imgJpeg(fs[3], 1600, 350000), imgJpeg(fs[4], 1600, 350000)]);
+    await fdb.ref('pendm/' + fuser.uid).set({nome, fone, carro, placa, email: (fuser.email || '').slice(0, 120), t: firebase.database.ServerValue.TIMESTAMP});
+    await fdb.ref().update({['fotos/' + fuser.uid]: {frente, lateral, motorista}, ['docm/' + fuser.uid]: {cnh, crlv, t: firebase.database.ServerValue.TIMESTAMP}});
+    fRole = 'pendente'; drawFila(); toast('Cadastro enviado');
+  }catch(e){ toast(e && (e.message === 'img' || e.message === 'grande') ? 'Não consegui usar uma das fotos. Tente outra.' : 'Não consegui enviar. Confira a conexão e tente de novo.'); }
+  b.disabled = false; b.textContent = 'Enviar cadastro';
 };
 async function entrar(hint){
   try{ await fbInit(); const p = new firebase.auth.GoogleAuthProvider(); if(hint) p.setCustomParameters({login_hint: EMAIL}); else p.setCustomParameters({prompt: 'select_account'});
