@@ -129,7 +129,7 @@ select{background:var(--panel);border:1px solid var(--line);border-radius:12px;m
         <div class="field"><label for="dCid">Cidade</label><input id="dCid" value="Macaé" autocomplete="off"></div>
       </fieldset>
       <div class="field"><label for="quando">Data e hora da corrida *</label><input id="quando" type="datetime-local" required><small id="qAv" style="display:block;margin-top:6px"></small>
-        <small style="display:block;margin-top:6px;color:var(--muted)">Atendemos <b>somente com agendamento</b>, com pelo menos 30 minutos de antecedência e partida até as <b>21:30</b>.</small></div>
+        <small style="display:block;margin-top:6px;color:var(--muted)">Atendemos <b>somente com agendamento</b>, com pelo menos 30 minutos de antecedência e o pedido de agendamento deve ser feito até as <b>21:30</b> (a partida pode ser depois desse horário).</small></div>
       <div class="field"><button class="mini" type="button" id="bSerie" aria-expanded="false">🔁 Repetir esta corrida (recorrente / pacote do mês)</button></div>
       <fieldset id="fSerie" hidden><legend>Corridas recorrentes</legend>
         <p class="hint" id="serDesc"></p>
@@ -524,12 +524,12 @@ async function ocupado(ts, mins){
   return null;
 }
 let slotTk = 0;
-const horaOk = ts => { const d = new Date(ts); return d.getHours()*60 + d.getMinutes() <= 21*60 + 30; };
-const HORA_MSG = 'Os agendamentos são aceitos somente até as 21:30. Escolha um horário de partida até as 21:30.';
+const horaOk = () => { const p = new Intl.DateTimeFormat('pt-BR',{timeZone:'America/Sao_Paulo',hour:'2-digit',minute:'2-digit',hour12:false}).formatToParts(new Date()); const h = +p.find(x=>x.type==='hour').value % 24, m = +p.find(x=>x.type==='minute').value; return h*60 + m <= 21*60 + 30 && h >= 0; };
+const HORA_MSG = 'Os agendamentos só podem ser feitos até as 21:30. Após esse horário, volte a partir das 00:00 para agendar (a partida pode ser em qualquer horário).';
 async function chkSlot(){
   const el = $('qAv'), v = $('quando').value; el.textContent = ''; if(!v) return false;
   const ts = new Date(v).getTime(); if(ts < Date.now() + 25*60000){ el.style.color = '#e5484d'; el.textContent = 'Escolha um horário com pelo menos 30 minutos de antecedência.'; return false; }
-  if(!horaOk(ts)){ el.style.color = '#e5484d'; el.textContent = HORA_MSG; return false; }
+  if(!horaOk()){ el.style.color = '#e5484d'; el.textContent = HORA_MSG; return false; }
   const tk = ++slotTk;
   try{ const o = await ocupado(ts, durTotal(est ? est.min : 30)); if(tk !== slotTk) return true;
     if(o){ el.style.color = '#e5484d'; el.textContent = o.antes ? `Horário indisponível: há outra corrida às ${hhmm(o.x)} e não haveria tempo de terminar a sua e se deslocar até lá. Escolha um horário anterior ou depois das ${hhmm(o.ate)}.` : `Horário indisponível: a agenda está travada até as ${hhmm(o.ate)} (corrida em andamento e deslocamento até você). Escolha um horário a partir desse.`; return false; }
@@ -592,7 +592,7 @@ async function serieVer(){
   if(!pO) pO = await achar('o'); if(!pD) pD = await achar('d');
   const ds = serieDatas(); if(!ds.length){ box.innerHTML = '<p class="err">Informe a data e a hora da primeira corrida.</p>'; return []; }
   const mins = durTotal(est.min), res = [];
-  for(const ts of ds){ let o = null; if(ts < Date.now() + 25*60000 || !horaOk(ts)) o = {passado: true}; else { try{ o = await ocupado(ts, mins); }catch(x){ o = null; } } res.push({ts, o}); }
+  for(const ts of ds){ let o = null; if(ts < Date.now() + 25*60000) o = {passado: true}; else { try{ o = await ocupado(ts, mins); }catch(x){ o = null; } } res.push({ts, o}); }
   box.innerHTML = `<p class="hint">Cada data vira uma requisição, com número próprio. Desmarque as que não quiser. Datas indisponíveis ficam de fora.${descSerie() ? ' Desconto de ' + z(descSerie()) + '% em cada corrida.' : ''}</p>` +
     res.map((r, i) => `<label class="ck"><input type="checkbox" data-i="${i}" ${r.o ? 'disabled' : 'checked'}><span>${esc(dthm(r.ts))}${r.o ? ' — <b style="color:#e5484d">indisponível</b>' : ''}</span></label>`).join('');
   serSel = res; showEst(); return res;
@@ -643,6 +643,7 @@ $('f').onsubmit = async e => {
     if(!est){ try{ await calcular(); }catch(x){} }
     if(!pO) pO = await achar('o'); if(!pD) pD = await achar('d');
     let alvos = [], serieId = null;
+    if(!horaOk()){ erro(HORA_MSG); fim(); return; }
     if(serieOn()){
       if(!serSel.length){ await serieVer(); erro('Confira as datas da série abaixo (desmarque as que não quiser) e envie de novo.'); fim(); return; }
       document.querySelectorAll('#serLista input[data-i]').forEach(c => { if(c.checked && !c.disabled) alvos.push(serSel[+c.dataset.i].ts); });
