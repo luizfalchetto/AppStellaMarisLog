@@ -249,6 +249,9 @@ h3{font:700 15px var(--f-cond);letter-spacing:.12em;text-transform:uppercase;col
     <div class="actions" id="fSair" hidden><button class="btn ghost" type="button" id="bSair">Sair da conta</button></div>
     <div class="actions" id="fNova" hidden><button class="btn primary full" type="button" id="bNovaC">+ Nova corrida (digitar manualmente)</button></div>
     <div id="fList"></div>
+    <div class="filabar" style="justify-content:flex-start;font:700 18px var(--f-cond);letter-spacing:.06em;text-transform:uppercase;margin-top:14px">Corridas agendadas <b id="agN"></b></div>
+    <p class="hint" id="agMsg"></p>
+    <div id="agList"></div>
   </section>
 </div>
 
@@ -1609,7 +1612,7 @@ function drawFila(){
     : !fuser && flagOn() && !authChk ? 'Não consegui reconectar a conta' + (fErr ? ' (' + fErr + ')' : '') + '. Toque em Entrar com Google.'
     : authChk || !fp ? 'Entre com sua conta Google para ver os pedidos dos clientes.' : 'Conectando…';
   const L = $('fList');
-  const html = logged ? ativos.map((x, i) => {
+  const mkCard = (x, i) => {
     const meu = ride && ride.fila && ride.fila.sid === x.sid && ride.fase !== 'fim';
     const hora = new Date(x.c).toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'});
     const nome = x.passageiro ? `${escapeHtml(x.passageiro)} <small>(pedido por ${escapeHtml(x.nome)})</small>` : escapeHtml(x.nome);
@@ -1627,10 +1630,15 @@ function drawFila(){
       <button class="btn ghost full" data-a="ed" data-k="${x.sid}" style="margin:2px 0 8px;border-color:#e0a800;color:#e0a800">✎ Editar endereços / marcar no mapa</button>
       ${x.rt ? `<p><b>${escapeHtml(x.rt)}</b> · ${escapeHtml(x.empNome || 'Empresa')}${x.cc ? ' · CC: ' + escapeHtml(x.cc) : ''}</p>` : ''}${prox}${x.estim ? `<p><small>Estimativa:</small> ${escapeHtml(x.estim)}</p>` : ''}${x.obs ? `<p><small>Obs.:</small> ${escapeHtml(x.obs)}</p>` : ''}
       <div class="acts">${a}</div></div>`;
-  }).join('') : '';
+  };
+  const html = logged ? ativos.map(mkCard).join('') : '';
   if(L.dataset.h !== html){ L.dataset.h = html; L.innerHTML = html; }
+  const ags = Object.keys(filaData).map(k => Object.assign({sid: k}, filaData[k])).filter(x => x.a && FATIVO.includes(x.s)).sort((p, q) => p.a - q.a);
+  const AL = $('agList'), agh = logged ? ags.map(mkCard).join('') : '';
+  $('agN').textContent = logged ? ags.length : ''; $('agMsg').textContent = logged ? (ags.length ? '' : 'Nenhuma corrida agendada.') : 'Entre com sua conta Google para ver as corridas agendadas.';
+  if(AL.dataset.h !== agh){ AL.dataset.h = agh; AL.innerHTML = agh; }
 }
-$('fList').onclick = e => {
+$('fList').onclick = $('agList').onclick = e => {
   const b = e.target.closest('button[data-a]'); if(!b) return;
   const k = b.dataset.k, it = filaData[k] && Object.assign({sid: k}, filaData[k]); if(!it) return;
   if(b.dataset.a === 'ac') aceitar(k);
