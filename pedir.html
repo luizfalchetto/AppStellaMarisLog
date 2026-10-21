@@ -97,6 +97,7 @@ legend{padding:0;margin-bottom:6px;font:700 16px "Barlow Condensed",sans-serif;l
   <div class="disp" id="disp" hidden><i></i><div><b id="dispT"></b><small id="dispS"></small></div></div>
   <section id="st" hidden>
     <div class="vei" id="stV" hidden></div>
+    <div class="vei" id="stEd" hidden style="border-color:#C8933A"></div>
     <div class="card"><div class="tit" id="stT"></div><div class="pos" id="stP"></div><p class="eta" id="stE"></p><p id="stD"></p></div>
     <button class="lnk" type="button" id="stW">Avisar também pelo WhatsApp</button>
     <button class="lnk red" type="button" id="stC">Cancelar pedido</button>
@@ -584,14 +585,19 @@ const MSG = {
   cancelado: ['Pedido cancelado', 'Se foi engano, faça um novo pedido.']
 };
 let cur = null, off = null, canc = false;
-function limpar(){ try{ localStorage.removeItem('sm_ped'); }catch(x){} if(off){ off(); off = null; } cur = null; canc = false; $('st').hidden = true; $('f').hidden = false; $('sub').hidden = false; }
+function limpar(){ try{ localStorage.removeItem('sm_ped'); }catch(x){} if(off){ off(); off = null; } cur = null; canc = false; $('stEd').hidden = true; $('st').hidden = true; $('f').hidden = false; $('sub').hidden = false; }
 function mostrar(sv){
   cur = sv; $('f').hidden = true; $('st').hidden = false; $('sub').hidden = true;
   $('stT').textContent = 'Pedido enviado'; $('stP').textContent = ''; $('stE').textContent = 'Conectando à fila…'; $('stD').textContent = '';
   $('stC').hidden = false; $('stN').hidden = true; veiculo();
   loadFB().then(db => {
     const ref = db.ref('pub'), cb = ref.on('value', snap => desenhar(snap.val() || {}));
-    off = () => ref.off('value', cb);
+    const r2 = db.ref('pubed/' + sv.pid), cb2 = r2.on('value', sn => {
+      const e = sn.val(), el = $('stEd'); if(!e || !e.partida){ el.hidden = true; return; }
+      el.replaceChildren(); const b = document.createElement('b'); b.textContent = '✎ O motorista corrigiu o endereço do seu pedido'; const d = document.createElement('div'); d.style.cssText = 'margin-top:6px;font-size:14px;line-height:1.5';
+      [['Partida', e.partida], ['Destino', e.destino], ['Nova estimativa', e.estim]].forEach(([k, v]) => { if(!v) return; const l = document.createElement('div'); const kb = document.createElement('b'); kb.style.display = 'inline'; kb.textContent = k + ': '; l.append(kb, document.createTextNode(v)); d.appendChild(l); });
+      const sm = document.createElement('small'); sm.textContent = 'Se algo ainda estiver errado, avise o motorista pelo WhatsApp.'; el.append(b, d, sm); el.hidden = false; });
+    off = () => { ref.off('value', cb); r2.off('value', cb2); };
   }).catch(() => { $('stE').textContent = 'Sem conexão para acompanhar a fila agora. Seu pedido foi enviado.'; });
 }
 let demOn = false, lastAll = null;
