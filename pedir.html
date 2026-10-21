@@ -122,7 +122,7 @@ legend{padding:0;margin-bottom:6px;font:700 16px "Barlow Condensed",sans-serif;l
       <div class="field"><label for="petPorte">Porte</label><select id="petPorte"><option value="pequeno">Pequeno (até 10 kg)</option><option value="médio">Médio (10 a 25 kg)</option><option value="grande">Grande (mais de 25 kg)</option></select></div></div>
       <div class="field"><label for="petCx">Como vai viajar?</label><select id="petCx"><option value="em caixa de transporte">Em caixa de transporte</option><option value="de guia/coleira">De guia/coleira</option></select></div>
     </fieldset>
-    <div class="field"><label for="pag">Forma de pagamento</label><select id="pag" required><option value="">Selecione…</option><option value="din">Dinheiro</option><option value="pix">Pix</option><option value="cartao">Cartão de débito/crédito</option></select><small id="pagAv" style="display:block;margin-top:6px;color:var(--muted)"></small></div>
+    <div class="field"><label for="pag">Forma de pagamento</label><select id="pag" required><option value="">Selecione…</option><option value="din">Dinheiro vivo</option><option value="pix">Pix</option><option value="cartao">Cartão de débito/crédito</option></select><small id="pagAv" style="display:block;margin-top:6px;color:var(--muted)"></small></div>
     <div class="field"><label for="obs">Observações (opcional)</label><textarea id="obs" placeholder="Ponto de referência, nº de passageiros, bagagem…"></textarea></div>
     <div class="aviso" id="aviso">
       <b class="t">Antes de pedir, saiba que</b>
@@ -167,7 +167,7 @@ const fmt = v => v.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFra
 { const e = pc('e'), d = pc('d'), td = pc('td'), tc = pc('tc');
   if(e) document.getElementById('avEsp').textContent = ` por minuto (R$ ${fmt(e)}/min)`;
   { const dc = pc('dc'), f = d != null ? d : 50, c = dc != null ? dc : 30, li = document.getElementById('avDyn'), z = v => String(v).replace('.', ','); li.hidden = false; li.innerHTML = `<b>Tarifa dinâmica:</b> em dias de chuva o valor tem acréscimo de ${z(c)}%, e em feriados, de ${z(f)}%. Corridas com <b>partida entre 22h e 05h</b> têm adicional noturno de ${z(pc('nt') != null ? pc('nt') : 30)}%.`; }
-  { const dd = pc('dd'), x = dd != null ? dd : 5; document.getElementById('avCar').innerHTML = `, ou cartão de débito/crédito, sem taxa adicional. <b>Pagando em dinheiro você tem ${String(x).replace('.', ',')}% de desconto</b> (o desconto vale só para dinheiro, não para Pix nem cartão)`; }
+  { const dd = pc('dd'), x = dd != null ? dd : 5; document.getElementById('avCar').innerHTML = `, ou cartão de débito/crédito, sem taxa adicional. <b>Pagando em dinheiro você tem ${String(x).replace('.', ',')}% de desconto</b> (o desconto vale somente para dinheiro vivo, não para Pix nem cartão)`; }
   const emp = q.get('n'); if(emp) document.getElementById('avEmp').textContent = emp; }
 const PAR = q.has('pa') ? num('pa') : 3, parTxt = 'R$ ' + fmt(PAR);
 document.getElementById('avPar').textContent = parTxt;
@@ -177,11 +177,11 @@ const noiteQ = () => { const v = $('quando') ? $('quando').value : ''; if(!/T\d\
 const nAdd = () => (typeof agendar !== 'undefined' && agendar && NT > 0 && noiteQ()) ? NT : 0;
 const evv = () => Math.round(est.v * (1 + nAdd()/100) * 100) / 100;
 const DD = pc('dd') != null ? pc('dd') : 5;
-const PAGN = {din: 'Dinheiro', pix: 'Pix', cartao: 'Cartão de débito/crédito'};
+const PAGN = {din: 'Dinheiro vivo', pix: 'Pix', cartao: 'Cartão de débito/crédito'};
 const desc = () => ($('pag').value === 'din' && DD > 0) ? DD : 0;
 const tot = () => Math.round((evv() + (par ? PAR : 0)) * (1 - desc()/100) * 100) / 100;
 const pagTxt = () => { const v = $('pag').value; return v ? PAGN[v] + (v === 'din' && DD > 0 ? ' (' + String(DD).replace('.', ',') + '% de desconto)' : '') : ''; };
-$('pagAv').textContent = `Pagando em dinheiro você tem ${String(DD).replace('.', ',')}% de desconto (não vale para Pix nem cartão).`;
+$('pagAv').textContent = `Desconto de ${String(DD).replace('.', ',')}% somente para pagamento em dinheiro vivo. Pix e cartão não têm desconto.`;
 $('pag').onchange = () => showEst();
 const temTarifa = T.band > 0 || T.km > 0 || T.min > 0;
 if(nm) $('sub').textContent = `Pedido para ${nm}. Informe partida e destino e envie o pedido.`;
