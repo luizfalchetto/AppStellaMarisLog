@@ -247,6 +247,7 @@ h3{font:700 15px var(--f-cond);letter-spacing:.12em;text-transform:uppercase;col
       <div class="actions"><button class="btn primary" type="button" id="bCad">Enviar cadastro</button></div>
     </div>
     <div class="actions" id="fSair" hidden><button class="btn ghost" type="button" id="bSair">Sair da conta</button></div>
+    <div class="actions" id="fAdm" hidden><a class="btn ghost full" href="admin.html" style="text-align:center;text-decoration:none">⚙ Gestão: aprovar motoristas, empresas e corridas</a></div>
     <div class="actions" id="fNova" hidden><button class="btn primary full" type="button" id="bNovaC">+ Nova corrida (digitar manualmente)</button></div>
     <div id="fList"></div>
     <div class="filabar" style="justify-content:flex-start;font:700 18px var(--f-cond);letter-spacing:.06em;text-transform:uppercase;margin-top:14px">Corridas agendadas <b id="agN"></b></div>
@@ -1601,7 +1602,7 @@ function drawFila(){
   const n = $('filaN'); n.textContent = nAg; n.dataset.n = nAg;
   const logged = fRole === 'owner' || fRole === 'parceiro';
   const recon = !logged && !fuser && flagOn() && !authChk && Date.now() - T0 < 7000;
-  $('fNova').hidden = !logged; $('fLogin').hidden = logged || recon || !!fuser; $('fSair').hidden = !fuser; $('fCad').hidden = fRole !== 'cadastro';
+  $('fNova').hidden = !logged; $('fAdm').hidden = fRole !== 'owner'; $('fLogin').hidden = logged || recon || !!fuser; $('fSair').hidden = !fuser; $('fCad').hidden = fRole !== 'cadastro';
   $('fMsg').textContent = logged ? (fRole === 'parceiro' ? 'Motorista parceiro' + (fPerf && fPerf.nome ? ': ' + fPerf.nome + '. ' : '. ') : '') + (ativos.length ? (refFim() ? 'Agendadas primeiro; depois por proximidade de onde você termina a corrida (ninguém espera mais de 15 min por isso).' : 'Agendadas primeiro, depois por ordem de chegada. Com uma corrida em andamento, ordeno por proximidade do destino.') : 'Nenhum pedido na fila agora.')
     : fRole === 'cadastro' ? 'Preencha o cadastro para trabalhar como motorista parceiro da Stella Maris.'
     : fRole === 'pendente' ? 'Cadastro enviado. Aguarde a aprovação da Stella Maris; depois é só entrar de novo.'
