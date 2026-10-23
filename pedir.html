@@ -624,7 +624,7 @@ function desenhar(all){
   const me = all[cur.pid], now = Date.now(), lim = now - 12*3600*1000;
   const fmtA = t => new Date(t).toLocaleString('pt-BR', {day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'});
   if(!me){ $('stEb').hidden = true; $('stT').textContent = 'Pedido enviado'; $('stE').textContent = 'Aguardando confirmação…'; return; }
-  const s = me.s;
+  const s = me.s; curS = s;
   { const okEd = EDOK.includes(s) && !canc; if(!okEd){ $('stEdP').hidden = true; $('stEdP').style.display = 'none'; } $('stEb').hidden = !okEd || !$('stEdP').hidden; }
   $('stC').hidden = !['aguardando', 'aceito', 'a_caminho'].includes(s) || canc;
   if(me.a && (s === 'aguardando' || s === 'aceito')){
@@ -648,7 +648,9 @@ function desenhar(all){
 }
 /* ---------- o passageiro edita o pedido até o motorista chegar ---------- */
 const EDOK = ['aguardando', 'aceito', 'a_caminho'];
-let xPin = null, xPar = false, xBusy = false;
+let xPin = null, xPar = false, xBusy = false, curS = '', xTime = false, xParOk = true;
+const TMIN = 15*60000; // alteração de horário só até 15 min antes do horário marcado
+const podeHora = () => !!(cur && cur.a && ['aguardando', 'aceito'].includes(curS) && cur.a - Date.now() >= TMIN);
 const toLocalIn = ts => { const d = new Date(ts), z = n => String(n).padStart(2, '0'); return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}T${z(d.getHours())}:${z(d.getMinutes())}`; };
 function xSetPar(v){ xPar = v; $('xSw').hidden = !v; $('xPb').textContent = v ? '− Remover parada' : '+ Adicionar parada'; }
 $('xPb').onclick = () => xSetPar(!xPar);
@@ -656,8 +658,10 @@ $('xPb').onclick = () => xSetPar(!xPar);
 $('stEb').onclick = () => {
   if(!cur) return; const po = cur.po || {};
   $('xoRua').value = po.rua || ''; $('xoNum').value = po.num || ''; $('xoBai').value = po.bai || ''; $('xoCid').value = po.cid || 'Macaé'; xPin = null;
-  $('xQw').hidden = !cur.a; if(cur.a){ $('xQ').value = toLocalIn(cur.a); $('xQ').min = toLocalIn(Date.now() + 30*60000); }
-  $('xQav').textContent = ''; $('xMsg').textContent = ''; $('xS').value = cur.ps || ''; xSetPar(!!cur.ps);
+  xTime = podeHora(); xParOk = curS !== 'a_caminho';
+  $('xQw').hidden = !cur.a; $('xQ').disabled = !xTime; if(cur.a){ $('xQ').value = toLocalIn(cur.a); $('xQ').min = toLocalIn(Date.now() + 30*60000); }
+  $('xQav').textContent = !cur.a ? '' : xTime ? 'O horário só pode ser alterado até 15 minutos antes do horário marcado.' : (curS === 'a_caminho' ? 'O motorista já está indo até você: o horário não pode mais ser alterado.' : 'Faltam menos de 15 minutos para o horário marcado: o horário não pode mais ser alterado.');
+  $('xPb').hidden = !xParOk; if(!xParOk) $('xSw').hidden = true; $('xMsg').textContent = ''; $('xS').value = cur.ps || ''; xSetPar(!!cur.ps && xParOk);
   $('stEb').hidden = true; $('stEdP').hidden = false; $('stEdP').style.display = 'grid';
 };
 $('xFecha').onclick = () => { $('stEdP').hidden = true; $('stEdP').style.display = 'none'; if(lastAll) desenhar(lastAll); };
@@ -668,12 +672,14 @@ $('xSalvar').onclick = async () => {
   if(!cur || xBusy) return; const M = $('xMsg'); M.textContent = '';
   const err = t => { M.textContent = t; };
   if(!$('xoRua').value.trim()) return err('Informe a rua de partida.');
+  if(!xParOk) xPar = !!cur.ps;
   if(xPar && !$('xS').value.trim()) return err('Informe o endereço da parada ou remova a parada.');
   xBusy = true; const bt = $('xSalvar'); bt.disabled = true; bt.textContent = 'Salvando…';
   try{
     const mid2 = cur.mid || 'luiz', novoO = addr('xo').slice(0, 200), partidaMudou = novoO !== (cur.pt || '');
     let ts = cur.a || null, horaMudou = false;
-    if(cur.a){ const v = $('xQ').value; if(!v){ err('Escolha a data e a hora.'); return; } ts = new Date(v).getTime(); horaMudou = ts !== cur.a;
+    if(cur.a && xTime){ const v = $('xQ').value; if(!v){ err('Escolha a data e a hora.'); return; } ts = new Date(v).getTime(); horaMudou = ts !== cur.a;
+      if(horaMudou && cur.a - Date.now() < TMIN){ err('Faltam menos de 15 minutos para o horário marcado: o horário não pode mais ser alterado.'); return; }
       if(horaMudou){ if(ts < Date.now() + 25*60000){ err('Escolha um horário com pelo menos 30 minutos de antecedência.'); return; } if(!horaOk()){ err(HORA_MSG); return; } } }
     let pc = cur.pc || null;
     if(partidaMudou || !pc){ pc = xPin || await achar('xo'); if(!pc){ err('Não achei esse endereço no mapa. Confira a rua e o bairro ou toque em “Marcar a partida no mapa”.'); return; } }
@@ -691,7 +697,7 @@ $('xSalvar').onclick = async () => {
         err(o.bloq ? 'Horário indisponível: não há atendimento nesse horário. Escolha outro.' : (o.antes ? `Horário indisponível: há outra corrida às ${h(o.x)}. Escolha um horário anterior ou depois das ${h(o.ate)}.` : `Horário indisponível: a agenda está travada até as ${h(o.ate)}. Escolha um horário depois disso.`)); return; }
     }
     const up = {}, B = filaPath(mid2, cur.sid) + '/', P = 'pub/' + cur.pid + '/', TSV = firebase.database.ServerValue.TIMESTAMP;
-    up[B + 'partida'] = novoO; up[B + 'oLa'] = pc.la; up[B + 'oLo'] = pc.lo; if(xPar) up[B + 'parada'] = addr('xs0').slice(0, 200); else if(cur.ps) up[B + 'parada'] = null;
+    up[B + 'partida'] = novoO; up[B + 'oLa'] = pc.la; up[B + 'oLo'] = pc.lo; if(xParOk){ if(xPar) up[B + 'parada'] = addr('xs0').slice(0, 200); else if(cur.ps) up[B + 'parada'] = null; }
     up[B + 'edc'] = TSV;
     if(cur.a && horaMudou){ up[B + 'a'] = ts; up[B + 'quando'] = (new Date(ts).toLocaleString('pt-BR', {dateStyle: 'short', timeStyle: 'short'}) + ' (agendada)').slice(0, 40); up[P + 'a'] = ts; }
     up[P + 'oLa'] = rd(pc, 'o').oLa; up[P + 'oLo'] = rd(pc, 'o').oLo;
