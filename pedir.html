@@ -99,6 +99,21 @@ legend{padding:0;margin-bottom:6px;font:700 16px "Barlow Condensed",sans-serif;l
     <div class="vei" id="stV" hidden></div>
     <div class="vei" id="stEd" hidden style="border-color:#C8933A"></div>
     <div class="card"><div class="tit" id="stT"></div><div class="pos" id="stP"></div><p class="eta" id="stE"></p><p id="stD"></p></div>
+    <button class="mini" type="button" id="stEb" hidden style="width:100%">✎ Editar horário, partida ou adicionar parada</button>
+    <div id="stEdP" class="vei" hidden style="display:none;gap:10px">
+      <b>Alterar pedido</b>
+      <small>Você pode alterar até o motorista marcar que chegou. Depois disso, só o motorista altera.</small>
+      <div class="field" id="xQw"><label for="xQ">Data e hora</label><input id="xQ" type="datetime-local"><small id="xQav"></small></div>
+      <div class="field"><label for="xoRua">Rua de partida</label><input id="xoRua" autocomplete="off"></div>
+      <div class="g2"><div class="field"><label for="xoNum">Número</label><input id="xoNum" inputmode="numeric" autocomplete="off"></div><div class="field"><label for="xoBai">Bairro</label><input id="xoBai" autocomplete="off"></div></div>
+      <div class="field"><label for="xoCid">Cidade</label><input id="xoCid" autocomplete="off"></div>
+      <button class="mini" type="button" id="xoMap">🗺️ Marcar a partida no mapa</button>
+      <button class="mini" type="button" id="xPb">+ Adicionar parada</button>
+      <div class="field" id="xSw" hidden><label for="xS">Endereço da parada (rua, número, bairro)</label><input id="xS" maxlength="150" autocomplete="off"><small id="xSv"></small></div>
+      <small id="xMsg" style="color:#e5484d"></small>
+      <button class="mini" type="button" id="xSalvar" style="background:#0a7d4f;color:#fff;border:0">Salvar alterações</button>
+      <button class="lnk" type="button" id="xFecha">Fechar sem alterar</button>
+    </div>
     <button class="lnk" type="button" id="stW">Avisar também pelo WhatsApp</button>
     <button class="lnk red" type="button" id="stC">Cancelar pedido</button>
     <div id="stA" hidden style="display:grid;gap:8px">
@@ -312,7 +327,8 @@ if(temTarifa) $('bEst').hidden = false;
   }
   window.addEventListener('appinstalled', () => { $('bInst').hidden = true; });
   if('serviceWorker' in navigator && location.protocol.indexOf('http') === 0) navigator.serviceWorker.register('sw.js').catch(() => {}); }
-const addr = p => { const g = id => $(p + id).value.trim(); return [[g('Rua'), g('Num')].filter(Boolean).join(', '), g('Bai'), g('Cid')].filter(Boolean).join(' - '); };
+const addr = p => { if(p === 'xs0') return $('xS').value.trim();
+   const g = id => $(p + id).value.trim(); return [[g('Rua'), g('Num')].filter(Boolean).join(', '), g('Bai'), g('Cid')].filter(Boolean).join(' - '); };
 const addrQ = (p, simples) => { const g = id => $(p + id).value.trim(); return [[g('Rua'), simples ? '' : g('Num')].filter(Boolean).join(' '), simples ? '' : g('Bai'), g('Cid'), 'Brasil'].filter(Boolean).join(', '); };
 let tmr;
 const auto = () => { clearTimeout(tmr); tmr = setTimeout(() => { if(temTarifa && $('oRua').value.trim() && $('dRua').value.trim() && !est) calcular().catch(() => {}); }, 2000); };
@@ -547,6 +563,7 @@ $('f').onsubmit = async e => {
     await Promise.race([db.ref().update(up), new Promise((_, rj) => setTimeout(() => rj(new Error('t')), 8000))]);
     if(mid === 'luiz') avisar(agendar ? 'Novo AGENDAMENTO de corrida' : 'Novo pedido de corrida');
     const sv = {sid, pid, wa, mid, t: Date.now()}; if(f.a) sv.a = f.a;
+    { const g = id => $('o' + id).value.trim(); sv.po = {rua: g('Rua'), num: g('Num'), bai: g('Bai'), cid: g('Cid')}; sv.pt = o; sv.pc = pO ? {la: pO.la, lo: pO.lo} : null; sv.dc = pD ? {la: pD.la, lo: pD.lo} : null; sv.ps = par ? addr('s') : ''; sv.pg = $('pag').value; if(est) sv.es = {v: est.v, km: est.km, min: est.min, ap: !!est.aprox}; }
     try{ localStorage.setItem('sm_ped', JSON.stringify(sv)); }catch(x){}
     g.disabled = false; g.textContent = 'Enviar pedido';
     mostrar(sv);
@@ -606,8 +623,9 @@ function desenhar(all){
   if(!cur) return;
   const me = all[cur.pid], now = Date.now(), lim = now - 12*3600*1000;
   const fmtA = t => new Date(t).toLocaleString('pt-BR', {day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'});
-  if(!me){ $('stT').textContent = 'Pedido enviado'; $('stE').textContent = 'Aguardando confirmação…'; return; }
+  if(!me){ $('stEb').hidden = true; $('stT').textContent = 'Pedido enviado'; $('stE').textContent = 'Aguardando confirmação…'; return; }
   const s = me.s;
+  { const okEd = EDOK.includes(s) && !canc; if(!okEd){ $('stEdP').hidden = true; $('stEdP').style.display = 'none'; } $('stEb').hidden = !okEd || !$('stEdP').hidden; }
   $('stC').hidden = !['aguardando', 'aceito', 'a_caminho'].includes(s) || canc;
   if(me.a && (s === 'aguardando' || s === 'aceito')){
     $('stT').textContent = s === 'aceito' ? 'Agendamento confirmado' : 'Agendamento solicitado'; $('stP').textContent = fmtA(me.a);
@@ -628,6 +646,71 @@ function desenhar(all){
   const prox = Object.values(all).filter(x => x && (x.mid || 'luiz') === cm && x.a && ['aguardando', 'aceito'].includes(x.s) && x.a > now - 15*60000 && x.a - 30*60000 < now + (min + (me.m || 15))*60000).sort((p, q) => p.a - q.a)[0];
   $('stD').textContent = canc ? 'Cancelamento enviado ao motorista.' : 'Atendimento por ordem de chegada, com ajuste pela proximidade do motorista para evitar deslocamento vazio (ninguém espera mais de 15 min por isso). Esta tela se atualiza sozinha.' + (demOn ? ' Alta demanda no momento: o atendimento pode demorar mais que o normal.' : '') + (prox ? ' Atenção: há uma corrida agendada com prioridade por volta das ' + new Date(prox.a).toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'}) + '; seu atendimento pode atrasar ou ficar para depois dela.' : '');
 }
+/* ---------- o passageiro edita o pedido até o motorista chegar ---------- */
+const EDOK = ['aguardando', 'aceito', 'a_caminho'];
+let xPin = null, xPar = false, xBusy = false;
+const toLocalIn = ts => { const d = new Date(ts), z = n => String(n).padStart(2, '0'); return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}T${z(d.getHours())}:${z(d.getMinutes())}`; };
+function xSetPar(v){ xPar = v; $('xSw').hidden = !v; $('xPb').textContent = v ? '− Remover parada' : '+ Adicionar parada'; }
+$('xPb').onclick = () => xSetPar(!xPar);
+['xoRua', 'xoNum', 'xoBai', 'xoCid'].forEach(id => $(id).oninput = () => { xPin = null; });
+$('stEb').onclick = () => {
+  if(!cur) return; const po = cur.po || {};
+  $('xoRua').value = po.rua || ''; $('xoNum').value = po.num || ''; $('xoBai').value = po.bai || ''; $('xoCid').value = po.cid || 'Macaé'; xPin = null;
+  $('xQw').hidden = !cur.a; if(cur.a){ $('xQ').value = toLocalIn(cur.a); $('xQ').min = toLocalIn(Date.now() + 30*60000); }
+  $('xQav').textContent = ''; $('xMsg').textContent = ''; $('xS').value = cur.ps || ''; xSetPar(!!cur.ps);
+  $('stEb').hidden = true; $('stEdP').hidden = false; $('stEdP').style.display = 'grid';
+};
+$('xFecha').onclick = () => { $('stEdP').hidden = true; $('stEdP').style.display = 'none'; if(lastAll) desenhar(lastAll); };
+$('xoMap').onclick = () => mpAbrir('Partida: toque no ponto certo', xPin || (cur && cur.pc), r => {
+  const rua = [r.nome, r.rua].filter((v, i, a) => v && a.indexOf(v) === i).join(' - ') || 'Ponto marcado no mapa';
+  $('xoRua').value = rua.slice(0, 120); $('xoNum').value = r.num || ''; $('xoBai').value = r.bai || ''; $('xoCid').value = r.cid || 'Macaé'; xPin = {la: r.la, lo: r.lo}; });
+$('xSalvar').onclick = async () => {
+  if(!cur || xBusy) return; const M = $('xMsg'); M.textContent = '';
+  const err = t => { M.textContent = t; };
+  if(!$('xoRua').value.trim()) return err('Informe a rua de partida.');
+  if(xPar && !$('xS').value.trim()) return err('Informe o endereço da parada ou remova a parada.');
+  xBusy = true; const bt = $('xSalvar'); bt.disabled = true; bt.textContent = 'Salvando…';
+  try{
+    const mid2 = cur.mid || 'luiz', novoO = addr('xo').slice(0, 200), partidaMudou = novoO !== (cur.pt || '');
+    let ts = cur.a || null, horaMudou = false;
+    if(cur.a){ const v = $('xQ').value; if(!v){ err('Escolha a data e a hora.'); return; } ts = new Date(v).getTime(); horaMudou = ts !== cur.a;
+      if(horaMudou){ if(ts < Date.now() + 25*60000){ err('Escolha um horário com pelo menos 30 minutos de antecedência.'); return; } if(!horaOk()){ err(HORA_MSG); return; } } }
+    let pc = cur.pc || null;
+    if(partidaMudou || !pc){ pc = xPin || await achar('xo'); if(!pc){ err('Não achei esse endereço no mapa. Confira a rua e o bairro ou toque em “Marcar a partida no mapa”.'); return; } }
+    // valor novo (se o pedido tem os dados da estimativa)
+    let km = null, min = null, aprox = false;
+    if(temTarifa && cur.dc && pc){
+      try{ const j = await (await fetch(`https://router.project-osrm.org/route/v1/driving/${pc.lo},${pc.la};${cur.dc.lo},${cur.dc.la}?overview=false`)).json(), r = j.routes && j.routes[0]; if(!r) throw 0; km = r.distance/1000; min = r.duration/60; }
+      catch(e){ km = hav(pc, cur.dc)*1.3; min = km/25*60; aprox = true; }
+    }
+    // agenda: horário livre com a nova partida?
+    if(cur.a && (horaMudou || partidaMudou)){
+      const sMid = mid, sO = pO, sD = pD; mid = mid2; pO = pc; pD = cur.dc || null;
+      let o = null; try{ o = await ocupado(ts, durTotal(min != null ? min : (cur.es ? cur.es.min : 30))); }catch(e){} mid = sMid; pO = sO; pD = sD;
+      if(o){ const h = t => new Date(t).toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'});
+        err(o.bloq ? 'Horário indisponível: não há atendimento nesse horário. Escolha outro.' : (o.antes ? `Horário indisponível: há outra corrida às ${h(o.x)}. Escolha um horário anterior ou depois das ${h(o.ate)}.` : `Horário indisponível: a agenda está travada até as ${h(o.ate)}. Escolha um horário depois disso.`)); return; }
+    }
+    const up = {}, B = filaPath(mid2, cur.sid) + '/', P = 'pub/' + cur.pid + '/', TSV = firebase.database.ServerValue.TIMESTAMP;
+    up[B + 'partida'] = novoO; up[B + 'oLa'] = pc.la; up[B + 'oLo'] = pc.lo; if(xPar) up[B + 'parada'] = addr('xs0').slice(0, 200); else if(cur.ps) up[B + 'parada'] = null;
+    up[B + 'edc'] = TSV;
+    if(cur.a && horaMudou){ up[B + 'a'] = ts; up[B + 'quando'] = (new Date(ts).toLocaleString('pt-BR', {dateStyle: 'short', timeStyle: 'short'}) + ' (agendada)').slice(0, 40); up[P + 'a'] = ts; }
+    up[P + 'oLa'] = rd(pc, 'o').oLa; up[P + 'oLo'] = rd(pc, 'o').oLo;
+    let estNova = null;
+    if(km != null){
+      const hh = new Date(ts || Date.now()).getHours(), noite = cur.a && NT > 0 && (hh >= 22 || hh < 5), dsc = (cur.pg === 'din' && DD > 0) ? DD : 0;
+      const v0 = Math.max(T.band, km*T.km) + min*T.min, ev2 = Math.round(v0 * (1 + (noite ? NT : 0)/100) * 100) / 100, tt = Math.round((ev2 + (xPar ? PAR : 0)) * (1 - dsc/100) * 100) / 100;
+      estNova = `R$ ${brl(tt)} · ${km.toLocaleString('pt-BR', {maximumFractionDigits: 1})} km`; up[B + 'estim'] = estNova; up[P + 'm'] = durTotal(min);
+    }
+    const db = await Promise.race([loadFB(), new Promise((_, rj) => setTimeout(() => rj(new Error('t')), 8000))]);
+    await Promise.race([db.ref().update(up), new Promise((_, rj) => setTimeout(() => rj(new Error('t')), 8000))]);
+    cur.po = {rua: $('xoRua').value.trim(), num: $('xoNum').value.trim(), bai: $('xoBai').value.trim(), cid: $('xoCid').value.trim()}; cur.pt = novoO; cur.pc = {la: pc.la, lo: pc.lo}; cur.ps = xPar ? addr('xs0') : ''; if(cur.a) cur.a = ts;
+    if(km != null) cur.es = {v: Math.max(T.band, km*T.km) + min*T.min, km, min, ap: aprox};
+    try{ localStorage.setItem('sm_ped', JSON.stringify(cur)); }catch(x){}
+    if(mid2 === 'luiz') avisar('Cliente ALTEROU o pedido (horário/partida/parada)');
+    $('xFecha').onclick(); $('stD').textContent = 'Alterações enviadas ao motorista' + (estNova ? '. Nova estimativa: ' + estNova : '') + '.';
+  }catch(e){ err('Não foi possível alterar agora. Se o motorista já marcou que chegou, só ele pode alterar. Avise pelo WhatsApp.'); }
+  finally{ xBusy = false; bt.disabled = false; bt.textContent = 'Salvar alterações'; }
+};
 let avNota = 0;
 const avKey = () => 'sm_aval_' + (cur && cur.pid);
 function avalInit(){
