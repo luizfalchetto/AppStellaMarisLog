@@ -1274,7 +1274,7 @@ let fErr = '';
 const T0 = Date.now();
 setTimeout(() => { try{ drawFila(); }catch(e){} }, 7200);
 const flagOn = () => { try{ return localStorage.getItem('tx_fila_on') === '1'; }catch(e){ return false; } };
-let fRole = null, fMid = null, fPerf = null, authChk = false, fdb = null, fauth = null, fuser = null, fready = false, fp = null, filaData = {}, cancData = {}, fKnown = null, fListen = false;
+let fRole = null, fMid = null, fPerf = null, authChk = false, fdb = null, fauth = null, fuser = null, fready = false, fp = null, filaData = {}, cancData = {}, fKnown = null, fListen = false, fEdc = null;
 const loadJs = u => new Promise((res, rej) => { const el = document.createElement('script'); el.src = u; el.onload = res; el.onerror = () => rej(new Error('sdk')); document.head.append(el); });
 function fbInit(){
   if(fp) return fp;
@@ -1311,6 +1311,12 @@ function startFila(){
     filaData = sn.val() || {};
     const ativos = Object.keys(filaData).filter(k => FATIVO.includes(filaData[k].s));
     if(fKnown){ ativos.forEach(k => { if(!fKnown.has(k) && filaData[k].s === 'aguardando') alertaNovo(filaData[k]); }); }
+    { const nova = {}; let alt = null; ativos.forEach(k => { const e = filaData[k].edc; if(e){ nova[k] = e; if(fEdc && fEdc[k] !== e) alt = filaData[k]; } }); fEdc = nova; if(alt) alertaEdit(alt);
+      const rf = ride && ride.fila && filaData[ride.fila.sid];
+      if(rf && ride.fase !== 'fim' && (rf.oLa !== ride.fila.oLa || rf.oLo !== ride.fila.oLo || rf.partida !== ride.fila.partida || (rf.parada || '') !== (ride.fila.parada || ''))){
+        const velha = ride.fila.parada || ''; Object.assign(ride.fila, {oLa: rf.oLa, oLo: rf.oLo, partida: rf.partida, parada: rf.parada || ''}); ride.orig = rf.partida || ride.orig;
+        if(rf.parada){ ride.par = true; ride.parEnd = rf.parada; } else if(ride.par && velha && ride.parEnd === velha){ ride.par = false; ride.parEnd = ''; }
+        save(); try{ render(); }catch(e){} } }
     fKnown = new Set(ativos); drawFila(); varrerCancel();
   }, () => {});
   fdb.ref(P.canc).on('value', sn => { cancData = sn.val() || {}; varrerCancel(); }, () => {});
@@ -1318,7 +1324,7 @@ function startFila(){
   flushQ(); flushC(); podarPub(); pushDisp();
 }
 function stopFila(){
-  fready = false; fListen = false; filaData = {}; cancData = {}; fKnown = null;
+  fready = false; fListen = false; filaData = {}; cancData = {}; fKnown = null; fEdc = null;
   if(fdb && fMid){ try{ const P = fPaths(); fdb.ref(P.fila).off(); fdb.ref(P.canc).off(); fdb.ref(P.bloq).off(); }catch(e){} }
 }
 function setStatus(sid, pid, st){
@@ -1358,6 +1364,11 @@ $('bDisp').onclick = () => {
 };
 drawDisp(); drawDem();
 let actx;
+function alertaEdit(it){
+  toast('Cliente ALTEROU o pedido: ' + (it.passageiro || it.nome || 'cliente'));
+  try{ navigator.vibrate && navigator.vibrate([200, 100, 200, 100, 200]); }catch(e){}
+  try{ actx = actx || new (window.AudioContext || window.webkitAudioContext)(); [0, .2, .4].forEach(t => { const o = actx.createOscillator(), g = actx.createGain(); o.frequency.value = 660; g.gain.value = .2; o.connect(g); g.connect(actx.destination); o.start(actx.currentTime + t); o.stop(actx.currentTime + t + .14); }); }catch(e){}
+}
 function alertaNovo(it){
   toast((it.a ? 'Novo AGENDAMENTO: ' : 'Novo pedido: ') + (it.nome || 'cliente'));
   try{ navigator.vibrate && navigator.vibrate([300, 150, 300]); }catch(e){}
@@ -1627,6 +1638,7 @@ function drawFila(){
     const prox = x.dist != null && x.s === 'aguardando' ? `<p class="prox">${kmFila(x.dist)} de onde você termina${x.furou ? ' · passou na frente por proximidade' : ''}</p>` : '';
     return `<div class="fcard${x.a ? ' ag' : ''}"><div class="st">${x.a ? '<span class="agblink">AGENDADA</span> ' + fmtAg(x.a) + ' · prioridade · ' : ''}${FLBL[x.s]}${meu ? ' · sua corrida atual' : ''}</div><h3><span class="pos">${i + 1}º</span>${nome}</h3>
       <small>Pedido às ${hora} · ${escapeHtml(x.quando || 'Agora')}</small>
+      ${x.edc ? `<p style="color:#e0a800;font-weight:700">✎ Alterado pelo cliente às ${new Date(x.edc).toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'})}</p>` : ''}
       <p><b>De:</b> ${escapeHtml(x.partida)}<br><b>Para:</b> ${escapeHtml(x.destino)}${x.parada ? '<br><b>Parada:</b> ' + escapeHtml(x.parada) : ''}</p>
       <button class="btn ghost full" data-a="ed" data-k="${x.sid}" style="margin:2px 0 8px;border-color:#e0a800;color:#e0a800">✎ Editar endereços / marcar no mapa</button>
       ${x.rt ? `<p><b>${escapeHtml(x.rt)}</b> · ${escapeHtml(x.empNome || 'Empresa')}${x.cc ? ' · CC: ' + escapeHtml(x.cc) : ''}</p>` : ''}${prox}${x.estim ? `<p><small>Estimativa:</small> ${escapeHtml(x.estim)}</p>` : ''}${x.obs ? `<p><small>Obs.:</small> ${escapeHtml(x.obs)}</p>` : ''}
