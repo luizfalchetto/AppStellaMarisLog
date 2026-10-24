@@ -318,7 +318,7 @@ h3{font:700 15px var(--f-cond);letter-spacing:.12em;text-transform:uppercase;col
     </div>
     <h3>Pagamento</h3>
     <div class="grid2">
-      <div class="field"><label for="cDesc">Desconto no dinheiro (%)</label><input id="cDesc" type="text" inputmode="decimal" placeholder="5"></div>
+      <div class="field"><label for="cDesc">Desconto no dinheiro (%)</label><input id="cDesc" type="text" inputmode="decimal" placeholder="10"></div>
       <p class="hint" style="margin:0;align-self:end">Só vale para pagamento em dinheiro. Pix e cartão: sem desconto e sem taxa.</p>
     </div>
     <div class="field"><label for="cPix">Chave Pix</label><input id="cPix" type="text" autocomplete="off"></div>
@@ -478,7 +478,7 @@ const dia = t => new Date(t).toLocaleDateString('pt-BR');
 const minTxt = ms => { const m = ms/60000; return m < 10 ? m.toLocaleString('pt-BR',{maximumFractionDigits:1}) : String(Math.round(m)); };
 
 /* ---------- config ---------- */
-const DEF = {nome:'', placa:'', modelo:'', band:0, km:0, min:0, esp:0, arred:0, msg:'Obrigado pela preferência!', empresa:'Stella Maris Logistics', cnpj:'64.842.411/0001-07', taxaDeb:0, taxaCre:0, semTaxa:true, desc:5, par:3, dyn:50, dynC:30, noturno:30, pix:'70e9320f-2100-485f-8ad4-62dd0a868e90', meta:0};
+const DEF = {nome:'', placa:'', modelo:'', band:0, km:0, min:0, esp:0, arred:0, msg:'Obrigado pela preferência!', empresa:'Stella Maris Logistics', cnpj:'64.842.411/0001-07', taxaDeb:0, taxaCre:0, semTaxa:true, desc:10, par:3, dyn:50, dynC:30, noturno:30, pix:'70e9320f-2100-485f-8ad4-62dd0a868e90', meta:0};
 const DYN = {fer:'Feriado', chu:'Chuva forte'};
 const dynRate = (c, k) => k === 'chu' ? (c && c.dynC != null ? Number(c.dynC) : 30) : (c && c.dyn != null ? Number(c.dyn) : 50);
 const notRate = c => c && c.noturno != null ? Number(c.noturno) : 30;
@@ -493,6 +493,7 @@ function drawDyn(el, r, fn){
 let dynSel = store.get('tx_dyn', null) || null;
 const PAGN = {din:'Dinheiro', pix:'Pix', deb:'Débito', cre:'Crédito', fatura:'Fatura mensal (empresa)'};
 let cfg = Object.assign({}, DEF, store.get('tx_cfg', {}));
+if(!cfg.d10){ if(Number(cfg.desc) === 5) cfg.desc = 10; cfg.d10 = 1; store.set('tx_cfg', cfg); } // desconto no dinheiro passou de 5% para 10% (uma vez)
 const cfgOk = () => cfg.band>0 || cfg.km>0 || cfg.min>0;
 
 /* ---------- ride ---------- */
@@ -500,6 +501,9 @@ let ride = store.get('tx_ride', null);
 const save = () => store.set('tx_ride', ride);
 
 const CUT_TAXA = Date.UTC(2026, 9, 20, 9, 30); // taxa de cartão extinta: só corridas encerradas antes disso mantêm a taxa
+const RIO_MIN = 1000; // viagens de/para o Rio: mínimo de R$ 1.000, pedágio incluso
+const semAc = x => String(x || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+const rioTxt = x => /galeao|santos dumont|novo rio|tom jobim/.test(semAc(x));
 function calc(r, now){
   const c = r.cfg, t = now || Date.now();
   if(r.noshow){ const e = r.emp || {}, p = e.nsPct != null ? Number(e.nsPct) : 50, v = Math.round((Number(e.estimV) || 0)*p)/100;
@@ -528,12 +532,14 @@ function calc(r, now){
   const pct = (c.semTaxa || !r.fim || r.fim >= CUT_TAXA) ? 0 : (r.pag === 'deb' ? (c.taxaDeb != null ? c.taxaDeb : cfg.taxaDeb) : r.pag === 'cre' ? (c.taxaCre != null ? c.taxaCre : cfg.taxaCre) : 0);
   const taxa = Math.round(sub*(pct||0))/100;
   const descPct0 = (r.emp && Number(r.emp.recDesc) > 0) ? Number(r.emp.recDesc) : (c.desc != null && !r.emp && (r.pag === 'din' || (!r.pag && r.fim))) ? Number(c.desc) : 0;
-  const cupP = (!r.emp && Number(r.cup) > 0) ? Number(r.cup) : 0, cupI = (!r.emp && Number(r.cupI) > 0) ? Number(r.cupI) : 0, descPct = Math.max(descPct0, cupP) + cupI;
-  const descNm = []; if(cupP > 0 && cupP >= descPct0) descNm.push('cupom de ' + (r.cupT === 'niv' ? 'aniversário' : 'indicação')); else if((cupP > 0 || cupI > 0) && descPct0 > 0) descNm.push('dinheiro'); if(cupI > 0) descNm.push('cupom do amigo');
+  const cupP = (!r.emp && Number(r.cup) > 0) ? Number(r.cup) : 0, cupI = (!r.emp && Number(r.cupI) > 0) ? Number(r.cupI) : 0, descPct = Math.max(descPct0, cupP, cupI); // descontos não se acumulam: vale só o maior
+  const descNm = []; if(cupP > 0 && cupP >= descPct0 && cupP >= cupI) descNm.push('cupom de ' + (r.cupT === 'niv' ? 'aniversário' : 'indicação')); else if(cupI > 0 && cupI >= descPct0) descNm.push('cupom do amigo');
   const descCup = descNm.join(' + ');
   const vDesc = Math.round(sub*descPct)/100;
-  const total = Math.round((sub + taxa - vDesc)*100)/100;
-  return {dynPct, vDyn, vNot, notPct, vPar, km, corrMs, espMs, espTotal, espStart, vKm, vMin, vEsp, corrida, minimoAplicado, sub, taxa, pct: pct||0, vDesc, descPct, descCup, total};
+  const tot0 = Math.round((sub + taxa - vDesc)*100)/100;
+  const rio = !!(!r.emp && r.inicio && !r.cancelada && rioTxt((r.orig || '') + ' ' + (r.dest || '')));
+  const vRio = rio && tot0 < RIO_MIN ? Math.round((RIO_MIN - tot0)*100)/100 : 0, total = Math.round((tot0 + vRio)*100)/100;
+  return {rio, vRio, dynPct, vDyn, vNot, notPct, vPar, km, corrMs, espMs, espTotal, espStart, vKm, vMin, vEsp, corrida, minimoAplicado, sub, taxa, pct: pct||0, vDesc, descPct, descCup, total};
 }
 
 /* ---------- GPS ---------- */
@@ -630,7 +636,7 @@ function avisarCaminho(){
 }
 function iniciar(){ ride.inicio = Date.now(); ride.fase = 'corrida'; ride.last = null; save(); qSync('em_corrida'); startGps(); capEnd(ride, 'orig'); render(); }
 function finalizar(){
-  ride.fim = Date.now(); ride.fase = 'fim'; save(); qSync('concluido'); stopGps(); keepAwake(false);
+  ride.fim = Date.now(); ride.fase = 'fim'; ride.pagPend = ride.emp ? 0 : 1; save(); qSync('concluido'); stopGps(); keepAwake(false);
   lembrarCli(ride); saveHist(); gravarCorrida(ride); emailRecibo(ride); cupomConcluido(ride); render(); openFim(); if(ride.inicio) capEnd(ride, 'dest');
 }
 function cancelar(){
@@ -759,10 +765,13 @@ function receipt(r){
   if(c.vDyn > 0) L.push(`Tarifa dinâmica (${DYN[r.dyn] || 'especial'}) +${c.dynPct.toLocaleString('pt-BR')}%: R$ ${brl(c.vDyn)}`);
   if(c.taxa > 0) L.push(`Taxa ${r.pag === 'deb' ? 'débito' : 'crédito'} ${c.pct.toLocaleString('pt-BR')}%: R$ ${brl(c.taxa)}`);
   if(c.vDesc > 0) L.push(`${r.emp ? 'Desconto de corrida recorrente' : c.descCup ? 'Desconto (' + c.descCup + ')' : 'Desconto pagamento em dinheiro'} ${c.descPct.toLocaleString('pt-BR')}%: -R$ ${brl(c.vDesc)}`);
+  if(c.vRio > 0) L.push(`Valor mínimo para o Rio: +R$ ${brl(c.vRio)}`);
   L.push('');
   L.push(`*Total: R$ ${brl(c.total)}*`);
+  if(c.rio) L.push('Pedágio incluso');
   if(r.pag) L.push(`Pagamento: ${PAGN[r.pag]}`);
   if(k.msg) { L.push(''); L.push(k.msg); }
+  if(r.mc && !r.noshow && !r.cancelada){ L.push(''); L.push(`Seu código de indicação: ${r.mc}`); L.push('Indique um amigo e ganhe 10% na sua próxima corrida.'); }
   return L.join('\n');
 }
 function waLink(r){
@@ -881,7 +890,7 @@ function openCfg(){
 $('fCfg').onsubmit = e => {
   e.preventDefault();
   cfg = {nome:$('cNome').value.trim(), placa:$('cPlaca').value.trim().toUpperCase(), modelo:$('cModelo').value.trim(), band:numIn($('cBand').value),
-         km:numIn($('cKm').value), min:numIn($('cMin').value), esp:numIn($('cEsp').value), arred:Number($('cArr').value), msg:$('cMsg').value.trim(), empresa:$('cEmp').value.trim(), cnpj:$('cCnpj').value.trim(), whats:$('cWhats').value.replace(/\D/g,''), taxaDeb:0, taxaCre:0, semTaxa:true, desc:numIn($('cDesc').value), pix:$('cPix').value.trim(), meta:numIn($('cMeta').value), dyn:numIn($('cDyn').value), dynC:numIn($('cDynC').value), noturno:numIn($('cNot').value), par:numIn($('cPar').value)};
+         km:numIn($('cKm').value), min:numIn($('cMin').value), esp:numIn($('cEsp').value), arred:Number($('cArr').value), msg:$('cMsg').value.trim(), empresa:$('cEmp').value.trim(), cnpj:$('cCnpj').value.trim(), whats:$('cWhats').value.replace(/\D/g,''), taxaDeb:0, taxaCre:0, semTaxa:true, desc:numIn($('cDesc').value), pix:$('cPix').value.trim(), meta:numIn($('cMeta').value), dyn:numIn($('cDyn').value), dynC:numIn($('cDynC').value), noturno:numIn($('cNot').value), par:numIn($('cPar').value), d10:1};
   store.set('tx_cfg', cfg); show('sCfg', false); render();
   toast(ride && ride.fase !== 'fim' ? 'Tarifas salvas. Valem a partir da próxima corrida.' : 'Tarifas salvas');
 };
@@ -955,16 +964,26 @@ function linhas(r){
   if(c.vNot > 0) rows.push([`Adicional noturno (22h às 05h) +${c.notPct.toLocaleString('pt-BR')}%`, 'R$ '+brl(c.vNot)]);
   if(c.vDyn > 0) rows.push([`Tarifa dinâmica (${DYN[r.dyn] || 'especial'}) +${c.dynPct.toLocaleString('pt-BR')}%`, 'R$ '+brl(c.vDyn)]);
   if(c.taxa > 0) rows.push([`Taxa ${r.pag === 'deb' ? 'débito' : 'crédito'} ${c.pct.toLocaleString('pt-BR')}%`, 'R$ '+brl(c.taxa)]);
+  if(c.vRio > 0) rows.push(['Valor mínimo para o Rio (pedágio incluso)', '+R$ '+brl(c.vRio)]);
   if(c.vDesc > 0) rows.push([`${r.emp ? 'Desconto recorrente' : c.descCup ? 'Desconto (' + c.descCup + ')' : 'Desconto em dinheiro'} ${c.descPct.toLocaleString('pt-BR')}%`, '-R$ '+brl(c.vDesc)]);
   return {c, k, rows};
 }
 function fillFim(r){
   const {c, rows} = linhas(r);
   $('fimLines').innerHTML = rows.map(([a,b]) => `<div><span>${a}</span><span>${b}</span></div>`).join('')
-    + `<div class="tot"><span>Total</span><span>R$ ${brl(c.total)}</span></div>`;
+    + `<div class="tot"><span>Total</span><span>R$ ${brl(c.total)}</span></div>` + (c.rio ? '<div><span>Pedágio incluso</span><span></span></div>' : '');
+  travaRecibo();
   $('bWa').href = waLink(r); showPix();
 }
 let fimRide = null;
+function travaRecibo(){ // o recibo só sai depois de confirmar a forma de pagamento real
+  if(!fimRide) return;
+  const pend = !!(fimRide.pagPend && !fimRide.emp && !fimRide.cancelada && !fimRide.noshow);
+  ['bPdf', 'bWa', 'bCopy'].forEach(id => { const e = $(id); if(!e) return; e.style.opacity = pend ? '.45' : ''; e.style.pointerEvents = pend ? 'none' : ''; e.setAttribute('aria-disabled', pend ? 'true' : 'false'); });
+  let h = $('pagHint');
+  if(!h){ h = document.createElement('p'); h.id = 'pagHint'; h.className = 'hint'; h.style.margin = '0 0 8px'; $('fPag').parentElement.appendChild(h); }
+  h.hidden = !pend; h.textContent = 'Confirme como o cliente pagou (dinheiro, Pix ou cartão) para liberar o recibo. Se foi pedido em dinheiro e pago em Pix ou cartão, o desconto do dinheiro é retirado.';
+}
 function openFim(r){
   fimRide = (r && r.id) ? r : ride; if(!fimRide) return;
   $('fKm').value = calc(fimRide).km.toLocaleString('pt-BR',{maximumFractionDigits:2});
@@ -988,8 +1007,8 @@ function persistFim(){
 }
 $('fOrig').oninput = () => { fimRide.orig = $('fOrig').value.trim(); persistFim(); fillFim(fimRide); };
 $('fDest').oninput = () => { fimRide.dest = $('fDest').value.trim(); persistFim(); fillFim(fimRide); };
-function syncPag(){ drawDyn($('dynFim'), fimRide, k => { fimRide.dyn = k || null; syncPag(); persistFim(); fillFim(fimRide); if(ride) render(); }); document.querySelectorAll('#fPag button').forEach(b => b.setAttribute('aria-pressed', b.dataset.p === (fimRide.pag || 'din'))); }
-function setPag(p){ fimRide.pag = p; syncPag(); persistFim(); fillFim(fimRide); if(ride) render(); }
+function syncPag(){ drawDyn($('dynFim'), fimRide, k => { fimRide.dyn = k || null; syncPag(); persistFim(); fillFim(fimRide); if(ride) render(); }); document.querySelectorAll('#fPag button').forEach(b => b.setAttribute('aria-pressed', !(fimRide.pagPend && !fimRide.emp) && b.dataset.p === (fimRide.pag || 'din'))); }
+function setPag(p){ fimRide.pag = p; fimRide.pagPend = 0; syncPag(); persistFim(); fillFim(fimRide); if(ride) render(); }
 document.querySelectorAll('#fPag button').forEach(b => b.onclick = () => setPag(b.dataset.p));
 function crc16(s){ let c = 0xFFFF; for(let i = 0; i < s.length; i++){ c ^= s.charCodeAt(i) << 8; for(let j = 0; j < 8; j++) c = (c & 0x8000) ? ((c << 1) ^ 0x1021) & 0xFFFF : (c << 1) & 0xFFFF; } return c.toString(16).toUpperCase().padStart(4, '0'); }
 const tlv = (id, v) => id + String(v.length).padStart(2, '0') + v;
@@ -1456,7 +1475,7 @@ function aceitar(sid){
   if(pri && !confirm('Há corrida AGENDADA (prioridade) às ' + hhmm(pri.a) + '. Aceitar este pedido mesmo assim?')) return;
   if(ride && ride.fase !== 'fim'){ toast('Termine ou cancele a corrida em andamento antes de aceitar outra.'); return; }
   newRide('avulsa', null, it.passageiro || it.nome || '', (it.passageiro ? it.foneP : it.fone) || '', false);
-  ride.orig = it.partida || ''; ride.dest = it.destino || ''; ride.obs = it.obs || ''; if(it.parada){ ride.par = true; ride.parEnd = it.parada; }
+  ride.orig = it.partida || ''; ride.dest = it.destino || ''; ride.obs = it.obs || ''; ride.mc = /^[A-Z0-9]{4,12}$/.test(it.mc || '') ? it.mc : ''; if(it.parada){ ride.par = true; ride.parEnd = it.parada; }
   ride.fila = {sid, pid: it.pid, s: 'aceito', oLa: it.oLa, oLo: it.oLo, dLa: it.dLa, dLo: it.dLo, partida: it.partida, destino: it.destino, parada: it.parada || '', cod: it.cod || '', fcl: it.fcl || '', uc: '', ci: 0};
   save(); qSet(sid, it.pid, 'aceito'); render(); aplicarCupom(it, sid);
   toast('Pedido aceito. Toque em "Ir até o cliente".'); aplicarEmpresa(Object.assign({sid}, it));
@@ -1470,7 +1489,7 @@ function iniciarAg(sid){
   const it = filaData[sid]; if(!it || !it.a || it.s !== 'aceito') return;
   if(ride && ride.fase !== 'fim'){ toast('Termine ou cancele a corrida em andamento antes.'); return; }
   newRide('agendada', it.a, it.passageiro || it.nome || '', (it.passageiro ? it.foneP : it.fone) || '', false);
-  ride.orig = it.partida || ''; ride.dest = it.destino || ''; ride.obs = it.obs || '';
+  ride.orig = it.partida || ''; ride.dest = it.destino || ''; ride.obs = it.obs || ''; ride.mc = /^[A-Z0-9]{4,12}$/.test(it.mc || '') ? it.mc : '';
   ride.fila = {sid, pid: it.pid, s: 'aceito', oLa: it.oLa, oLo: it.oLo, dLa: it.dLa, dLo: it.dLo, partida: it.partida, destino: it.destino, cod: it.cod || '', fcl: it.fcl || '', uc: '', ci: 0};
   save(); render(); aplicarCupom(it, sid);
   toast('Corrida agendada iniciada. Toque em "Ir até o cliente".'); aplicarEmpresa(Object.assign({sid}, it));
