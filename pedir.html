@@ -124,6 +124,30 @@ legend{padding:0;margin-bottom:6px;font:700 16px "Barlow Condensed",sans-serif;l
     </div>
     <button class="lnk" type="button" id="stN" hidden>Fazer novo pedido</button>
   </section>
+  <section id="cad" class="vei" style="display:grid;gap:8px">
+    <div id="cadOk" hidden style="display:none;gap:8px">
+      <b>🎟️ Meu cupom de indicação</b>
+      <div id="cadCod" style="font:700 26px 'Barlow',sans-serif;letter-spacing:3px;color:#C8933A"></div>
+      <small id="cadInfo"></small>
+      <small id="cadNiv"></small>
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="mini" type="button" id="cadZap">📤 Enviar para um amigo</button><button class="mini" type="button" id="cadCopia">Copiar cupom</button></div>
+      <button class="lnk" type="button" id="cadSair" style="font-size:13px;padding:8px">Não sou eu / sair do cadastro</button>
+    </div>
+    <div id="cadNo">
+      <b>🎟️ Cadastre-se e ganhe desconto</b>
+      <small>Você recebe um <b>cupom seu</b>. Cada amigo que se cadastrar com ele e fizer uma corrida lhe dá <b style="display:inline">10% de desconto em uma corrida</b> (10 amigos = 10 corridas com 10%). E no mês do seu aniversário você ganha <b style="display:inline">10% de desconto</b> em uma corrida.</small>
+      <button class="mini" type="button" id="cadAbre">Fazer meu cadastro</button>
+      <div id="cadF" hidden style="display:none;gap:10px;margin-top:6px">
+        <div class="field"><label for="cNome">Seu nome</label><input id="cNome" autocomplete="off" maxlength="60"></div>
+        <div class="field"><label for="cFone">Seu WhatsApp</label><input id="cFone" type="tel" inputmode="tel" placeholder="(22) 99999-9999"></div>
+        <div class="field"><label for="cNasc">Dia e mês do aniversário</label><input id="cNasc" inputmode="numeric" placeholder="dd/mm" maxlength="5" autocomplete="off"><small>Só dia e mês, sem o ano.</small></div>
+        <div class="field"><label for="cRef">Cupom de quem indicou você (opcional)</label><input id="cRef" autocomplete="off" maxlength="12" style="text-transform:uppercase"></div>
+        <label class="ck"><input type="checkbox" id="cCiente"><span>Autorizo guardar meu nome, WhatsApp e dia/mês do aniversário para gerar meu cupom e conceder os descontos. Posso pedir a exclusão a qualquer momento.</span></label>
+        <small id="cMsg" style="color:#e5484d"></small>
+        <button class="mini" type="button" id="cSalvar" style="background:#0a7d4f;color:#fff;border:0">Criar meu cadastro</button>
+      </div>
+    </div>
+  </section>
   <form id="f" class="app" style="padding:0" autocomplete="off" novalidate>
     <div class="field"><label for="nome">Seu nome</label><input id="nome" required placeholder="Ex.: Dona Marta"></div>
     <div class="field"><label for="fone">Seu WhatsApp (necessário para receber o recibo)</label><input id="fone" type="tel" inputmode="tel" placeholder="(22) 99999-9999"></div>
@@ -182,6 +206,7 @@ legend{padding:0;margin-bottom:6px;font:700 16px "Barlow Condensed",sans-serif;l
         <p>Usamos seu nome, telefone, endereços, observações e, se você permitir, sua localização GPS <b>somente</b> para receber e atender o pedido, calcular o valor, entrar em contato e emitir o recibo. Não vendemos nem compartilhamos seus dados para outras finalidades.</p>
         <p>O pedido fica em um serviço de nuvem do Google (Firebase), cujos servidores podem estar fora do Brasil, e é limpo periodicamente da fila. O motorista pode manter nome, telefone e dados da corrida no histórico dele para recibo e controle da atividade.</p>
         <p>Controlador: <span id="avEmp">Stella Maris Logistics</span>. Para acessar, corrigir ou pedir a exclusão dos seus dados, fale conosco pelo WhatsApp. Se pedir para outra pessoa, informe só dados que ela autorizou.</p>
+        <p><b>Cadastro e cupons:</b> se você se cadastrar, guardamos nome, WhatsApp e dia/mês do aniversário (sem o ano) apenas para gerar seu cupom de indicação e aplicar os descontos. Seu cupom e a contagem de indicações ficam visíveis a quem souber o seu número de WhatsApp. Peça a exclusão quando quiser.</p>
       </details>
     </div>
     <label class="ck"><input type="checkbox" id="ciente"><span>Li os avisos acima e concordo com o uso dos meus dados para atender o pedido.</span></label>
@@ -219,10 +244,23 @@ const noiteQ = () => { const v = $('quando') ? $('quando').value : ''; if(!/T\d\
 const nAdd = () => (typeof agendar !== 'undefined' && agendar && NT > 0 && noiteQ()) ? NT : 0;
 const evv = () => Math.round(est.v * (1 + nAdd()/100) * 100) / 100;
 const DD = pc('dd') != null ? pc('dd') : 5;
+const CUP = 10; // % de desconto do cupom de indicação / aniversário (não acumula com o desconto do dinheiro: vale o maior)
+let CL = null;  // cadastro do cliente (cli/<whatsapp>)
+const foneKey = s => { let d = String(s || '').replace(/\D/g, ''); if(d.length === 10 || d.length === 11) d = '55' + d; return /^\d{10,14}$/.test(d) ? d : ''; };
+const cupAtual = () => {
+  if(!CL || !CL.f || foneKey($('fone').value) !== CL.f) return null;
+  const dt = (typeof agendar !== 'undefined' && agendar && $('quando').value) ? new Date($('quando').value) : new Date();
+  if(isNaN(dt)) return null;
+  if(CL.nasc && CL.nasc.slice(0, 2) === String(dt.getMonth() + 1).padStart(2, '0') && !(CL.niv && CL.niv[dt.getFullYear()])) return {pct: CUP, uc: 'niv', txt: 'cupom de aniversário'};
+  if(Number(CL.cr) > 0) return {pct: CUP, uc: 'ind', txt: 'cupom de indicação'};
+  return null;
+};
+const cupPct = () => { const c = cupAtual(); return c ? c.pct : 0; };
 const PAGN = {din: 'Dinheiro', pix: 'Pix', cartao: 'Cartão de débito/crédito'};
-const desc = () => ($('pag').value === 'din' && DD > 0) ? DD : 0;
+const descDin = () => ($('pag').value === 'din' && DD > 0) ? DD : 0;
+const desc = () => Math.max(descDin(), cupPct());
 const tot = () => Math.round((evv() + (par ? PAR : 0)) * (1 - desc()/100) * 100) / 100;
-const pagTxt = () => { const v = $('pag').value; return v ? PAGN[v] + (v === 'din' && DD > 0 ? ' (' + String(DD).replace('.', ',') + '% de desconto)' : '') : ''; };
+const pagTxt = () => { const v = $('pag').value; return v ? PAGN[v] + (v === 'din' && DD > 0 && DD >= cupPct() ? ' (' + String(DD).replace('.', ',') + '% de desconto)' : '') : ''; };
 $('pagAv').textContent = `Desconto de ${String(DD).replace('.', ',')}% somente para pagamento em dinheiro. Pix e cartão não têm desconto.`;
 $('pag').onchange = () => showEst();
 const temTarifa = T.band > 0 || T.km > 0 || T.min > 0;
@@ -233,7 +271,7 @@ function setPar(v){ par = v; $('fPar').hidden = !v; $('bPar').textContent = v ? 
 $('bPar').onclick = () => setPar(!par);
 const brl = v => v.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
 function showEst(){ if(!est) return; $('est').hidden = false;
-  $('est').innerHTML = `<small>Estimativa${est.aprox ? ' aproximada' : ''}</small><b>≈ R$ ${brl(tot())}</b><small>${est.km.toLocaleString('pt-BR',{maximumFractionDigits:1})} km · cerca de ${Math.round(est.min)} min${par ? ' · inclui parada ' + parTxt : ''}${nAdd() ? ' · inclui adicional noturno de ' + String(NT).replace('.', ',') + '%' : ''}${desc() ? ' · com ' + String(desc()).replace('.', ',') + '% de desconto em dinheiro' : ''}</small>`; }
+  $('est').innerHTML = `<small>Estimativa${est.aprox ? ' aproximada' : ''}</small><b>≈ R$ ${brl(tot())}</b><small>${est.km.toLocaleString('pt-BR',{maximumFractionDigits:1})} km · cerca de ${Math.round(est.min)} min${par ? ' · inclui parada ' + parTxt : ''}${nAdd() ? ' · inclui adicional noturno de ' + String(NT).replace('.', ',') + '%' : ''}${desc() ? ' · com ' + String(desc()).replace('.', ',') + '% de desconto' + (cupPct() && cupPct() >= descDin() ? ' (' + cupAtual().txt + ')' : ' em dinheiro') : ''}</small>`; }
 function setQuando(){ const d = new Date(Date.now() + 30*60000), p = n => String(n).padStart(2, '0'); $('quando').min = `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`; showEst(); }
 const rd = (p, k) => p ? {[k + 'La']: Math.round(p.la*100)/100, [k + 'Lo']: Math.round(p.lo*100)/100} : {}; // coordenadas arredondadas (~1 km): só para calcular o deslocamento da agenda
 const margem = min => Math.max(5, Math.ceil(min*0.10)); // folga após a corrida: 10% da duração, mínimo 5 min
@@ -543,6 +581,7 @@ $('f').onsubmit = async e => {
   L.push(`Destino: ${d}`);
   if(est) L.push(`Estimativa: ≈ R$ ${brl(tot())}${nAdd() ? ' com adicional noturno de ' + String(NT).replace('.', ',') + '%' : ''} (${est.km.toLocaleString('pt-BR',{maximumFractionDigits:1})} km${est.aprox ? ', aproximada' : ''})`);
   else if(temTarifa) L.push('Estimativa: a confirmar');
+  { const cu = cupAtual(); if(cu) L.push(`Cupom: ${cu.pct}% de desconto (${cu.txt})`); }
   L.push(`Pagamento: ${pagTxt()}`);
   const obs = obsFinal(); if(obs) L.push(`Obs.: ${obs}`);
   L.push(`Rota: ${mapa}`);
@@ -554,6 +593,7 @@ $('f').onsubmit = async e => {
     const m = durTotal(est ? est.min : 30);
     const f = {nome, fone, passageiro: outro ? $('pNome').value.trim() : '', foneP: outro ? $('pFone').value.trim() : '', partida: o, destino: d, obs: obsFinal(), quando, estim: est ? `R$ ${brl(tot())} · ${est.km.toLocaleString('pt-BR',{maximumFractionDigits:1})} km` : '', pid, pag: PAGN[$('pag').value], c: TS, s: 'aguardando'};
     if(par) f.parada = addr('s').slice(0, 200);
+    { const cu = cupAtual(); if(CL && CL.f && foneKey(fone) === CL.f){ f.fcl = CL.f; if(CL.ref) f.cod = CL.ref; } if(cu){ f.cp = cu.pct; f.uc = cu.uc; } }
     if(agendar){ f.a = new Date($('quando').value).getTime(); }
     if(pO){ f.oLa = pO.la; f.oLo = pO.lo; } if(pD){ f.dLa = pD.la; f.dLo = pD.lo; }
     for(const k of ['nome', 'passageiro']) f[k] = f[k].slice(0, 80);
@@ -563,7 +603,7 @@ $('f').onsubmit = async e => {
     await Promise.race([db.ref().update(up), new Promise((_, rj) => setTimeout(() => rj(new Error('t')), 8000))]);
     if(mid === 'luiz') avisar(agendar ? 'Novo AGENDAMENTO de corrida' : 'Novo pedido de corrida');
     const sv = {sid, pid, wa, mid, t: Date.now()}; if(f.a) sv.a = f.a;
-    { const g = id => $('o' + id).value.trim(); sv.po = {rua: g('Rua'), num: g('Num'), bai: g('Bai'), cid: g('Cid')}; sv.pt = o; sv.pc = pO ? {la: pO.la, lo: pO.lo} : null; sv.dc = pD ? {la: pD.la, lo: pD.lo} : null; sv.ps = par ? addr('s') : ''; sv.pg = $('pag').value; if(est) sv.es = {v: est.v, km: est.km, min: est.min, ap: !!est.aprox}; }
+    { const g = id => $('o' + id).value.trim(); sv.po = {rua: g('Rua'), num: g('Num'), bai: g('Bai'), cid: g('Cid')}; sv.pt = o; sv.pc = pO ? {la: pO.la, lo: pO.lo} : null; sv.dc = pD ? {la: pD.la, lo: pD.lo} : null; sv.ps = par ? addr('s') : ''; sv.pg = $('pag').value; sv.cp = f.cp || 0; if(est) sv.es = {v: est.v, km: est.km, min: est.min, ap: !!est.aprox}; }
     try{ localStorage.setItem('sm_ped', JSON.stringify(sv)); }catch(x){}
     g.disabled = false; g.textContent = 'Enviar pedido';
     mostrar(sv);
@@ -592,6 +632,61 @@ function loadFB(){
 }
 const NTFY = 'https://ntfy.sh/sm-ride-bmfl2gkhevm0wvdsip3e50';
 function avisar(msg){ try{ fetch(NTFY, {method: 'POST', body: msg, headers: {'Title': 'Stella Maris Ride', 'Priority': 'high', 'Tags': 'taxi', 'Click': 'https://luizfalchetto.github.io/AppStellaMarisLog/'}}).catch(() => {}); }catch(x){} }
+// ---- cadastro do cliente, cupom de indicação e de aniversário ----
+const MESES = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+let clOff = null;
+function cadShow(ok){ $('cadOk').hidden = !ok; $('cadOk').style.display = ok ? 'grid' : 'none'; $('cadNo').hidden = ok; }
+function cadDesenhar(){
+  if(!CL || !CL.cod){ cadShow(false); return; }
+  cadShow(true); $('cadCod').textContent = CL.cod;
+  const n = Object.keys(CL.ind || {}).length, cr = Number(CL.cr) || 0;
+  $('cadInfo').innerHTML = `Amigos que já fizeram corrida com seu cupom: <b style="display:inline">${n}</b>. Corridas com ${CUP}% de desconto disponíveis: <b style="display:inline">${cr}</b>${cr ? ' (aplicado automaticamente quando você pedir com o seu WhatsApp)' : ''}.`;
+  const hoje = new Date(), mm = CL.nasc ? +CL.nasc.slice(0, 2) : 0, usado = !!(CL.niv && CL.niv[hoje.getFullYear()]);
+  $('cadNiv').innerHTML = !mm ? '' : usado ? '🎂 Cupom de aniversário deste ano: já usado.' : (mm === hoje.getMonth() + 1 ? `🎂 <b style="display:inline">Seu cupom de aniversário está ativo</b>: ${CUP}% de desconto em uma corrida em ${MESES[mm - 1]}.` : `🎂 Seu cupom de aniversário (${CUP}% em uma corrida) vale em ${MESES[mm - 1]}.`);
+  if(!$('nome').value.trim() && CL.n) $('nome').value = CL.n;
+  if(!$('fone').value.trim() && CL.f) $('fone').value = CL.f.replace(/^55/, '');
+}
+async function cadOuvir(f){
+  try{
+    const db = await loadFB(); if(clOff){ clOff(); clOff = null; }
+    const rf = db.ref('cli/' + f), cb = rf.on('value', s => { const v = s.val(); CL = v ? Object.assign({f}, v) : null; cadDesenhar(); showEst(); });
+    clOff = () => rf.off('value', cb);
+  }catch(x){}
+}
+$('cadAbre').onclick = () => { const a = $('cadF'); a.hidden = !a.hidden; a.style.display = a.hidden ? 'none' : 'grid'; if(!a.hidden){ if(!$('cNome').value) $('cNome').value = $('nome').value; if(!$('cFone').value) $('cFone').value = $('fone').value; } };
+$('cNasc').oninput = e => { let d = e.target.value.replace(/\D/g, '').slice(0, 4); e.target.value = d.length > 2 ? d.slice(0, 2) + '/' + d.slice(2) : d; };
+$('cSalvar').onclick = async () => {
+  const msg = t => { $('cMsg').textContent = t; }, bt = $('cSalvar'); msg('');
+  const nome = $('cNome').value.trim().slice(0, 60), f = foneKey($('cFone').value), nd = $('cNasc').value.replace(/\D/g, ''), ref = $('cRef').value.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+  if(nome.length < 2) return msg('Informe seu nome.');
+  if(!f) return msg('Informe seu WhatsApp com DDD.');
+  let nasc = '';
+  if(nd){ const dd = +nd.slice(0, 2), mo = +nd.slice(2, 4); if(nd.length !== 4 || mo < 1 || mo > 12 || dd < 1 || dd > [31,29,31,30,31,30,31,31,30,31,30,31][mo - 1]) return msg('Aniversário inválido. Use dia/mês, por exemplo 25/03.'); nasc = nd.slice(2, 4) + nd.slice(0, 2); }
+  else return msg('Informe o dia e o mês do aniversário (para o cupom de aniversário).');
+  if(!$('cCiente').checked) return msg('Marque a autorização para criar o cadastro.');
+  bt.disabled = true; bt.textContent = 'Criando…';
+  try{
+    const db = await Promise.race([loadFB(), new Promise((_, rj) => setTimeout(() => rj(new Error('t')), 8000))]);
+    const ex = (await db.ref('cli/' + f).once('value')).val();
+    if(ex && ex.cod){ try{ localStorage.setItem('sm_cli', f); }catch(x){} await cadOuvir(f); $('cadF').hidden = true; $('cadF').style.display = 'none'; return; }
+    if(ref){ const rr = (await db.ref('cup/' + ref).once('value')).val(); if(!rr) return msg('Cupom de indicação não encontrado. Confira o código ou deixe em branco.'); if(rr === f) return msg('Você não pode usar o seu próprio cupom.'); }
+    const base = (nome.normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().replace(/[^A-Z]/g, '') + 'XXXX').slice(0, 4) + f.slice(-4);
+    let cod = base; for(let i = 0; i < 6; i++){ const e = (await db.ref('cup/' + cod).once('value')).val(); if(!e || e === f) break; cod = base + 'ABCDEFGHJK'[Math.floor(Math.random() * 10)]; if(i === 5) throw new Error('cod'); }
+    const up = {}, B = 'cli/' + f + '/'; up[B + 'n'] = nome; up[B + 'nasc'] = nasc; up[B + 'cod'] = cod; if(ref) up[B + 'ref'] = ref; up[B + 't'] = firebase.database.ServerValue.TIMESTAMP; up['cup/' + cod] = f;
+    await Promise.race([db.ref().update(up), new Promise((_, rj) => setTimeout(() => rj(new Error('t')), 8000))]);
+    try{ localStorage.setItem('sm_cli', f); }catch(x){}
+    $('cadF').hidden = true; $('cadF').style.display = 'none'; await cadOuvir(f);
+  }catch(x){ msg('Não foi possível criar o cadastro agora. Tente de novo em instantes.'); }
+  finally{ bt.disabled = false; bt.textContent = 'Criar meu cadastro'; }
+};
+const cadLink = () => location.href.split('#')[0];
+const cadTexto = () => `Oi! Use o meu cupom ${CL.cod} ao se cadastrar na Stella Maris Ride e peça sua corrida: ${cadLink()}`;
+$('cadZap').onclick = () => { if(CL && CL.cod) window.open('https://wa.me/?text=' + encodeURIComponent(cadTexto()), '_blank'); };
+$('cadCopia').onclick = async () => { if(!CL || !CL.cod) return; try{ await navigator.clipboard.writeText(cadTexto()); $('cadCopia').textContent = 'Copiado ✓'; setTimeout(() => { $('cadCopia').textContent = 'Copiar cupom'; }, 2000); }catch(x){ prompt('Copie o texto:', cadTexto()); } };
+$('cadSair').onclick = () => { try{ localStorage.removeItem('sm_cli'); }catch(x){} if(clOff){ clOff(); clOff = null; } CL = null; cadDesenhar(); showEst(); };
+$('fone').addEventListener('input', () => showEst());
+$('quando').addEventListener('input', () => showEst());
+try{ const sf = localStorage.getItem('sm_cli'); if(sf) cadOuvir(sf); }catch(x){}
 const ATIVOS = ['aguardando', 'aceito', 'a_caminho', 'chegou', 'em_corrida'];
 const MSG = {
   aceito: ['Pedido aceito', 'O motorista aceitou e vai até você.'],
@@ -703,7 +798,7 @@ $('xSalvar').onclick = async () => {
     up[P + 'oLa'] = rd(pc, 'o').oLa; up[P + 'oLo'] = rd(pc, 'o').oLo;
     let estNova = null;
     if(km != null){
-      const hh = new Date(ts || Date.now()).getHours(), noite = cur.a && NT > 0 && (hh >= 22 || hh < 5), dsc = (cur.pg === 'din' && DD > 0) ? DD : 0;
+      const hh = new Date(ts || Date.now()).getHours(), noite = cur.a && NT > 0 && (hh >= 22 || hh < 5), dsc = Math.max((cur.pg === 'din' && DD > 0) ? DD : 0, Number(cur.cp) || 0);
       const v0 = Math.max(T.band, km*T.km) + min*T.min, ev2 = Math.round(v0 * (1 + (noite ? NT : 0)/100) * 100) / 100, tt = Math.round((ev2 + (xPar ? PAR : 0)) * (1 - dsc/100) * 100) / 100;
       estNova = `R$ ${brl(tt)} · ${km.toLocaleString('pt-BR', {maximumFractionDigits: 1})} km`; up[B + 'estim'] = estNova; up[P + 'm'] = durTotal(min);
     }
