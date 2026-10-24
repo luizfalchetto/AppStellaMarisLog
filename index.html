@@ -528,7 +528,9 @@ function calc(r, now){
   const pct = (c.semTaxa || !r.fim || r.fim >= CUT_TAXA) ? 0 : (r.pag === 'deb' ? (c.taxaDeb != null ? c.taxaDeb : cfg.taxaDeb) : r.pag === 'cre' ? (c.taxaCre != null ? c.taxaCre : cfg.taxaCre) : 0);
   const taxa = Math.round(sub*(pct||0))/100;
   const descPct0 = (r.emp && Number(r.emp.recDesc) > 0) ? Number(r.emp.recDesc) : (c.desc != null && !r.emp && (r.pag === 'din' || (!r.pag && r.fim))) ? Number(c.desc) : 0;
-  const cupP = (!r.emp && Number(r.cup) > 0) ? Number(r.cup) : 0, descPct = Math.max(descPct0, cupP), descCup = cupP > 0 && cupP >= descPct0 ? (r.cupT === 'niv' ? 'aniversário' : 'indicação') : '';
+  const cupP = (!r.emp && Number(r.cup) > 0) ? Number(r.cup) : 0, cupI = (!r.emp && Number(r.cupI) > 0) ? Number(r.cupI) : 0, descPct = Math.max(descPct0, cupP) + cupI;
+  const descNm = []; if(cupP > 0 && cupP >= descPct0) descNm.push('cupom de ' + (r.cupT === 'niv' ? 'aniversário' : 'indicação')); else if((cupP > 0 || cupI > 0) && descPct0 > 0) descNm.push('dinheiro'); if(cupI > 0) descNm.push('cupom do amigo');
+  const descCup = descNm.join(' + ');
   const vDesc = Math.round(sub*descPct)/100;
   const total = Math.round((sub + taxa - vDesc)*100)/100;
   return {dynPct, vDyn, vNot, notPct, vPar, km, corrMs, espMs, espTotal, espStart, vKm, vMin, vEsp, corrida, minimoAplicado, sub, taxa, pct: pct||0, vDesc, descPct, descCup, total};
@@ -756,7 +758,7 @@ function receipt(r){
   if(c.vNot > 0) L.push(`Adicional noturno (22h às 05h) +${c.notPct.toLocaleString('pt-BR')}%: R$ ${brl(c.vNot)}`);
   if(c.vDyn > 0) L.push(`Tarifa dinâmica (${DYN[r.dyn] || 'especial'}) +${c.dynPct.toLocaleString('pt-BR')}%: R$ ${brl(c.vDyn)}`);
   if(c.taxa > 0) L.push(`Taxa ${r.pag === 'deb' ? 'débito' : 'crédito'} ${c.pct.toLocaleString('pt-BR')}%: R$ ${brl(c.taxa)}`);
-  if(c.vDesc > 0) L.push(`${r.emp ? 'Desconto de corrida recorrente' : c.descCup ? 'Cupom de ' + c.descCup : 'Desconto pagamento em dinheiro'} ${c.descPct.toLocaleString('pt-BR')}%: -R$ ${brl(c.vDesc)}`);
+  if(c.vDesc > 0) L.push(`${r.emp ? 'Desconto de corrida recorrente' : c.descCup ? 'Desconto (' + c.descCup + ')' : 'Desconto pagamento em dinheiro'} ${c.descPct.toLocaleString('pt-BR')}%: -R$ ${brl(c.vDesc)}`);
   L.push('');
   L.push(`*Total: R$ ${brl(c.total)}*`);
   if(r.pag) L.push(`Pagamento: ${PAGN[r.pag]}`);
@@ -953,7 +955,7 @@ function linhas(r){
   if(c.vNot > 0) rows.push([`Adicional noturno (22h às 05h) +${c.notPct.toLocaleString('pt-BR')}%`, 'R$ '+brl(c.vNot)]);
   if(c.vDyn > 0) rows.push([`Tarifa dinâmica (${DYN[r.dyn] || 'especial'}) +${c.dynPct.toLocaleString('pt-BR')}%`, 'R$ '+brl(c.vDyn)]);
   if(c.taxa > 0) rows.push([`Taxa ${r.pag === 'deb' ? 'débito' : 'crédito'} ${c.pct.toLocaleString('pt-BR')}%`, 'R$ '+brl(c.taxa)]);
-  if(c.vDesc > 0) rows.push([`${r.emp ? 'Desconto recorrente' : c.descCup ? 'Cupom de ' + c.descCup : 'Desconto em dinheiro'} ${c.descPct.toLocaleString('pt-BR')}%`, '-R$ '+brl(c.vDesc)]);
+  if(c.vDesc > 0) rows.push([`${r.emp ? 'Desconto recorrente' : c.descCup ? 'Desconto (' + c.descCup + ')' : 'Desconto em dinheiro'} ${c.descPct.toLocaleString('pt-BR')}%`, '-R$ '+brl(c.vDesc)]);
   return {c, k, rows};
 }
 function fillFim(r){
@@ -1339,23 +1341,29 @@ function qSet(sid, pid, st){
 function flushQ(){ retryCp(); const l = store.get('tx_pendq', []); if(!l.length) return; store.set('tx_pendq', []); l.forEach(x => setStatus(x.sid, x.pid, x.s).catch(() => {})); }
 /* ---------- cupons: indicação e aniversário ---------- */
 const CUP = 10; // % de desconto (indicação / aniversário); não acumula com o desconto em dinheiro: vale o maior
+const CUPI = 5; // % de quem usa o cupom de indicação de um amigo (1ª vez; soma com os demais descontos)
 async function aplicarCupom(it, sid){
-  if(!it.fcl || !it.uc || !fdb) return;
+  const temCi = Number(it.ci) > 0 && it.cod;
+  if(!it.fcl || !fdb || !(it.uc || temCi)) return;
   try{
-    const v = (await fdb.ref('cli/' + it.fcl).once('value')).val();
+    const v = it.uc ? (await fdb.ref('cli/' + it.fcl).once('value')).val() : null;
+    let ci = false;
+    if(temCi){ const rf = (await fdb.ref('cup/' + it.cod).once('value')).val(), us = (await fdb.ref('usou/' + it.fcl).once('value')).val(); ci = !!rf && rf !== it.fcl && !us; }
     if(!ride || !ride.fila || ride.fila.sid !== sid) return;
     let uc = '';
     if(v){ const dt = new Date(it.a || Date.now());
       if(it.uc === 'niv' && v.nasc && v.nasc.slice(0, 2) === String(dt.getMonth() + 1).padStart(2, '0') && !(v.niv && v.niv[dt.getFullYear()])) uc = 'niv';
       else if(it.uc === 'ind' && Number(v.cr) > 0) uc = 'ind'; }
-    if(!uc){ toast('Cupom do cliente não confere: desconto não aplicado.'); return; }
-    ride.cup = CUP; ride.cupT = uc; ride.fila.uc = uc; save(); render();
-    toast('🎟️ Cupom de ' + CUP + '% (' + (uc === 'niv' ? 'aniversário' : 'indicação') + ') aplicado nesta corrida.');
+    if(!uc && !ci){ toast('Cupom do cliente não confere: desconto não aplicado.'); return; }
+    if(uc){ ride.cup = CUP; ride.cupT = uc; } ride.fila.uc = uc;
+    if(ci){ ride.cupI = CUPI; ride.fila.ci = CUPI; }
+    save(); render();
+    toast('🎟️ Cupom aplicado nesta corrida: ' + [uc ? CUP + '% (' + (uc === 'niv' ? 'aniversário' : 'crédito de indicação') + ')' : '', ci ? CUPI + '% (cupom de amigo)' : ''].filter(Boolean).join(' + ') + '.');
   }catch(e){}
 }
 function cupomConcluido(r){
-  const f = r && r.fila; if(!f || !f.fcl || (!f.cod && !f.uc)) return;
-  const steps = ['mark']; if(f.uc === 'ind') steps.push('dec'); if(f.uc === 'niv') steps.push('niv'); if(f.cod) steps.push('ref');
+  const f = r && r.fila; if(!f || !f.fcl || (!f.uc && !(f.ci > 0 && f.cod))) return;
+  const steps = ['mark']; if(f.uc === 'ind') steps.push('dec'); if(f.uc === 'niv') steps.push('niv'); if(f.ci > 0 && f.cod) steps.push('ref');
   runCp({path: (fOwn() ? 'fila/' : 'filam/' + fMid + '/') + f.sid + '/cpok', fcl: f.fcl, cod: f.cod || '', yr: new Date(r.agendado || r.inicio || Date.now()).getFullYear(), steps});
 }
 async function runCp(j){
@@ -1368,7 +1376,7 @@ async function runCp(j){
       else if(s === 'niv') await fdb.ref('cli/' + j.fcl + '/niv/' + j.yr).set(true);
       else if(s === 'ref'){
         const ref = (await fdb.ref('cup/' + j.cod).once('value')).val();
-        if(ref && ref !== j.fcl){ let novo = false; await fdb.ref('cli/' + ref + '/ind/' + j.fcl).transaction(v => { novo = !v; return v ? undefined : true; }); if(novo) await fdb.ref('cli/' + ref + '/cr').transaction(v => (Number(v) || 0) + 1); }
+        if(ref && ref !== j.fcl){ let novo = false; await fdb.ref('usou/' + j.fcl).transaction(v => { novo = !v; return v ? undefined : ref; }); if(novo){ await fdb.ref('cli/' + ref + '/ind/' + j.fcl).set(true); await fdb.ref('cli/' + ref + '/cr').transaction(v => (Number(v) || 0) + 1); } }
       }
       j.steps.shift();
     }
@@ -1430,7 +1438,7 @@ function aceitar(sid){
   if(ride && ride.fase !== 'fim'){ toast('Termine ou cancele a corrida em andamento antes de aceitar outra.'); return; }
   newRide('avulsa', null, it.passageiro || it.nome || '', (it.passageiro ? it.foneP : it.fone) || '', false);
   ride.orig = it.partida || ''; ride.dest = it.destino || ''; ride.obs = it.obs || ''; if(it.parada){ ride.par = true; ride.parEnd = it.parada; }
-  ride.fila = {sid, pid: it.pid, s: 'aceito', oLa: it.oLa, oLo: it.oLo, dLa: it.dLa, dLo: it.dLo, partida: it.partida, destino: it.destino, parada: it.parada || '', cod: it.cod || '', fcl: it.fcl || '', uc: ''};
+  ride.fila = {sid, pid: it.pid, s: 'aceito', oLa: it.oLa, oLo: it.oLo, dLa: it.dLa, dLo: it.dLo, partida: it.partida, destino: it.destino, parada: it.parada || '', cod: it.cod || '', fcl: it.fcl || '', uc: '', ci: 0};
   save(); qSet(sid, it.pid, 'aceito'); render(); aplicarCupom(it, sid);
   toast('Pedido aceito. Toque em "Ir até o cliente".'); aplicarEmpresa(Object.assign({sid}, it));
 }
@@ -1444,7 +1452,7 @@ function iniciarAg(sid){
   if(ride && ride.fase !== 'fim'){ toast('Termine ou cancele a corrida em andamento antes.'); return; }
   newRide('agendada', it.a, it.passageiro || it.nome || '', (it.passageiro ? it.foneP : it.fone) || '', false);
   ride.orig = it.partida || ''; ride.dest = it.destino || ''; ride.obs = it.obs || '';
-  ride.fila = {sid, pid: it.pid, s: 'aceito', oLa: it.oLa, oLo: it.oLo, dLa: it.dLa, dLo: it.dLo, partida: it.partida, destino: it.destino, cod: it.cod || '', fcl: it.fcl || '', uc: ''};
+  ride.fila = {sid, pid: it.pid, s: 'aceito', oLa: it.oLa, oLo: it.oLo, dLa: it.dLa, dLo: it.dLo, partida: it.partida, destino: it.destino, cod: it.cod || '', fcl: it.fcl || '', uc: '', ci: 0};
   save(); render(); aplicarCupom(it, sid);
   toast('Corrida agendada iniciada. Toque em "Ir até o cliente".'); aplicarEmpresa(Object.assign({sid}, it));
 }
@@ -1677,7 +1685,7 @@ function drawFila(){
     const prox = x.dist != null && x.s === 'aguardando' ? `<p class="prox">${kmFila(x.dist)} de onde você termina${x.furou ? ' · passou na frente por proximidade' : ''}</p>` : '';
     return `<div class="fcard${x.a ? ' ag' : ''}"><div class="st">${x.a ? '<span class="agblink">AGENDADA</span> ' + fmtAg(x.a) + ' · prioridade · ' : ''}${FLBL[x.s]}${meu ? ' · sua corrida atual' : ''}</div><h3><span class="pos">${i + 1}º</span>${nome}</h3>
       <small>Pedido às ${hora} · ${escapeHtml(x.quando || 'Agora')}</small>
-      ${x.cp ? `<p style="color:#0a9d63;font-weight:700">🎟️ Cliente com cupom de ${x.cp}% (${x.uc === 'niv' ? 'aniversário' : 'indicação'}) — confirmado ao aceitar</p>` : ''}
+      ${(x.cp || x.ci) ? `<p style="color:#0a9d63;font-weight:700">🎟️ Cupom do cliente: ${[x.cp ? x.cp + '% (' + (x.uc === 'niv' ? 'aniversário' : 'crédito de indicação') + ')' : '', x.ci ? x.ci + '% (cupom de amigo)' : ''].filter(Boolean).join(' + ')} — conferido ao aceitar</p>` : ''}
       ${x.edc ? `<p style="color:#e0a800;font-weight:700">✎ Alterado pelo cliente às ${new Date(x.edc).toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'})}</p>` : ''}
       <p><b>De:</b> ${escapeHtml(x.partida)}<br><b>Para:</b> ${escapeHtml(x.destino)}${x.parada ? '<br><b>Parada:</b> ' + escapeHtml(x.parada) : ''}</p>
       <button class="btn ghost full" data-a="ed" data-k="${x.sid}" style="margin:2px 0 8px;border-color:#e0a800;color:#e0a800">✎ Editar endereços / marcar no mapa</button>
