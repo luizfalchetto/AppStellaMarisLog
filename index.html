@@ -639,8 +639,8 @@ function cancelar(){
   pedirMotivo(comEspera ? 'Cancelar a corrida?' : 'Cancelar esta corrida?', motivo => {
     if(!ride) return;
     ride.motivo = motivo; ride.canceladaPor = 'motorista'; ride.fim = Date.now(); ride.fase = 'fim'; ride.cancelada = true;
-    if(comEspera){ save(); qSync('cancelado'); stopGps(); keepAwake(false); saveHist(); render(); openFim(); }
-    else { qSync('cancelado'); saveHist(); gravarCorrida(ride); emailRecibo(ride); ride = null; save(); stopGps(); keepAwake(false); render(); toast('Corrida cancelada e registrada no histórico.'); }
+    if(comEspera){ save(); liberarCupom(ride); qSync('cancelado'); stopGps(); keepAwake(false); saveHist(); render(); openFim(); }
+    else { liberarCupom(ride); qSync('cancelado'); saveHist(); gravarCorrida(ride); emailRecibo(ride); ride = null; save(); stopGps(); keepAwake(false); render(); toast('Corrida cancelada e registrada no histórico.'); }
   }, comEspera ? 'A espera já contada fica registrada e você pode mandar o recibo dela.' : '');
 }
 
@@ -718,7 +718,7 @@ function noShow(){
   pedirMotivo('Registrar No-Show?', motivo => {
     if(!ride) return;
     ride.noshow = true; ride.cancelada = true; ride.motivo = motivo; ride.canceladaPor = 'noshow'; ride.fim = Date.now(); ride.fase = 'fim';
-    save(); qSync('cancelado'); stopGps(); keepAwake(false); saveHist(); gravarCorrida(ride); emailRecibo(ride); render(); openFim();
+    save(); liberarCupom(ride); qSync('cancelado'); stopGps(); keepAwake(false); saveHist(); gravarCorrida(ride); emailRecibo(ride); render(); openFim();
   }, `Será cobrado ${String(e.nsPct).replace('.', ',')}% do valor estimado (R$ ${brl(v)}), no lugar da espera. O motivo fica no extrato da empresa.`);
 }
 
@@ -1342,29 +1342,47 @@ function flushQ(){ retryCp(); const l = store.get('tx_pendq', []); if(!l.length)
 /* ---------- cupons: indicação e aniversário ---------- */
 const CUP = 10; // % de desconto (indicação / aniversário); não acumula com o desconto em dinheiro: vale o maior
 const CUPI = 5; // % de quem usa o cupom de indicação de um amigo (1ª vez; soma com os demais descontos)
+const CRE_D = 30*864e5; // validade dos créditos: 30 dias a cada 4 créditos na fila
+const creAtivos = o => Object.entries(o || {}).filter(([k, e]) => Number(e) > Date.now()).sort((a, b) => a[1] - b[1]);
 async function aplicarCupom(it, sid){
   const temCi = Number(it.ci) > 0 && it.cod;
   if(!it.fcl || !fdb || !(it.uc || temCi)) return;
   try{
     const v = it.uc ? (await fdb.ref('cli/' + it.fcl).once('value')).val() : null;
-    let ci = false;
-    if(temCi){ const rf = (await fdb.ref('cup/' + it.cod).once('value')).val(), us = (await fdb.ref('usou/' + it.fcl).once('value')).val(); ci = !!rf && rf !== it.fcl && !us; }
+    const rf = temCi ? (await fdb.ref('cup/' + it.cod).once('value')).val() : null;
     if(!ride || !ride.fila || ride.fila.sid !== sid) return;
-    let uc = '';
-    if(v){ const dt = new Date(it.a || Date.now());
-      if(it.uc === 'niv' && v.nasc && v.nasc.slice(0, 2) === String(dt.getMonth() + 1).padStart(2, '0') && !(v.niv && v.niv[dt.getFullYear()])) uc = 'niv';
-      else if(it.uc === 'ind' && Number(v.cr) > 0) uc = 'ind'; }
-    if(!uc && !ci){ toast('Cupom do cliente não confere: desconto não aplicado.'); return; }
-    if(uc){ ride.cup = CUP; ride.cupT = uc; } ride.fila.uc = uc;
+    let ci = false, uc = '', cre = null, nivY = 0, aviso = '';
+    if(temCi && rf && rf !== it.fcl){ let novo = false; await fdb.ref('usou/' + it.fcl).transaction(x => { novo = !x; return x ? undefined : rf; }); ci = novo; } // reserva: o telefone só usa cupom de indicação uma vez
+    if(v && it.uc){
+      let okDev = !v.dev || v.dev === it.dv;
+      if(!okDev && confirm('O pedido veio de um aparelho diferente do cadastro de ' + (v.n || 'cliente') + '. Você confirmou com o cliente que é ele mesmo? OK = liberar este aparelho e aplicar o desconto.')){ if(it.dv) await fdb.ref('cli/' + it.fcl + '/dev').set(it.dv); okDev = true; }
+      if(!okDev) aviso = 'aparelho diferente do cadastro';
+      else if(it.uc === 'niv'){
+        const dt = new Date(it.a || Date.now()), yr = dt.getFullYear();
+        if(v.nasc && v.nasc.slice(0, 2) === String(dt.getMonth() + 1).padStart(2, '0') && v.t && Date.now() - v.t >= 30*864e5){ let novo = false; await fdb.ref('cli/' + it.fcl + '/niv/' + yr).transaction(x => { novo = !x; return x ? undefined : true; }); if(novo){ uc = 'niv'; nivY = yr; } }
+      } else if(it.uc === 'ind'){
+        let pk = null; await fdb.ref('cli/' + it.fcl + '/cre').transaction(o => { pk = null; const a = creAtivos(o); if(!a.length) return undefined; pk = {k: a[0][0], e: a[0][1]}; const n = Object.assign({}, o); delete n[pk.k]; Object.keys(n).forEach(k => { if(!(Number(n[k]) > Date.now())) delete n[k]; }); return Object.keys(n).length ? n : null; });
+        if(pk){ uc = 'ind'; cre = pk; }
+      }
+    }
+    if(!uc && !ci){ toast('Cupom do cliente não confere' + (aviso ? ' (' + aviso + ')' : '') + ': desconto não aplicado.'); return; }
+    if(uc){ ride.cup = CUP; ride.cupT = uc; } ride.fila.uc = uc; ride.fila.cre = cre; ride.fila.nivY = nivY;
     if(ci){ ride.cupI = CUPI; ride.fila.ci = CUPI; }
     save(); render();
     toast('🎟️ Cupom aplicado nesta corrida: ' + [uc ? CUP + '% (' + (uc === 'niv' ? 'aniversário' : 'crédito de indicação') + ')' : '', ci ? CUPI + '% (cupom de amigo)' : ''].filter(Boolean).join(' + ') + '.');
   }catch(e){}
 }
-function cupomConcluido(r){
-  const f = r && r.fila; if(!f || !f.fcl || (!f.uc && !(f.ci > 0 && f.cod))) return;
-  const steps = ['mark']; if(f.uc === 'ind') steps.push('dec'); if(f.uc === 'niv') steps.push('niv'); if(f.ci > 0 && f.cod) steps.push('ref');
-  runCp({path: (fOwn() ? 'fila/' : 'filam/' + fMid + '/') + f.sid + '/cpok', fcl: f.fcl, cod: f.cod || '', yr: new Date(r.agendado || r.inicio || Date.now()).getFullYear(), steps});
+function liberarCupom(r){ // corrida cancelada ANTES do "cheguei": devolve cupom, crédito e aniversário (depois do cheguei o cliente perde o direito)
+  const f = r && r.fila; if(!f || !f.fcl || !fdb || r.chegada) return;
+  try{
+    if(f.ci > 0) fdb.ref('usou/' + f.fcl).remove().catch(() => {});
+    if(f.cre && f.cre.k && Number(f.cre.e) > Date.now()) fdb.ref('cli/' + f.fcl + '/cre/' + f.cre.k).set(f.cre.e).catch(() => {});
+    if(f.nivY) fdb.ref('cli/' + f.fcl + '/niv/' + f.nivY).remove().catch(() => {});
+  }catch(e){}
+}
+function cupomConcluido(r){ // concluída: quem indicou ganha o crédito
+  const f = r && r.fila; if(!f || !f.fcl || !(f.ci > 0 && f.cod)) return;
+  runCp({path: (fOwn() ? 'fila/' : 'filam/' + fMid + '/') + f.sid + '/cpok', fcl: f.fcl, cod: f.cod, steps: ['mark', 'ref']});
 }
 async function runCp(j){
   try{
@@ -1372,11 +1390,12 @@ async function runCp(j){
     while(j.steps.length){
       const s = j.steps[0];
       if(s === 'mark'){ let first = false; const t = await fdb.ref(j.path).transaction(v => { first = !v; return v ? undefined : true; }); if(!first || (t && t.committed === false)) return; }
-      else if(s === 'dec') await fdb.ref('cli/' + j.fcl + '/cr').transaction(v => Math.max(0, (Number(v) || 0) - 1));
-      else if(s === 'niv') await fdb.ref('cli/' + j.fcl + '/niv/' + j.yr).set(true);
       else if(s === 'ref'){
         const ref = (await fdb.ref('cup/' + j.cod).once('value')).val();
-        if(ref && ref !== j.fcl){ let novo = false; await fdb.ref('usou/' + j.fcl).transaction(v => { novo = !v; return v ? undefined : ref; }); if(novo){ await fdb.ref('cli/' + ref + '/ind/' + j.fcl).set(true); await fdb.ref('cli/' + ref + '/cr').transaction(v => (Number(v) || 0) + 1); } }
+        if(ref && ref !== j.fcl){
+          let novo = false; await fdb.ref('cli/' + ref + '/ind/' + j.fcl).transaction(v => { novo = !v; return v ? undefined : true; });
+          if(novo){ const key = 'c' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5); await fdb.ref('cli/' + ref + '/cre').transaction(o => { o = Object.assign({}, o || {}); o[key] = Date.now() + CRE_D * Math.ceil((creAtivos(o).length + 1) / 4); return o; }); }
+        }
       }
       j.steps.shift();
     }
