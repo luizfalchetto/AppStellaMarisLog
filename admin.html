@@ -129,13 +129,12 @@ tr:last-child td{border-bottom:0}
         <div class="field"><label for="eKm">Valor por km (R$)</label><input id="eKm" inputmode="decimal" placeholder="0,00"></div>
         <div class="field"><label for="eMin">Valor por minuto (R$)</label><input id="eMin" inputmode="decimal" placeholder="0,00"></div>
         <div class="field"><label for="eEsp">Espera por minuto (R$)</label><input id="eEsp" inputmode="decimal" placeholder="0,00"></div>
-        <div class="field"><label for="eDyn">Feriado: acréscimo (%)</label><input id="eDyn" inputmode="decimal" placeholder="50"></div>
         <div class="field"><label for="eNs">No-Show: % do valor estimado</label><input id="eNs" inputmode="decimal" placeholder="50"></div>
         <div class="field"><label for="eCan">Cancelamento sem custo até (horas antes)</label><input id="eCan" inputmode="decimal" placeholder="6"></div>
         <div class="field"><label for="eApr">Aprovação do gestor acima de (R$ por corrida)</label><input id="eApr" inputmode="decimal" placeholder="0 = desligado"></div>
         <div class="field"><label for="eRec">Desconto em corridas recorrentes (%)</label><input id="eRec" inputmode="decimal" placeholder="0"></div>
       </div>
-      <p class="foot">Chuva não incide sobre corridas de empresa. Taxa de cartão não se aplica: o pagamento é por fatura.</p>
+      <p class="foot">Taxa de cartão não se aplica: o pagamento é por fatura.</p>
       <label class="row" style="color:var(--fg)"><input type="checkbox" id="eAtivo" checked> Empresa ativa (pode solicitar corridas)</label>
       <div class="row"><button class="btn pri" type="submit">Salvar empresa</button><button class="btn" type="button" id="eCancel" hidden>Cancelar edição</button></div>
       <p class="msg" id="eMsg"></p>
@@ -527,7 +526,7 @@ function desenharEmpresas(){
     return `<div class="item"><div class="row"><b>${esc(e.nome)}</b><span class="tag ${e.ativo ? 'ok' : 'bad'}">${e.ativo ? 'Ativa' : 'Inativa'}</span><span class="sp"></span>
       <button class="btn sm" type="button" data-a="ed" data-k="${esc(k)}">Editar</button><button class="btn sm" type="button" data-a="tg" data-k="${esc(k)}">${e.ativo ? 'Desativar' : 'Ativar'}</button></div>
       <span class="muted">${esc(e.cnpj || 'CNPJ não informado')}${e.contato ? ' · ' + esc(e.contato) : ''}</span>
-      <span class="muted">Bandeirada R$ ${brl(t.band)} · R$ ${brl(t.km)}/km · R$ ${brl(t.min)}/min · espera R$ ${brl(t.esp)}/min · feriado +${numOut(t.dyn != null ? t.dyn : 50)}% · No-Show ${numOut(e.nsPct != null ? e.nsPct : 50)}% · cancelamento sem custo até ${numOut(e.canH != null ? e.canH : 6)} h antes${e.aprovaAcima > 0 ? ' · aprovação acima de R$ ' + brl(e.aprovaAcima) : ''}${e.recDesc > 0 ? ' · recorrência −' + numOut(e.recDesc) + '%' : ''}</span></div>`;
+      <span class="muted">Bandeirada R$ ${brl(t.band)} · R$ ${brl(t.km)}/km · R$ ${brl(t.min)}/min · espera R$ ${brl(t.esp)}/min · No-Show ${numOut(e.nsPct != null ? e.nsPct : 50)}% · cancelamento sem custo até ${numOut(e.canH != null ? e.canH : 6)} h antes${e.aprovaAcima > 0 ? ' · aprovação acima de R$ ' + brl(e.aprovaAcima) : ''}${e.recDesc > 0 ? ' · recorrência −' + numOut(e.recDesc) + '%' : ''}</span></div>`;
   }).join('') : '<p class="muted" style="margin:0">Nenhuma empresa cadastrada.</p>';
 }
 function preencherSelects(){
@@ -538,7 +537,7 @@ $('eLista').onclick = async e => { const b = e.target.closest('button[data-a]');
   if(b.dataset.a === 'tg'){ try{ await db.ref('empresas/' + k + '/ativo').set(!em.ativo); }catch(x){ $('eMsg').className = 'msg err'; $('eMsg').textContent = 'Falha ao salvar.'; } }
   if(b.dataset.a === 'ed'){ editEid = k; const t = em.tar || {};
     $('eTit').textContent = 'Editar empresa'; $('eNome').value = em.nome || ''; $('eCnpj').value = em.cnpj || ''; $('eCont').value = em.contato || '';
-    $('eBand').value = numOut(t.band); $('eKm').value = numOut(t.km); $('eMin').value = numOut(t.min); $('eEsp').value = numOut(t.esp); $('eDyn').value = numOut(t.dyn != null ? t.dyn : 50);
+    $('eBand').value = numOut(t.band); $('eKm').value = numOut(t.km); $('eMin').value = numOut(t.min); $('eEsp').value = numOut(t.esp);
     $('eNs').value = numOut(em.nsPct != null ? em.nsPct : 50); $('eCan').value = numOut(em.canH != null ? em.canH : 6); $('eApr').value = em.aprovaAcima > 0 ? numOut(em.aprovaAcima) : ''; $('eRec').value = em.recDesc > 0 ? numOut(em.recDesc) : ''; $('eAtivo').checked = !!em.ativo; $('eCancel').hidden = false; $('fEmpresa').scrollIntoView({behavior: 'smooth'}); }
 };
 function limparEmpresa(){ editEid = null; $('fEmpresa').reset(); $('eAtivo').checked = true; $('eTit').textContent = 'Nova empresa'; $('eCancel').hidden = true; }
@@ -547,7 +546,7 @@ const slug = s => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().repla
 $('fEmpresa').onsubmit = async e => {
   e.preventDefault(); const m = $('eMsg'); m.className = 'msg'; m.textContent = '';
   const nome = $('eNome').value.trim(); if(!nome){ m.className = 'msg err'; m.textContent = 'Informe o nome da empresa.'; return; }
-  const tar = {band: numIn($('eBand').value), km: numIn($('eKm').value), min: numIn($('eMin').value), esp: numIn($('eEsp').value), dyn: $('eDyn').value.trim() === '' ? 50 : numIn($('eDyn').value)};
+  const tar = {band: numIn($('eBand').value), km: numIn($('eKm').value), min: numIn($('eMin').value), esp: numIn($('eEsp').value)};
   if(!(tar.band > 0 || tar.km > 0 || tar.min > 0)){ m.className = 'msg err'; m.textContent = 'Informe pelo menos bandeirada, valor por km ou por minuto.'; return; }
   const eid = editEid || (slug(nome) + '-' + Math.random().toString(36).slice(2, 6));
   const o = {nome, cnpj: $('eCnpj').value.trim(), contato: $('eCont').value.trim(), ativo: $('eAtivo').checked, tar,
