@@ -151,7 +151,7 @@ select{background:var(--panel);border:1px solid var(--line);border-radius:12px;m
         <b class="t">Condições do serviço</b>
         <ul>
           <li><b>Estimativa de valor:</b> o valor estimado aparece antes de você enviar. Se o tempo de viagem for maior que o previsto, ou o trajeto aumentar em mais de 10 km (engarrafamento, desvio ou qualquer outro motivo), o valor final pode ser alterado.</li>
-          <li><b>Tarifa:</b> <span id="avTar"></span> Chuva não gera acréscimo. Em feriados há acréscimo de <span id="avDyn"></span>%. Corridas com <b>partida entre 22h e 05h</b> têm adicional noturno de <span id="avNot"></span>%.</li>
+          <li><b>Tarifa:</b> <span id="avTar"></span> Corridas com <b>partida entre 22h e 05h</b> têm adicional noturno de <span id="avNot"></span>%.</li>
           <li><b>Cancelamento:</b> sem custo se cancelado com até <b><span id="avCan"></span> horas</b> de antecedência da corrida. Depois disso, o cancelamento pode ser cobrado.</li>
           <li><b>No-Show:</b> se, após <b>30 minutos de espera</b> no local, o passageiro ou a empresa não responderem, a corrida é considerada No-Show e é cobrado <b><span id="avNs"></span>% do valor estimado</b> da viagem. O motorista registra o motivo.</li>
           <li id="avApr" hidden><b>Aprovação:</b> <span id="avAprT"></span></li>
@@ -448,14 +448,14 @@ $('lEsq').onclick = async () => { const m = $('lEmail').value.trim(); $('lErr').
 $('bSair').onclick = () => auth.signOut();
 
 // ---------- app ----------
-const T = () => Object.assign({band: 0, km: 0, min: 0, esp: 0, dyn: 50}, (emp && emp.tar) || {});
+const T = () => Object.assign({band: 0, km: 0, min: 0, esp: 0}, (emp && emp.tar) || {});
 let agendar = true, pO = null, pD = null, est = null, curTab = 'nova';
 function iniciar(){
   $('vLogin').hidden = true; $('vApp').hidden = false; $('lSenha').value = '';
   $('wEmp').textContent = emp.nome; $('wUser').textContent = me.nome + (me.papel === 'gestor' ? ' · Gestor' : '') ;
   const t = T();
   $('avTar').textContent = `Bandeirada mínima de R$ ${brl(t.band)}, R$ ${brl(t.km)} por km e R$ ${brl(t.min)} por minuto de viagem. Espera: R$ ${brl(t.esp)} por minuto.`;
-  $('avDyn').textContent = z(t.dyn != null ? t.dyn : 50); $('avNot').textContent = z(t.noturno != null ? t.noturno : 30); $('avCan').textContent = z(emp.canH != null ? emp.canH : 6); $('avNs').textContent = z(emp.nsPct != null ? emp.nsPct : 50);
+  $('avNot').textContent = z(t.noturno != null ? t.noturno : 30); $('avCan').textContent = z(emp.canH != null ? emp.canH : 6); $('avNs').textContent = z(emp.nsPct != null ? emp.nsPct : 50);
   $('sNome').value = me.nome || ''; $('sMail').value = me.email || ''; $('sFone').value = me.fone || '';
   const d = new Date(Date.now() + 30*60000), p = n => String(n).padStart(2, '0'); $('quando').min = `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
   $('boxTodas').hidden = me.papel !== 'gestor'; $('tabAprov').hidden = me.papel !== 'gestor';
