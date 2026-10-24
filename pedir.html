@@ -135,7 +135,7 @@ legend{padding:0;margin-bottom:6px;font:700 16px "Barlow Condensed",sans-serif;l
     </div>
     <div id="cadNo">
       <b>🎟️ Cadastre-se e ganhe desconto</b>
-      <small>Você recebe um <b>cupom seu</b>. Seu amigo usa o cupom no <b style="display:inline">primeiro pedido dele</b> e ganha <b style="display:inline">5% de desconto</b>. Quando a corrida dele for concluída, você ganha <b style="display:inline">10% de desconto em uma corrida</b> (10 amigos = 10 corridas com 10%). Os créditos têm validade (30 dias a cada 4 créditos acumulados).</small>
+      <small>Você recebe um <b>cupom seu</b>. Seu amigo usa o cupom no <b style="display:inline">primeiro pedido dele</b> e ganha <b style="display:inline">5% de desconto</b>. Quando a corrida dele for concluída, você ganha <b style="display:inline">10% de desconto em uma corrida</b> (10 amigos = 10 corridas com 10%). Os créditos têm validade (30 dias a cada 4 créditos acumulados). Descontos não são acumulativos: em cada corrida vale só o maior. Quem já tem cadastro usa apenas os próprios créditos, não cupom de outras pessoas.</small>
       <button class="mini" type="button" id="cadAbre">Fazer meu cadastro</button>
       <div id="cadF" hidden style="display:none;gap:10px;margin-top:6px">
         <div class="field"><label for="cNome">Seu nome</label><input id="cNome" autocomplete="off" maxlength="60"></div>
@@ -188,7 +188,9 @@ legend{padding:0;margin-bottom:6px;font:700 16px "Barlow Condensed",sans-serif;l
       <div class="field"><label for="petPorte">Porte</label><select id="petPorte"><option value="pequeno">Pequeno (até 10 kg)</option><option value="médio">Médio (10 a 25 kg)</option><option value="grande">Grande (mais de 25 kg)</option></select></div></div>
       <div class="field"><label for="petCx">Como vai viajar?</label><select id="petCx"><option value="em caixa de transporte">Em caixa de transporte</option><option value="de guia/coleira">De guia/coleira</option></select></div>
     </fieldset>
-    <div class="field"><label for="pag">Forma de pagamento</label><select id="pag" required><option value="">Selecione…</option><option value="din">Dinheiro</option><option value="pix">Pix</option><option value="cartao">Cartão de débito/crédito</option></select><small id="pagAv" style="display:block;margin-top:6px;color:var(--muted)"></small></div>
+    <div class="field" id="credBox" hidden><label class="ck"><input type="checkbox" id="credCk" checked><span id="credTx"></span></label><small style="display:block;margin-top:6px;color:var(--muted)">Desmarque para guardar o crédito para outra corrida. Descontos não são acumulativos: crédito e dinheiro não somam, vale só o maior.</small></div>
+    <div class="field"><label for="pag">Forma de pagamento</label><select id="pag" required><option value="">Selecione…</option><option value="din">Dinheiro</option><option value="pix">Pix</option><option value="cartao">Cartão de débito/crédito</option></select><small id="pagAv" style="display:block;margin-top:6px;color:var(--muted)"></small>
+      <label class="ck" id="dinBox" hidden style="margin-top:8px"><input type="checkbox" id="dinCk"><span id="dinTx"></span></label></div>
     <div class="field"><label for="obs">Observações (opcional)</label><textarea id="obs" placeholder="Ponto de referência, nº de passageiros, bagagem…"></textarea></div>
     <div class="aviso" id="aviso">
       <b class="t">Antes de pedir, saiba que</b>
@@ -199,6 +201,7 @@ legend{padding:0;margin-bottom:6px;font:700 16px "Barlow Condensed",sans-serif;l
         <li id="avDyn" hidden></li>
         <li><b>Somente com agendamento:</b> não atendemos pedidos imediatos. Escolha data e hora com pelo menos 30 minutos de antecedência e o pedido de agendamento só pode ser feito entre 05:00 e 21:30 (a partida pode ser depois). O horário fica reservado para você, sem acréscimo de preço.</li>
         <li><b>Agenda travada:</b> cada corrida reserva o tempo estimado, mais uma folga e o tempo de deslocamento do motorista até a próxima. Se o horário escolhido estiver ocupado, o app avisa e mostra quando a agenda fica livre. Se a viagem demorar mais que o previsto (trânsito, desvio), o valor e os horários seguintes podem mudar.</li>
+        <li><b>Corrida exclusiva:</b> até 4 passageiros, água e cortesias a bordo.</li>
         <li><b>Pagamento:</b> Pix ou dinheiro<span id="avCar"></span>.</li>
         <li><b>Recibo:</b> você tem direito a recibo da corrida, enviado por WhatsApp, <b>desde que informe seu WhatsApp ao pedir</b>.</li>
       </ul>
@@ -235,7 +238,7 @@ const fmt = v => v.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFra
 { const e = pc('e'), d = pc('d'), td = pc('td'), tc = pc('tc');
   if(e) document.getElementById('avEsp').textContent = ` por minuto (R$ ${fmt(e)}/min)`;
   { const dc = pc('dc'), f = d != null ? d : 50, c = dc != null ? dc : 30, li = document.getElementById('avDyn'), z = v => String(v).replace('.', ','); li.hidden = false; li.innerHTML = `<b>Tarifa dinâmica:</b> em dias de chuva o valor tem acréscimo de ${z(c)}%, e em feriados, de ${z(f)}%. Corridas com <b>partida entre 22h e 05h</b> têm adicional noturno de ${z(pc('nt') != null ? pc('nt') : 30)}%.`; }
-  { const dd = pc('dd'), x = dd != null ? dd : 5; document.getElementById('avCar').innerHTML = `, ou cartão de débito/crédito, sem taxa adicional. <b>Pagando em dinheiro você tem ${String(x).replace('.', ',')}% de desconto</b> (o desconto vale somente para dinheiro, não para Pix nem cartão)`; }
+  { const dd = pc('dd'), x = dd != null ? dd : 10; document.getElementById('avCar').innerHTML = `, ou cartão de débito/crédito, sem taxa adicional. <b>Pagando em dinheiro você tem ${String(x).replace('.', ',')}% de desconto</b> (o desconto vale somente para dinheiro, não para Pix nem cartão). Os descontos não são acumulativos: vale apenas o maior (se você usar crédito de indicação ou cupom, não soma com o do dinheiro)`; }
   const emp = q.get('n'); if(emp) document.getElementById('avEmp').textContent = emp; }
 const PAR = q.has('pa') ? num('pa') : 3, parTxt = 'R$ ' + fmt(PAR);
 document.getElementById('avPar').textContent = parTxt;
@@ -244,9 +247,11 @@ const NT = pc('nt') != null ? pc('nt') : 30;
 const noiteQ = () => { const v = $('quando') ? $('quando').value : ''; if(!/T\d\d:\d\d/.test(v)) return false; const h = +v.slice(11, 13); return h >= 22 || h < 5; };
 const nAdd = () => (typeof agendar !== 'undefined' && agendar && NT > 0 && noiteQ()) ? NT : 0;
 const evv = () => Math.round(est.v * (1 + nAdd()/100) * 100) / 100;
-const DD = pc('dd') != null ? pc('dd') : 5;
+const DD = pc('dd') != null ? pc('dd') : 10;
 const CUP = 10; // % de desconto do cupom de indicação / aniversário (não acumula com o desconto do dinheiro: vale o maior)
 let CL = null;  // cadastro do cliente (cli/<whatsapp>)
+let USAR = true; // cliente escolhe usar (ou guardar) o crédito de indicação
+const cadOk = () => !!(CL && CL.f && foneKey($('fone').value) === CL.f);
 let DEV_NEW = false;
 const DEV = (() => { try{ let d = localStorage.getItem('sm_dev'); if(!d){ DEV_NEW = true; d = Math.random().toString(36).slice(2, 12) + Date.now().toString(36); localStorage.setItem('sm_dev', d); } return d; }catch(x){ return ''; } })();
 const creAtivos = o => Object.entries(o || {}).filter(([k, e]) => Number(e) > Date.now()).sort((a, b) => a[1] - b[1]);
@@ -257,21 +262,33 @@ const cupAtual = () => {
   if(isNaN(dt)) return null;
   if(CL.dev && CL.dev !== DEV) return null; // créditos e surpresa só no aparelho do cadastro
   if(CL.nasc && CL.nasc.slice(0, 2) === String(dt.getMonth() + 1).padStart(2, '0') && !(CL.niv && CL.niv[dt.getFullYear()]) && CL.t && Date.now() - CL.t >= 30*864e5) return {pct: CUP, uc: 'niv', txt: 'surpresa de aniversário'};
-  if(creAtivos(CL.cre).length) return {pct: CUP, uc: 'ind', txt: 'crédito de indicação'};
+  if(USAR && creAtivos(CL.cre).length) return {pct: CUP, uc: 'ind', txt: 'crédito de indicação'};
   return null;
 };
 const cupPct = () => { const c = cupAtual(); return c ? c.pct : 0; };
 const CUPI = 5; // % de quem usa o cupom de indicação de um amigo (1ª vez; soma com os demais descontos)
 let CI = {cod: '', f: '', ok: false};
-const cupIPct = () => (CI.ok && CI.f && foneKey($('fone').value) === CI.f) ? CUPI : 0;
-const descTxt = () => { const a = [], p0 = ($('pag').value === 'din' && DD > 0) ? DD : 0; if(cupPct() && cupPct() >= p0) a.push(cupAtual().txt); else if(p0) a.push('pagamento em dinheiro'); if(cupIPct()) a.push('cupom de indicação'); return a.join(' + '); };
+const cupIPct = () => (CI.ok && CI.f && foneKey($('fone').value) === CI.f && !cadOk()) ? CUPI : 0;
 const PAGN = {din: 'Dinheiro', pix: 'Pix', cartao: 'Cartão de débito/crédito'};
 const descDin = () => ($('pag').value === 'din' && DD > 0) ? DD : 0;
-const desc = () => Math.max(descDin(), cupPct()) + cupIPct();
-const tot = () => Math.round((evv() + (par ? PAR : 0)) * (1 - desc()/100) * 100) / 100;
-const pagTxt = () => { const v = $('pag').value; return v ? PAGN[v] + (v === 'din' && DD > 0 && DD >= cupPct() ? ' (' + String(DD).replace('.', ',') + '% de desconto)' : '') : ''; };
-$('pagAv').textContent = `Desconto de ${String(DD).replace('.', ',')}% somente para pagamento em dinheiro. Pix e cartão não têm desconto.`;
-$('pag').onchange = () => showEst();
+// descontos NÃO se acumulam: vale só o maior (empate: aniversário/crédito > cupom de amigo > dinheiro)
+const melhor = () => { const a = [], cu = cupAtual(); if(cu) a.push({p: cu.pct, t: cu.txt, k: cu.uc}); if(cupIPct()) a.push({p: CUPI, t: 'cupom de indicação de amigo', k: 'ci'}); if(descDin()) a.push({p: descDin(), t: 'pagamento em dinheiro', k: 'din'}); let b = null; a.forEach(x => { if(!b || x.p > b.p) b = x; }); return b; };
+const desc = () => { const b = melhor(); return b ? b.p : 0; };
+const descTxt = () => { const b = melhor(); return b ? b.t : ''; };
+// viagens de/para o Rio (Galeão, Santos Dumont, Rodoviária Novo Rio): mínimo R$ 1.000, pedágio incluso
+const RIO_MIN = 1000;
+const semAc = x => String(x || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+const rioTxt = x => /galeao|santos dumont|novo rio|tom jobim/.test(semAc(x));
+const rio = () => rioTxt(addr('o') + ' ' + addr('d'));
+const piso = v => rio() ? Math.max(v, RIO_MIN) : v;
+const tot = () => piso(Math.round((evv() + (par ? PAR : 0)) * (1 - desc()/100) * 100) / 100);
+const totCheio = () => piso(Math.round((evv() + (par ? PAR : 0)) * 100) / 100);
+const pagTxt = () => { const v = $('pag').value; return v ? PAGN[v] + (v === 'din' && (melhor() || {}).k === 'din' ? ' (' + String(DD).replace('.', ',') + '% de desconto)' : '') : ''; };
+$('pagAv').textContent = `Desconto de ${String(DD).replace('.', ',')}% somente para pagamento em dinheiro. Pix e cartão não têm desconto. Descontos não são acumulativos: se você usar crédito de indicação ou cupom, vale só o maior (não soma com o do dinheiro).`;
+$('pag').onchange = () => { showEst(); dinAv(); };
+const dinAv = () => { const d = $('pag').value === 'din'; $('dinBox').hidden = !d; if(!d) $('dinCk').checked = false; $('dinTx').textContent = `O desconto de ${String(DD).replace('.', ',')}% vale apenas para pagamento em dinheiro no ato. Se a forma de pagamento for alterada, será cobrado o valor normal. Os descontos não são acumulativos: vale só o maior (se tiver crédito de indicação ou cupom, não soma com o do dinheiro).`; };
+dinAv();
+$('credCk').onchange = () => { USAR = $('credCk').checked; showEst(); };
 const temTarifa = T.band > 0 || T.km > 0 || T.min > 0;
 if(nm) $('sub').textContent = `Pedido para ${nm}. Informe partida e destino e envie o pedido.`;
 if(!W){ $('err').hidden = false; $('err').textContent = 'Link incompleto: peça ao motorista um novo link.'; }
@@ -279,8 +296,17 @@ let agendar = true, pO = null, pD = null, est = null, par = false;
 function setPar(v){ par = v; $('fPar').hidden = !v; $('bPar').textContent = v ? '− Remover parada' : '+ Adicionar parada'; showEst(); }
 $('bPar').onclick = () => setPar(!par);
 const brl = v => v.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
-function showEst(){ if(!est) return; $('est').hidden = false;
-  $('est').innerHTML = `<small>Estimativa${est.aprox ? ' aproximada' : ''}</small><b>≈ R$ ${brl(tot())}</b><small>${est.km.toLocaleString('pt-BR',{maximumFractionDigits:1})} km · cerca de ${Math.round(est.min)} min${par ? ' · inclui parada ' + parTxt : ''}${nAdd() ? ' · inclui adicional noturno de ' + String(NT).replace('.', ',') + '%' : ''}${desc() ? ' · com ' + String(desc()).replace('.', ',') + '% de desconto (' + descTxt() + ')' : ''}</small>`; }
+function credUI(){
+  const box = $('credBox'), cu = CL && CL.f && cadOk() && !(CL.dev && CL.dev !== DEV) ? creAtivos(CL.cre) : [];
+  const niv = (() => { const c = cupAtual(); return c && c.uc === 'niv'; })();
+  $('cupIn').parentElement.hidden = cadOk();
+  if(!cu.length || niv){ box.hidden = true; return; }
+  box.hidden = false; $('credCk').checked = USAR;
+  const dias = Math.max(1, Math.ceil((cu[0][1] - Date.now()) / 864e5));
+  $('credTx').textContent = `Usar meu crédito de indicação (${cu.length} ${cu.length > 1 ? 'disponíveis' : 'disponível'} de ${CUP}%; o mais próximo vence em ${dias} dia${dias > 1 ? 's' : ''})`;
+}
+function showEst(){ credUI(); if(!est) return; $('est').hidden = false;
+  $('est').innerHTML = `<small>Estimativa${est.aprox ? ' aproximada' : ''}</small>${$('pag').value === 'din' && desc() > 0 && totCheio() > tot() ? `<small>Valor normal: <s>R$ ${brl(totCheio())}</s></small>` : ''}<b>≈ R$ ${brl(tot())}</b>${$('pag').value === 'din' && desc() > 0 && totCheio() > tot() ? `<small><b style="display:inline">Você economiza R$ ${brl(totCheio() - tot())}</b></small>` : ''}${rio() ? '<small>Pedágio incluso · valor mínimo de R$ 1.000,00 para o Rio</small>' : ''}<small>${est.km.toLocaleString('pt-BR',{maximumFractionDigits:1})} km · cerca de ${Math.round(est.min)} min${par ? ' · inclui parada ' + parTxt : ''}${nAdd() ? ' · inclui adicional noturno de ' + String(NT).replace('.', ',') + '%' : ''}${desc() ? ' · com ' + String(desc()).replace('.', ',') + '% de desconto (' + descTxt() + ')' : ''}</small>`; }
 function setQuando(){ const d = new Date(Date.now() + 30*60000), p = n => String(n).padStart(2, '0'); $('quando').min = `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`; showEst(); }
 const rd = (p, k) => p ? {[k + 'La']: Math.round(p.la*100)/100, [k + 'Lo']: Math.round(p.lo*100)/100} : {}; // coordenadas arredondadas (~1 km): só para calcular o deslocamento da agenda
 const margem = min => Math.max(5, Math.ceil(min*0.10)); // folga após a corrida: 10% da duração, mínimo 5 min
@@ -569,6 +595,7 @@ $('f').onsubmit = async e => {
   if(par && !$('sRua').value.trim()){ $('err').hidden = false; $('err').textContent = 'Informe a rua da parada ou remova a parada.'; return; }
   if(!mid){ $('err').hidden = false; $('err').textContent = 'Escolha o carro em que você quer ir.'; $('fMot').scrollIntoView({block: 'center'}); return; }
   if(!$('pag').value){ $('err').hidden = false; $('err').textContent = 'Selecione a forma de pagamento.'; $('pag').focus(); return; }
+  if($('pag').value === 'din' && !$('dinCk').checked){ $('err').hidden = false; $('err').textContent = 'Marque o aviso do pagamento em dinheiro para enviar o pedido.'; $('dinCk').focus(); return; }
   if(!$('ciente').checked){ $('err').hidden = false; $('err').textContent = 'Marque que leu os avisos para enviar o pedido.'; $('ciente').focus(); return; }
   $('err').hidden = true;
   let quando = 'Agora';
@@ -590,7 +617,8 @@ $('f').onsubmit = async e => {
   L.push(`Destino: ${d}`);
   if(est) L.push(`Estimativa: ≈ R$ ${brl(tot())}${nAdd() ? ' com adicional noturno de ' + String(NT).replace('.', ',') + '%' : ''} (${est.km.toLocaleString('pt-BR',{maximumFractionDigits:1})} km${est.aprox ? ', aproximada' : ''})`);
   else if(temTarifa) L.push('Estimativa: a confirmar');
-  { const cu = cupAtual(); if(cu) L.push(`Cupom: ${cu.pct}% de desconto (${cu.txt})`); if(cupIPct()) L.push(`Cupom de indicação ${CI.cod}: ${CUPI}% de desconto`); }
+  { const b = melhor(); if(b && b.k !== 'din') L.push(`Desconto: ${b.p}% (${b.t}${b.k === 'ci' ? ' ' + CI.cod : ''})`); }
+  if(rio()) L.push('Pedágio incluso · valor mínimo de R$ 1.000,00');
   L.push(`Pagamento: ${pagTxt()}`);
   const obs = obsFinal(); if(obs) L.push(`Obs.: ${obs}`);
   L.push(`Rota: ${mapa}`);
@@ -600,9 +628,9 @@ $('f').onsubmit = async e => {
     const db = await Promise.race([loadFB(), new Promise((_, rj) => setTimeout(() => rj(new Error('t')), 8000))]);
     const sid = db.ref().push().key, pid = db.ref().push().key, TS = firebase.database.ServerValue.TIMESTAMP;
     const m = durTotal(est ? est.min : 30);
-    const f = {nome, fone, passageiro: outro ? $('pNome').value.trim() : '', foneP: outro ? $('pFone').value.trim() : '', partida: o, destino: d, obs: obsFinal(), quando, estim: est ? `R$ ${brl(tot())} · ${est.km.toLocaleString('pt-BR',{maximumFractionDigits:1})} km` : '', pid, pag: PAGN[$('pag').value], c: TS, s: 'aguardando'};
+    const f = {nome, fone, passageiro: outro ? $('pNome').value.trim() : '', foneP: outro ? $('pFone').value.trim() : '', partida: o, destino: d, obs: obsFinal(), quando, estim: est ? `R$ ${brl(tot())} · ${est.km.toLocaleString('pt-BR',{maximumFractionDigits:1})} km${rio() ? ' · pedágio incluso' : ''}` : (rio() ? 'a partir de R$ 1.000,00 · pedágio incluso' : ''), pid, pag: PAGN[$('pag').value], c: TS, s: 'aguardando'};
     if(par) f.parada = addr('s').slice(0, 200);
-    { const cu = cupAtual(); if(CL && CL.f && foneKey(fone) === CL.f) f.fcl = CL.f; if(cu){ f.cp = cu.pct; f.uc = cu.uc; } if(cupIPct()){ f.fcl = CI.f; f.cod = CI.cod; f.ci = CUPI; } if(f.fcl && DEV) f.dv = DEV; }
+    { const b = melhor(); if(CL && CL.f && foneKey(fone) === CL.f){ f.fcl = CL.f; if(CL.cod) f.mc = CL.cod; } if(b && (b.k === 'niv' || b.k === 'ind')){ f.cp = b.p; f.uc = b.k; } else if(b && b.k === 'ci'){ f.fcl = CI.f; f.cod = CI.cod; f.ci = CUPI; } if(f.fcl && DEV) f.dv = DEV; }
     if(agendar){ f.a = new Date($('quando').value).getTime(); }
     if(pO){ f.oLa = pO.la; f.oLo = pO.lo; } if(pD){ f.dLa = pD.la; f.dLo = pD.lo; }
     for(const k of ['nome', 'passageiro']) f[k] = f[k].slice(0, 80);
@@ -612,7 +640,7 @@ $('f').onsubmit = async e => {
     await Promise.race([db.ref().update(up), new Promise((_, rj) => setTimeout(() => rj(new Error('t')), 8000))]);
     if(mid === 'luiz') avisar(agendar ? 'Novo AGENDAMENTO de corrida' : 'Novo pedido de corrida');
     const sv = {sid, pid, wa, mid, t: Date.now()}; if(f.a) sv.a = f.a;
-    { const g = id => $('o' + id).value.trim(); sv.po = {rua: g('Rua'), num: g('Num'), bai: g('Bai'), cid: g('Cid')}; sv.pt = o; sv.pc = pO ? {la: pO.la, lo: pO.lo} : null; sv.dc = pD ? {la: pD.la, lo: pD.lo} : null; sv.ps = par ? addr('s') : ''; sv.pg = $('pag').value; sv.cp = f.cp || 0; sv.ci = f.ci || 0; if(est) sv.es = {v: est.v, km: est.km, min: est.min, ap: !!est.aprox}; }
+    { const g = id => $('o' + id).value.trim(); sv.po = {rua: g('Rua'), num: g('Num'), bai: g('Bai'), cid: g('Cid')}; sv.pt = o; sv.pc = pO ? {la: pO.la, lo: pO.lo} : null; sv.dc = pD ? {la: pD.la, lo: pD.lo} : null; sv.ps = par ? addr('s') : ''; sv.pg = $('pag').value; sv.cp = f.cp || 0; sv.ci = f.ci || 0; sv.rio = rio() ? 1 : 0; if(est) sv.es = {v: est.v, km: est.km, min: est.min, ap: !!est.aprox}; }
     try{ localStorage.setItem('sm_ped', JSON.stringify(sv)); }catch(x){}
     accLog(true);
     g.disabled = false; g.textContent = 'Enviar pedido';
@@ -720,6 +748,7 @@ async function cupChk(){
     const r = rf.val();
     if(!r) m.textContent = 'Cupom não encontrado. Confira o código.';
     else if(r === f) m.textContent = 'Você não pode usar o seu próprio cupom.';
+    else if(cadOk()) m.textContent = 'Quem já tem cadastro não usa cupom de outras pessoas: use seus créditos de indicação.';
     else if(us.val()) m.textContent = 'Você já usou um cupom de indicação: ele vale só na primeira corrida.';
     else { CI = {cod, f, ok: true}; m.textContent = '✓ Cupom válido: ' + CUPI + '% de desconto nesta corrida.'; }
   }catch(x){ if(seq === ciT) m.textContent = 'Não foi possível validar agora. Tente de novo.'; }
@@ -841,8 +870,8 @@ $('xSalvar').onclick = async () => {
     up[P + 'oLa'] = rd(pc, 'o').oLa; up[P + 'oLo'] = rd(pc, 'o').oLo;
     let estNova = null;
     if(km != null){
-      const hh = new Date(ts || Date.now()).getHours(), noite = cur.a && NT > 0 && (hh >= 22 || hh < 5), dsc = Math.max((cur.pg === 'din' && DD > 0) ? DD : 0, Number(cur.cp) || 0) + (Number(cur.ci) || 0);
-      const v0 = Math.max(T.band, km*T.km) + min*T.min, ev2 = Math.round(v0 * (1 + (noite ? NT : 0)/100) * 100) / 100, tt = Math.round((ev2 + (xPar ? PAR : 0)) * (1 - dsc/100) * 100) / 100;
+      const hh = new Date(ts || Date.now()).getHours(), noite = cur.a && NT > 0 && (hh >= 22 || hh < 5), dsc = Math.max((cur.pg === 'din' && DD > 0) ? DD : 0, Number(cur.cp) || 0, Number(cur.ci) || 0);
+      const v0 = Math.max(T.band, km*T.km) + min*T.min, ev2 = Math.round(v0 * (1 + (noite ? NT : 0)/100) * 100) / 100, tt = Math.round((ev2 + (xPar ? PAR : 0)) * (1 - dsc/100) * 100) / 100; if(cur.rio || rioTxt(novoO) || rioTxt(cur.dt)) tt = Math.max(tt, RIO_MIN);
       estNova = `R$ ${brl(tt)} · ${km.toLocaleString('pt-BR', {maximumFractionDigits: 1})} km`; up[B + 'estim'] = estNova; up[P + 'm'] = durTotal(min);
     }
     const db = await Promise.race([loadFB(), new Promise((_, rj) => setTimeout(() => rj(new Error('t')), 8000))]);
