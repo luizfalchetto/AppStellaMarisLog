@@ -527,10 +527,11 @@ function calc(r, now){
   if(arr > 0 && sub > 0) sub = Math.ceil(sub/arr - 1e-9)*arr;
   const pct = (c.semTaxa || !r.fim || r.fim >= CUT_TAXA) ? 0 : (r.pag === 'deb' ? (c.taxaDeb != null ? c.taxaDeb : cfg.taxaDeb) : r.pag === 'cre' ? (c.taxaCre != null ? c.taxaCre : cfg.taxaCre) : 0);
   const taxa = Math.round(sub*(pct||0))/100;
-  const descPct = (r.emp && Number(r.emp.recDesc) > 0) ? Number(r.emp.recDesc) : (c.desc != null && !r.emp && (r.pag === 'din' || (!r.pag && r.fim))) ? Number(c.desc) : 0;
+  const descPct0 = (r.emp && Number(r.emp.recDesc) > 0) ? Number(r.emp.recDesc) : (c.desc != null && !r.emp && (r.pag === 'din' || (!r.pag && r.fim))) ? Number(c.desc) : 0;
+  const cupP = (!r.emp && Number(r.cup) > 0) ? Number(r.cup) : 0, descPct = Math.max(descPct0, cupP), descCup = cupP > 0 && cupP >= descPct0 ? (r.cupT === 'niv' ? 'aniversário' : 'indicação') : '';
   const vDesc = Math.round(sub*descPct)/100;
   const total = Math.round((sub + taxa - vDesc)*100)/100;
-  return {dynPct, vDyn, vNot, notPct, vPar, km, corrMs, espMs, espTotal, espStart, vKm, vMin, vEsp, corrida, minimoAplicado, sub, taxa, pct: pct||0, vDesc, descPct, total};
+  return {dynPct, vDyn, vNot, notPct, vPar, km, corrMs, espMs, espTotal, espStart, vKm, vMin, vEsp, corrida, minimoAplicado, sub, taxa, pct: pct||0, vDesc, descPct, descCup, total};
 }
 
 /* ---------- GPS ---------- */
@@ -628,7 +629,7 @@ function avisarCaminho(){
 function iniciar(){ ride.inicio = Date.now(); ride.fase = 'corrida'; ride.last = null; save(); qSync('em_corrida'); startGps(); capEnd(ride, 'orig'); render(); }
 function finalizar(){
   ride.fim = Date.now(); ride.fase = 'fim'; save(); qSync('concluido'); stopGps(); keepAwake(false);
-  lembrarCli(ride); saveHist(); gravarCorrida(ride); emailRecibo(ride); render(); openFim(); if(ride.inicio) capEnd(ride, 'dest');
+  lembrarCli(ride); saveHist(); gravarCorrida(ride); emailRecibo(ride); cupomConcluido(ride); render(); openFim(); if(ride.inicio) capEnd(ride, 'dest');
 }
 function cancelar(){
   if(!ride) return;
@@ -755,7 +756,7 @@ function receipt(r){
   if(c.vNot > 0) L.push(`Adicional noturno (22h às 05h) +${c.notPct.toLocaleString('pt-BR')}%: R$ ${brl(c.vNot)}`);
   if(c.vDyn > 0) L.push(`Tarifa dinâmica (${DYN[r.dyn] || 'especial'}) +${c.dynPct.toLocaleString('pt-BR')}%: R$ ${brl(c.vDyn)}`);
   if(c.taxa > 0) L.push(`Taxa ${r.pag === 'deb' ? 'débito' : 'crédito'} ${c.pct.toLocaleString('pt-BR')}%: R$ ${brl(c.taxa)}`);
-  if(c.vDesc > 0) L.push(`${r.emp ? 'Desconto de corrida recorrente' : 'Desconto pagamento em dinheiro'} ${c.descPct.toLocaleString('pt-BR')}%: -R$ ${brl(c.vDesc)}`);
+  if(c.vDesc > 0) L.push(`${r.emp ? 'Desconto de corrida recorrente' : c.descCup ? 'Cupom de ' + c.descCup : 'Desconto pagamento em dinheiro'} ${c.descPct.toLocaleString('pt-BR')}%: -R$ ${brl(c.vDesc)}`);
   L.push('');
   L.push(`*Total: R$ ${brl(c.total)}*`);
   if(r.pag) L.push(`Pagamento: ${PAGN[r.pag]}`);
@@ -952,7 +953,7 @@ function linhas(r){
   if(c.vNot > 0) rows.push([`Adicional noturno (22h às 05h) +${c.notPct.toLocaleString('pt-BR')}%`, 'R$ '+brl(c.vNot)]);
   if(c.vDyn > 0) rows.push([`Tarifa dinâmica (${DYN[r.dyn] || 'especial'}) +${c.dynPct.toLocaleString('pt-BR')}%`, 'R$ '+brl(c.vDyn)]);
   if(c.taxa > 0) rows.push([`Taxa ${r.pag === 'deb' ? 'débito' : 'crédito'} ${c.pct.toLocaleString('pt-BR')}%`, 'R$ '+brl(c.taxa)]);
-  if(c.vDesc > 0) rows.push([`${r.emp ? 'Desconto recorrente' : 'Desconto em dinheiro'} ${c.descPct.toLocaleString('pt-BR')}%`, '-R$ '+brl(c.vDesc)]);
+  if(c.vDesc > 0) rows.push([`${r.emp ? 'Desconto recorrente' : c.descCup ? 'Cupom de ' + c.descCup : 'Desconto em dinheiro'} ${c.descPct.toLocaleString('pt-BR')}%`, '-R$ '+brl(c.vDesc)]);
   return {c, k, rows};
 }
 function fillFim(r){
@@ -1335,7 +1336,45 @@ function qSet(sid, pid, st){
   if(fready) setStatus(sid, pid, st).catch(() => {});
   else { const l = store.get('tx_pendq', []); l.push({sid, pid, s: st}); store.set('tx_pendq', l.slice(-30)); }
 }
-function flushQ(){ const l = store.get('tx_pendq', []); if(!l.length) return; store.set('tx_pendq', []); l.forEach(x => setStatus(x.sid, x.pid, x.s).catch(() => {})); }
+function flushQ(){ retryCp(); const l = store.get('tx_pendq', []); if(!l.length) return; store.set('tx_pendq', []); l.forEach(x => setStatus(x.sid, x.pid, x.s).catch(() => {})); }
+/* ---------- cupons: indicação e aniversário ---------- */
+const CUP = 10; // % de desconto (indicação / aniversário); não acumula com o desconto em dinheiro: vale o maior
+async function aplicarCupom(it, sid){
+  if(!it.fcl || !it.uc || !fdb) return;
+  try{
+    const v = (await fdb.ref('cli/' + it.fcl).once('value')).val();
+    if(!ride || !ride.fila || ride.fila.sid !== sid) return;
+    let uc = '';
+    if(v){ const dt = new Date(it.a || Date.now());
+      if(it.uc === 'niv' && v.nasc && v.nasc.slice(0, 2) === String(dt.getMonth() + 1).padStart(2, '0') && !(v.niv && v.niv[dt.getFullYear()])) uc = 'niv';
+      else if(it.uc === 'ind' && Number(v.cr) > 0) uc = 'ind'; }
+    if(!uc){ toast('Cupom do cliente não confere: desconto não aplicado.'); return; }
+    ride.cup = CUP; ride.cupT = uc; ride.fila.uc = uc; save(); render();
+    toast('🎟️ Cupom de ' + CUP + '% (' + (uc === 'niv' ? 'aniversário' : 'indicação') + ') aplicado nesta corrida.');
+  }catch(e){}
+}
+function cupomConcluido(r){
+  const f = r && r.fila; if(!f || !f.fcl || (!f.cod && !f.uc)) return;
+  const steps = ['mark']; if(f.uc === 'ind') steps.push('dec'); if(f.uc === 'niv') steps.push('niv'); if(f.cod) steps.push('ref');
+  runCp({path: (fOwn() ? 'fila/' : 'filam/' + fMid + '/') + f.sid + '/cpok', fcl: f.fcl, cod: f.cod || '', yr: new Date(r.agendado || r.inicio || Date.now()).getFullYear(), steps});
+}
+async function runCp(j){
+  try{
+    if(!fdb || !fready) throw new Error('off');
+    while(j.steps.length){
+      const s = j.steps[0];
+      if(s === 'mark'){ let first = false; const t = await fdb.ref(j.path).transaction(v => { first = !v; return v ? undefined : true; }); if(!first || (t && t.committed === false)) return; }
+      else if(s === 'dec') await fdb.ref('cli/' + j.fcl + '/cr').transaction(v => Math.max(0, (Number(v) || 0) - 1));
+      else if(s === 'niv') await fdb.ref('cli/' + j.fcl + '/niv/' + j.yr).set(true);
+      else if(s === 'ref'){
+        const ref = (await fdb.ref('cup/' + j.cod).once('value')).val();
+        if(ref && ref !== j.fcl){ let novo = false; await fdb.ref('cli/' + ref + '/ind/' + j.fcl).transaction(v => { novo = !v; return v ? undefined : true; }); if(novo) await fdb.ref('cli/' + ref + '/cr').transaction(v => (Number(v) || 0) + 1); }
+      }
+      j.steps.shift();
+    }
+  }catch(e){ const l = store.get('tx_pendcp', []); l.push(j); store.set('tx_pendcp', l.slice(-30)); }
+}
+function retryCp(){ const l = store.get('tx_pendcp', []); if(!l.length || !fdb || !fready) return; store.set('tx_pendcp', []); l.forEach(j => runCp(j)); }
 function qSync(st){ const f = ride && ride.fila; if(!f) return; f.s = st; save(); qSet(f.sid, f.pid, st); }
 function varrerCancel(){
   Object.keys(cancData).forEach(k => {
@@ -1391,8 +1430,8 @@ function aceitar(sid){
   if(ride && ride.fase !== 'fim'){ toast('Termine ou cancele a corrida em andamento antes de aceitar outra.'); return; }
   newRide('avulsa', null, it.passageiro || it.nome || '', (it.passageiro ? it.foneP : it.fone) || '', false);
   ride.orig = it.partida || ''; ride.dest = it.destino || ''; ride.obs = it.obs || ''; if(it.parada){ ride.par = true; ride.parEnd = it.parada; }
-  ride.fila = {sid, pid: it.pid, s: 'aceito', oLa: it.oLa, oLo: it.oLo, dLa: it.dLa, dLo: it.dLo, partida: it.partida, destino: it.destino, parada: it.parada || ''};
-  save(); qSet(sid, it.pid, 'aceito'); render();
+  ride.fila = {sid, pid: it.pid, s: 'aceito', oLa: it.oLa, oLo: it.oLo, dLa: it.dLa, dLo: it.dLo, partida: it.partida, destino: it.destino, parada: it.parada || '', cod: it.cod || '', fcl: it.fcl || '', uc: ''};
+  save(); qSet(sid, it.pid, 'aceito'); render(); aplicarCupom(it, sid);
   toast('Pedido aceito. Toque em "Ir até o cliente".'); aplicarEmpresa(Object.assign({sid}, it));
 }
 const fmtAg = ts => new Date(ts).toLocaleString('pt-BR', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'});
@@ -1405,8 +1444,8 @@ function iniciarAg(sid){
   if(ride && ride.fase !== 'fim'){ toast('Termine ou cancele a corrida em andamento antes.'); return; }
   newRide('agendada', it.a, it.passageiro || it.nome || '', (it.passageiro ? it.foneP : it.fone) || '', false);
   ride.orig = it.partida || ''; ride.dest = it.destino || ''; ride.obs = it.obs || '';
-  ride.fila = {sid, pid: it.pid, s: 'aceito', oLa: it.oLa, oLo: it.oLo, dLa: it.dLa, dLo: it.dLo, partida: it.partida, destino: it.destino};
-  save(); render();
+  ride.fila = {sid, pid: it.pid, s: 'aceito', oLa: it.oLa, oLo: it.oLo, dLa: it.dLa, dLo: it.dLo, partida: it.partida, destino: it.destino, cod: it.cod || '', fcl: it.fcl || '', uc: ''};
+  save(); render(); aplicarCupom(it, sid);
   toast('Corrida agendada iniciada. Toque em "Ir até o cliente".'); aplicarEmpresa(Object.assign({sid}, it));
 }
 function regCancelFila(it, motivo, quem){
@@ -1638,6 +1677,7 @@ function drawFila(){
     const prox = x.dist != null && x.s === 'aguardando' ? `<p class="prox">${kmFila(x.dist)} de onde você termina${x.furou ? ' · passou na frente por proximidade' : ''}</p>` : '';
     return `<div class="fcard${x.a ? ' ag' : ''}"><div class="st">${x.a ? '<span class="agblink">AGENDADA</span> ' + fmtAg(x.a) + ' · prioridade · ' : ''}${FLBL[x.s]}${meu ? ' · sua corrida atual' : ''}</div><h3><span class="pos">${i + 1}º</span>${nome}</h3>
       <small>Pedido às ${hora} · ${escapeHtml(x.quando || 'Agora')}</small>
+      ${x.cp ? `<p style="color:#0a9d63;font-weight:700">🎟️ Cliente com cupom de ${x.cp}% (${x.uc === 'niv' ? 'aniversário' : 'indicação'}) — confirmado ao aceitar</p>` : ''}
       ${x.edc ? `<p style="color:#e0a800;font-weight:700">✎ Alterado pelo cliente às ${new Date(x.edc).toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'})}</p>` : ''}
       <p><b>De:</b> ${escapeHtml(x.partida)}<br><b>Para:</b> ${escapeHtml(x.destino)}${x.parada ? '<br><b>Parada:</b> ' + escapeHtml(x.parada) : ''}</p>
       <button class="btn ghost full" data-a="ed" data-k="${x.sid}" style="margin:2px 0 8px;border-color:#e0a800;color:#e0a800">✎ Editar endereços / marcar no mapa</button>
