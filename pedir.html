@@ -135,13 +135,12 @@ legend{padding:0;margin-bottom:6px;font:700 16px "Barlow Condensed",sans-serif;l
     </div>
     <div id="cadNo">
       <b>🎟️ Cadastre-se e ganhe desconto</b>
-      <small>Você recebe um <b>cupom seu</b>. Cada amigo que se cadastrar com ele e fizer uma corrida lhe dá <b style="display:inline">10% de desconto em uma corrida</b> (10 amigos = 10 corridas com 10%). E no mês do seu aniversário você ganha <b style="display:inline">10% de desconto</b> em uma corrida.</small>
+      <small>Você recebe um <b>cupom seu</b>. Seu amigo usa o cupom no <b style="display:inline">primeiro pedido dele</b> e ganha <b style="display:inline">5% de desconto</b>. Quando a corrida dele for concluída, você ganha <b style="display:inline">10% de desconto em uma corrida</b> (10 amigos = 10 corridas com 10%). E no mês do seu aniversário você ganha <b style="display:inline">10% de desconto</b> em uma corrida.</small>
       <button class="mini" type="button" id="cadAbre">Fazer meu cadastro</button>
       <div id="cadF" hidden style="display:none;gap:10px;margin-top:6px">
         <div class="field"><label for="cNome">Seu nome</label><input id="cNome" autocomplete="off" maxlength="60"></div>
         <div class="field"><label for="cFone">Seu WhatsApp</label><input id="cFone" type="tel" inputmode="tel" placeholder="(22) 99999-9999"></div>
         <div class="field"><label for="cNasc">Dia e mês do aniversário</label><input id="cNasc" inputmode="numeric" placeholder="dd/mm" maxlength="5" autocomplete="off"><small>Só dia e mês, sem o ano.</small></div>
-        <div class="field"><label for="cRef">Cupom de quem indicou você (opcional)</label><input id="cRef" autocomplete="off" maxlength="12" style="text-transform:uppercase"></div>
         <label class="ck"><input type="checkbox" id="cCiente"><span>Autorizo guardar meu nome, WhatsApp e dia/mês do aniversário para gerar meu cupom e conceder os descontos. Posso pedir a exclusão a qualquer momento.</span></label>
         <small id="cMsg" style="color:#e5484d"></small>
         <button class="mini" type="button" id="cSalvar" style="background:#0a7d4f;color:#fff;border:0">Criar meu cadastro</button>
@@ -151,6 +150,7 @@ legend{padding:0;margin-bottom:6px;font:700 16px "Barlow Condensed",sans-serif;l
   <form id="f" class="app" style="padding:0" autocomplete="off" novalidate>
     <div class="field"><label for="nome">Seu nome</label><input id="nome" required placeholder="Ex.: Dona Marta"></div>
     <div class="field"><label for="fone">Seu WhatsApp (necessário para receber o recibo)</label><input id="fone" type="tel" inputmode="tel" placeholder="(22) 99999-9999"></div>
+    <div class="field"><label for="cupIn">Cupom de indicação (opcional)</label><input id="cupIn" maxlength="12" autocomplete="off" style="text-transform:uppercase" placeholder="Código de um amigo"><small id="cupMsg" style="display:block;margin-top:6px;color:var(--muted)">Vale só na sua primeira corrida com cupom e dá 5% de desconto.</small></div>
     <div class="field"><label>Para quem é a corrida?</label>
       <div class="seg"><button type="button" id="bMim" aria-pressed="true">Para mim</button><button type="button" id="bOutro" aria-pressed="false">Para outra pessoa</button></div>
     </div>
@@ -256,9 +256,13 @@ const cupAtual = () => {
   return null;
 };
 const cupPct = () => { const c = cupAtual(); return c ? c.pct : 0; };
+const CUPI = 5; // % de quem usa o cupom de indicação de um amigo (1ª vez; soma com os demais descontos)
+let CI = {cod: '', f: '', ok: false};
+const cupIPct = () => (CI.ok && CI.f && foneKey($('fone').value) === CI.f) ? CUPI : 0;
+const descTxt = () => { const a = [], p0 = ($('pag').value === 'din' && DD > 0) ? DD : 0; if(cupPct() && cupPct() >= p0) a.push(cupAtual().txt); else if(p0) a.push('pagamento em dinheiro'); if(cupIPct()) a.push('cupom de indicação'); return a.join(' + '); };
 const PAGN = {din: 'Dinheiro', pix: 'Pix', cartao: 'Cartão de débito/crédito'};
 const descDin = () => ($('pag').value === 'din' && DD > 0) ? DD : 0;
-const desc = () => Math.max(descDin(), cupPct());
+const desc = () => Math.max(descDin(), cupPct()) + cupIPct();
 const tot = () => Math.round((evv() + (par ? PAR : 0)) * (1 - desc()/100) * 100) / 100;
 const pagTxt = () => { const v = $('pag').value; return v ? PAGN[v] + (v === 'din' && DD > 0 && DD >= cupPct() ? ' (' + String(DD).replace('.', ',') + '% de desconto)' : '') : ''; };
 $('pagAv').textContent = `Desconto de ${String(DD).replace('.', ',')}% somente para pagamento em dinheiro. Pix e cartão não têm desconto.`;
@@ -271,7 +275,7 @@ function setPar(v){ par = v; $('fPar').hidden = !v; $('bPar').textContent = v ? 
 $('bPar').onclick = () => setPar(!par);
 const brl = v => v.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
 function showEst(){ if(!est) return; $('est').hidden = false;
-  $('est').innerHTML = `<small>Estimativa${est.aprox ? ' aproximada' : ''}</small><b>≈ R$ ${brl(tot())}</b><small>${est.km.toLocaleString('pt-BR',{maximumFractionDigits:1})} km · cerca de ${Math.round(est.min)} min${par ? ' · inclui parada ' + parTxt : ''}${nAdd() ? ' · inclui adicional noturno de ' + String(NT).replace('.', ',') + '%' : ''}${desc() ? ' · com ' + String(desc()).replace('.', ',') + '% de desconto' + (cupPct() && cupPct() >= descDin() ? ' (' + cupAtual().txt + ')' : ' em dinheiro') : ''}</small>`; }
+  $('est').innerHTML = `<small>Estimativa${est.aprox ? ' aproximada' : ''}</small><b>≈ R$ ${brl(tot())}</b><small>${est.km.toLocaleString('pt-BR',{maximumFractionDigits:1})} km · cerca de ${Math.round(est.min)} min${par ? ' · inclui parada ' + parTxt : ''}${nAdd() ? ' · inclui adicional noturno de ' + String(NT).replace('.', ',') + '%' : ''}${desc() ? ' · com ' + String(desc()).replace('.', ',') + '% de desconto (' + descTxt() + ')' : ''}</small>`; }
 function setQuando(){ const d = new Date(Date.now() + 30*60000), p = n => String(n).padStart(2, '0'); $('quando').min = `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`; showEst(); }
 const rd = (p, k) => p ? {[k + 'La']: Math.round(p.la*100)/100, [k + 'Lo']: Math.round(p.lo*100)/100} : {}; // coordenadas arredondadas (~1 km): só para calcular o deslocamento da agenda
 const margem = min => Math.max(5, Math.ceil(min*0.10)); // folga após a corrida: 10% da duração, mínimo 5 min
@@ -581,7 +585,7 @@ $('f').onsubmit = async e => {
   L.push(`Destino: ${d}`);
   if(est) L.push(`Estimativa: ≈ R$ ${brl(tot())}${nAdd() ? ' com adicional noturno de ' + String(NT).replace('.', ',') + '%' : ''} (${est.km.toLocaleString('pt-BR',{maximumFractionDigits:1})} km${est.aprox ? ', aproximada' : ''})`);
   else if(temTarifa) L.push('Estimativa: a confirmar');
-  { const cu = cupAtual(); if(cu) L.push(`Cupom: ${cu.pct}% de desconto (${cu.txt})`); }
+  { const cu = cupAtual(); if(cu) L.push(`Cupom: ${cu.pct}% de desconto (${cu.txt})`); if(cupIPct()) L.push(`Cupom de indicação ${CI.cod}: ${CUPI}% de desconto`); }
   L.push(`Pagamento: ${pagTxt()}`);
   const obs = obsFinal(); if(obs) L.push(`Obs.: ${obs}`);
   L.push(`Rota: ${mapa}`);
@@ -593,7 +597,7 @@ $('f').onsubmit = async e => {
     const m = durTotal(est ? est.min : 30);
     const f = {nome, fone, passageiro: outro ? $('pNome').value.trim() : '', foneP: outro ? $('pFone').value.trim() : '', partida: o, destino: d, obs: obsFinal(), quando, estim: est ? `R$ ${brl(tot())} · ${est.km.toLocaleString('pt-BR',{maximumFractionDigits:1})} km` : '', pid, pag: PAGN[$('pag').value], c: TS, s: 'aguardando'};
     if(par) f.parada = addr('s').slice(0, 200);
-    { const cu = cupAtual(); if(CL && CL.f && foneKey(fone) === CL.f){ f.fcl = CL.f; if(CL.ref) f.cod = CL.ref; } if(cu){ f.cp = cu.pct; f.uc = cu.uc; } }
+    { const cu = cupAtual(); if(CL && CL.f && foneKey(fone) === CL.f) f.fcl = CL.f; if(cu){ f.cp = cu.pct; f.uc = cu.uc; } if(cupIPct()){ f.fcl = CI.f; f.cod = CI.cod; f.ci = CUPI; } }
     if(agendar){ f.a = new Date($('quando').value).getTime(); }
     if(pO){ f.oLa = pO.la; f.oLo = pO.lo; } if(pD){ f.dLa = pD.la; f.dLo = pD.lo; }
     for(const k of ['nome', 'passageiro']) f[k] = f[k].slice(0, 80);
@@ -603,7 +607,7 @@ $('f').onsubmit = async e => {
     await Promise.race([db.ref().update(up), new Promise((_, rj) => setTimeout(() => rj(new Error('t')), 8000))]);
     if(mid === 'luiz') avisar(agendar ? 'Novo AGENDAMENTO de corrida' : 'Novo pedido de corrida');
     const sv = {sid, pid, wa, mid, t: Date.now()}; if(f.a) sv.a = f.a;
-    { const g = id => $('o' + id).value.trim(); sv.po = {rua: g('Rua'), num: g('Num'), bai: g('Bai'), cid: g('Cid')}; sv.pt = o; sv.pc = pO ? {la: pO.la, lo: pO.lo} : null; sv.dc = pD ? {la: pD.la, lo: pD.lo} : null; sv.ps = par ? addr('s') : ''; sv.pg = $('pag').value; sv.cp = f.cp || 0; if(est) sv.es = {v: est.v, km: est.km, min: est.min, ap: !!est.aprox}; }
+    { const g = id => $('o' + id).value.trim(); sv.po = {rua: g('Rua'), num: g('Num'), bai: g('Bai'), cid: g('Cid')}; sv.pt = o; sv.pc = pO ? {la: pO.la, lo: pO.lo} : null; sv.dc = pD ? {la: pD.la, lo: pD.lo} : null; sv.ps = par ? addr('s') : ''; sv.pg = $('pag').value; sv.cp = f.cp || 0; sv.ci = f.ci || 0; if(est) sv.es = {v: est.v, km: est.km, min: est.min, ap: !!est.aprox}; }
     try{ localStorage.setItem('sm_ped', JSON.stringify(sv)); }catch(x){}
     g.disabled = false; g.textContent = 'Enviar pedido';
     mostrar(sv);
@@ -657,7 +661,7 @@ $('cadAbre').onclick = () => { const a = $('cadF'); a.hidden = !a.hidden; a.styl
 $('cNasc').oninput = e => { let d = e.target.value.replace(/\D/g, '').slice(0, 4); e.target.value = d.length > 2 ? d.slice(0, 2) + '/' + d.slice(2) : d; };
 $('cSalvar').onclick = async () => {
   const msg = t => { $('cMsg').textContent = t; }, bt = $('cSalvar'); msg('');
-  const nome = $('cNome').value.trim().slice(0, 60), f = foneKey($('cFone').value), nd = $('cNasc').value.replace(/\D/g, ''), ref = $('cRef').value.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+  const nome = $('cNome').value.trim().slice(0, 60), f = foneKey($('cFone').value), nd = $('cNasc').value.replace(/\D/g, '');
   if(nome.length < 2) return msg('Informe seu nome.');
   if(!f) return msg('Informe seu WhatsApp com DDD.');
   let nasc = '';
@@ -669,10 +673,9 @@ $('cSalvar').onclick = async () => {
     const db = await Promise.race([loadFB(), new Promise((_, rj) => setTimeout(() => rj(new Error('t')), 8000))]);
     const ex = (await db.ref('cli/' + f).once('value')).val();
     if(ex && ex.cod){ try{ localStorage.setItem('sm_cli', f); }catch(x){} await cadOuvir(f); $('cadF').hidden = true; $('cadF').style.display = 'none'; return; }
-    if(ref){ const rr = (await db.ref('cup/' + ref).once('value')).val(); if(!rr) return msg('Cupom de indicação não encontrado. Confira o código ou deixe em branco.'); if(rr === f) return msg('Você não pode usar o seu próprio cupom.'); }
     const base = (nome.normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().replace(/[^A-Z]/g, '') + 'XXXX').slice(0, 4) + f.slice(-4);
     let cod = base; for(let i = 0; i < 6; i++){ const e = (await db.ref('cup/' + cod).once('value')).val(); if(!e || e === f) break; cod = base + 'ABCDEFGHJK'[Math.floor(Math.random() * 10)]; if(i === 5) throw new Error('cod'); }
-    const up = {}, B = 'cli/' + f + '/'; up[B + 'n'] = nome; up[B + 'nasc'] = nasc; up[B + 'cod'] = cod; if(ref) up[B + 'ref'] = ref; up[B + 't'] = firebase.database.ServerValue.TIMESTAMP; up['cup/' + cod] = f;
+    const up = {}, B = 'cli/' + f + '/'; up[B + 'n'] = nome; up[B + 'nasc'] = nasc; up[B + 'cod'] = cod; up[B + 't'] = firebase.database.ServerValue.TIMESTAMP; up['cup/' + cod] = f;
     await Promise.race([db.ref().update(up), new Promise((_, rj) => setTimeout(() => rj(new Error('t')), 8000))]);
     try{ localStorage.setItem('sm_cli', f); }catch(x){}
     $('cadF').hidden = true; $('cadF').style.display = 'none'; await cadOuvir(f);
@@ -684,7 +687,27 @@ const cadTexto = () => `Oi! Use o meu cupom ${CL.cod} ao se cadastrar na Stella 
 $('cadZap').onclick = () => { if(CL && CL.cod) window.open('https://wa.me/?text=' + encodeURIComponent(cadTexto()), '_blank'); };
 $('cadCopia').onclick = async () => { if(!CL || !CL.cod) return; try{ await navigator.clipboard.writeText(cadTexto()); $('cadCopia').textContent = 'Copiado ✓'; setTimeout(() => { $('cadCopia').textContent = 'Copiar cupom'; }, 2000); }catch(x){ prompt('Copie o texto:', cadTexto()); } };
 $('cadSair').onclick = () => { try{ localStorage.removeItem('sm_cli'); }catch(x){} if(clOff){ clOff(); clOff = null; } CL = null; cadDesenhar(); showEst(); };
-$('fone').addEventListener('input', () => showEst());
+let ciT = 0, ciD = 0;
+async function cupChk(){
+  const cod = $('cupIn').value.trim().toUpperCase().replace(/[^A-Z0-9]/g, ''), f = foneKey($('fone').value), m = $('cupMsg'), seq = ++ciT;
+  CI = {cod, f: '', ok: false};
+  if(!cod){ m.textContent = 'Vale só na sua primeira corrida com cupom e dá ' + CUPI + '% de desconto.'; showEst(); return; }
+  if(!f){ m.textContent = 'Informe o seu WhatsApp acima para validar o cupom.'; showEst(); return; }
+  m.textContent = 'Validando cupom…'; showEst();
+  try{
+    const db = await loadFB(), [rf, us] = await Promise.all([db.ref('cup/' + cod).once('value'), db.ref('usou/' + f).once('value')]);
+    if(seq !== ciT) return;
+    const r = rf.val();
+    if(!r) m.textContent = 'Cupom não encontrado. Confira o código.';
+    else if(r === f) m.textContent = 'Você não pode usar o seu próprio cupom.';
+    else if(us.val()) m.textContent = 'Você já usou um cupom de indicação: ele vale só na primeira corrida.';
+    else { CI = {cod, f, ok: true}; m.textContent = '✓ Cupom válido: ' + CUPI + '% de desconto nesta corrida.'; }
+  }catch(x){ if(seq === ciT) m.textContent = 'Não foi possível validar agora. Tente de novo.'; }
+  showEst();
+}
+const cupSoon = () => { clearTimeout(ciD); ciD = setTimeout(cupChk, 500); };
+$('cupIn').addEventListener('input', cupSoon);
+$('fone').addEventListener('input', () => { showEst(); if($('cupIn').value.trim()) cupSoon(); });
 $('quando').addEventListener('input', () => showEst());
 try{ const sf = localStorage.getItem('sm_cli'); if(sf) cadOuvir(sf); }catch(x){}
 const ATIVOS = ['aguardando', 'aceito', 'a_caminho', 'chegou', 'em_corrida'];
@@ -798,7 +821,7 @@ $('xSalvar').onclick = async () => {
     up[P + 'oLa'] = rd(pc, 'o').oLa; up[P + 'oLo'] = rd(pc, 'o').oLo;
     let estNova = null;
     if(km != null){
-      const hh = new Date(ts || Date.now()).getHours(), noite = cur.a && NT > 0 && (hh >= 22 || hh < 5), dsc = Math.max((cur.pg === 'din' && DD > 0) ? DD : 0, Number(cur.cp) || 0);
+      const hh = new Date(ts || Date.now()).getHours(), noite = cur.a && NT > 0 && (hh >= 22 || hh < 5), dsc = Math.max((cur.pg === 'din' && DD > 0) ? DD : 0, Number(cur.cp) || 0) + (Number(cur.ci) || 0);
       const v0 = Math.max(T.band, km*T.km) + min*T.min, ev2 = Math.round(v0 * (1 + (noite ? NT : 0)/100) * 100) / 100, tt = Math.round((ev2 + (xPar ? PAR : 0)) * (1 - dsc/100) * 100) / 100;
       estNova = `R$ ${brl(tt)} · ${km.toLocaleString('pt-BR', {maximumFractionDigits: 1})} km`; up[B + 'estim'] = estNova; up[P + 'm'] = durTotal(min);
     }
