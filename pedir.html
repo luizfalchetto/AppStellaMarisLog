@@ -206,6 +206,7 @@ legend{padding:0;margin-bottom:6px;font:700 16px "Barlow Condensed",sans-serif;l
         <p>Usamos seu nome, telefone, endereços, observações e, se você permitir, sua localização GPS <b>somente</b> para receber e atender o pedido, calcular o valor, entrar em contato e emitir o recibo. Não vendemos nem compartilhamos seus dados para outras finalidades.</p>
         <p>O pedido fica em um serviço de nuvem do Google (Firebase), cujos servidores podem estar fora do Brasil, e é limpo periodicamente da fila. O motorista pode manter nome, telefone e dados da corrida no histórico dele para recibo e controle da atividade.</p>
         <p>Controlador: <span id="avEmp">Stella Maris Logistics</span>. Para acessar, corrigir ou pedir a exclusão dos seus dados, fale conosco pelo WhatsApp. Se pedir para outra pessoa, informe só dados que ela autorizou.</p>
+        <p><b>Acessos:</b> contamos, de forma anônima, quantos aparelhos abrem esta página e quantos pedidos são enviados, usando só um código aleatório do aparelho (sem nome nem telefone), para melhorar o serviço.</p>
         <p><b>Cadastro e cupons:</b> se você se cadastrar, guardamos nome, WhatsApp, dia/mês do aniversário (sem o ano) e um código do seu aparelho apenas para gerar seu cupom de indicação, aplicar descontos e surpresas de aniversário e impedir que outra pessoa use os seus créditos. Seu cupom e a contagem de indicações ficam visíveis a quem souber o seu número de WhatsApp. Peça a exclusão quando quiser.</p>
       </details>
     </div>
@@ -246,7 +247,8 @@ const evv = () => Math.round(est.v * (1 + nAdd()/100) * 100) / 100;
 const DD = pc('dd') != null ? pc('dd') : 5;
 const CUP = 10; // % de desconto do cupom de indicação / aniversário (não acumula com o desconto do dinheiro: vale o maior)
 let CL = null;  // cadastro do cliente (cli/<whatsapp>)
-const DEV = (() => { try{ let d = localStorage.getItem('sm_dev'); if(!d){ d = Math.random().toString(36).slice(2, 12) + Date.now().toString(36); localStorage.setItem('sm_dev', d); } return d; }catch(x){ return ''; } })();
+let DEV_NEW = false;
+const DEV = (() => { try{ let d = localStorage.getItem('sm_dev'); if(!d){ DEV_NEW = true; d = Math.random().toString(36).slice(2, 12) + Date.now().toString(36); localStorage.setItem('sm_dev', d); } return d; }catch(x){ return ''; } })();
 const creAtivos = o => Object.entries(o || {}).filter(([k, e]) => Number(e) > Date.now()).sort((a, b) => a[1] - b[1]);
 const foneKey = s => { let d = String(s || '').replace(/\D/g, ''); if(d.length === 10 || d.length === 11) d = '55' + d; return /^\d{10,14}$/.test(d) ? d : ''; };
 const cupAtual = () => {
@@ -612,6 +614,7 @@ $('f').onsubmit = async e => {
     const sv = {sid, pid, wa, mid, t: Date.now()}; if(f.a) sv.a = f.a;
     { const g = id => $('o' + id).value.trim(); sv.po = {rua: g('Rua'), num: g('Num'), bai: g('Bai'), cid: g('Cid')}; sv.pt = o; sv.pc = pO ? {la: pO.la, lo: pO.lo} : null; sv.dc = pD ? {la: pD.la, lo: pD.lo} : null; sv.ps = par ? addr('s') : ''; sv.pg = $('pag').value; sv.cp = f.cp || 0; sv.ci = f.ci || 0; if(est) sv.es = {v: est.v, km: est.km, min: est.min, ap: !!est.aprox}; }
     try{ localStorage.setItem('sm_ped', JSON.stringify(sv)); }catch(x){}
+    accLog(true);
     g.disabled = false; g.textContent = 'Enviar pedido';
     mostrar(sv);
   }catch(x){
@@ -691,6 +694,19 @@ const cadTexto = () => `Oi! Use o meu cupom ${CL.cod} ao se cadastrar na Stella 
 $('cadZap').onclick = () => { if(CL && CL.cod) window.open('https://wa.me/?text=' + encodeURIComponent(cadTexto()), '_blank'); };
 $('cadCopia').onclick = async () => { if(!CL || !CL.cod) return; try{ await navigator.clipboard.writeText(cadTexto()); $('cadCopia').textContent = 'Copiado ✓'; setTimeout(() => { $('cadCopia').textContent = 'Copiar cupom'; }, 2000); }catch(x){ prompt('Copie o texto:', cadTexto()); } };
 $('cadSair').onclick = () => { try{ localStorage.removeItem('sm_cli'); }catch(x){} if(clOff){ clOff(); clOff = null; } CL = null; cadDesenhar(); showEst(); };
+// ---- contagem anônima de acessos (por aparelho; sem nome nem telefone) ----
+const accDia = () => { const d = new Date(); return String(d.getFullYear()*10000 + (d.getMonth() + 1)*100 + d.getDate()); };
+async function accLog(ped){
+  if(!DEV || !/^[a-z0-9]{8,40}$/.test(DEV)) return;
+  try{
+    const db = await loadFB(), SV = firebase.database.ServerValue, u = {t: SV.TIMESTAMP, s: ((window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone) ? 1 : 0, c: (CL && CL.f) ? 1 : 0};
+    if(DEV_NEW) u.n = 1;
+    if(!ped){ let ja = false; try{ ja = !!sessionStorage.getItem('sm_acc'); sessionStorage.setItem('sm_acc', '1'); }catch(x){} if(ja) return; u.v = SV.increment(1); }
+    else u.p = SV.increment(1);
+    await db.ref('acc/' + accDia() + '/' + DEV).update(u);
+  }catch(x){}
+}
+setTimeout(() => accLog(false), 2500);
 let ciT = 0, ciD = 0;
 async function cupChk(){
   const cod = $('cupIn').value.trim().toUpperCase().replace(/[^A-Z0-9]/g, ''), f = foneKey($('fone').value), m = $('cupMsg'), seq = ++ciT;
