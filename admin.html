@@ -90,6 +90,7 @@ tr:last-child td{border-bottom:0}
     <button type="button" data-t="empresas" aria-pressed="false">Empresas</button>
     <button type="button" data-t="usuarios" aria-pressed="false">Usuários</button>
     <button type="button" data-t="motoristas" aria-pressed="false">Motoristas</button>
+    <button type="button" data-t="clientes" aria-pressed="false">Clientes</button>
     <button type="button" data-t="numeracao" aria-pressed="false">Numeração</button>
   </nav>
 
@@ -171,6 +172,15 @@ tr:last-child td{border-bottom:0}
     </div>
     <div class="card"><h2>Motoristas parceiros</h2><div id="mLista"></div><p class="msg" id="mMsg"></p>
       <p class="foot">O parceiro entra no app do motorista com a conta Google dele, toca em "Sou motorista parceiro" e preenche o cadastro. Ele só começa a receber pedidos depois que você aprovar aqui. Os dados dele (nome, WhatsApp, carro e placa) são tratados só para operar o serviço (LGPD); nome, carro e placa aparecem aos clientes. Para apagar os dados dele, use Remover.</p></div>
+  </section>
+
+  <section id="t-clientes" class="wrap" style="padding:0" hidden>
+    <div class="card"><h2>Acesso ao app do cliente</h2><div id="cAcKpis" class="cards"></div><div id="cAcGraf" style="margin-top:12px"></div>
+      <p class="foot">Contagem anônima por aparelho (sem nome nem telefone). “Aparelhos” são celulares distintos que abriram a página do cliente no período.</p></div>
+    <div class="card"><h2>Cadastros e indicações</h2><div id="cInKpis" class="cards"></div></div>
+    <div class="card"><h2>Quem mais indica</h2><div id="cRank"></div></div>
+    <div class="card"><h2>Clientes cadastrados</h2><div class="row"><input id="cBusca" placeholder="Buscar por nome ou WhatsApp" style="flex:1"></div><div id="cLista"></div><p class="msg" id="cMsg"></p>
+      <p class="foot">Dados do cadastro (nome, WhatsApp, dia/mês do aniversário e código do aparelho) são tratados só para o cupom de indicação e os descontos (LGPD). Para atender um pedido de exclusão, use “Excluir cadastro”.</p></div>
   </section>
 
   <div id="mDoc" hidden style="position:fixed;inset:0;background:rgba(0,0,0,.88);overflow:auto;z-index:50;padding:16px"><div class="row"><b id="mDocT" style="color:#fff"></b><span class="sp"></span><button class="btn sm" type="button" id="mDocX">Fechar</button></div><div id="mDocL" style="display:grid;gap:14px;margin-top:12px"></div></div>
@@ -405,7 +415,7 @@ const rtTxt = n => 'RT' + String(n).padStart(9, '0');
 const dt = ts => ts ? new Date(ts).toLocaleString('pt-BR', {day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit'}) : '';
 const mesDe = ts => { const d = new Date(ts); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); };
 const SIT = {concluida: 'Concluída', noshow: 'No-Show', cancelada: 'Cancelada'};
-let db = null, auth = null, S = {empresas: {}, usuarios: {}, corridas: {}, faturas: {}, cont: {}, aval: {}, avalp: {}, frota: {}, pendm: {}}, ligado = false;
+let db = null, auth = null, S = {empresas: {}, usuarios: {}, corridas: {}, faturas: {}, cont: {}, aval: {}, avalp: {}, frota: {}, pendm: {}, cli: {}, usou: {}, acc: {}}, ligado = false;
 
 const loadJs = u => new Promise((res, rej) => { const s = document.createElement('script'); s.src = u; s.onload = res; s.onerror = () => rej(new Error('sdk')); document.head.append(s); });
 async function boot(){
@@ -449,16 +459,63 @@ function ligar(){
   on('contadores', 'cont', desenharNumeracao);
   on('frota', 'frota', desenharMotoristas);
   on('pendm', 'pendm', desenharMotoristas);
+  on('cli', 'cli', desenharClientes);
+  on('usou', 'usou', desenharClientes);
+  { const r = db.ref('acc').orderByKey().startAt(dkey(Date.now() - 31*864e5)); const cb = sn => { S.acc = sn.val() || {}; desenharClientes(); }; r.on('value', cb, e => {}); refs.push([r, cb]); }
   if(!$('fMes').value) $('fMes').value = mesDe(Date.now());
 }
 function desenhar(){ desenharEmpresas(); desenharUsuarios(); desenharCorridas(); desenharNumeracao(); }
-function desligar(){ refs.splice(0).forEach(([r, cb]) => r.off('value', cb)); ligado = false; S = {empresas: {}, usuarios: {}, corridas: {}, faturas: {}, cont: {}, aval: {}, avalp: {}, frota: {}, pendm: {}}; }
+function desligar(){ refs.splice(0).forEach(([r, cb]) => r.off('value', cb)); ligado = false; S = {empresas: {}, usuarios: {}, corridas: {}, faturas: {}, cont: {}, aval: {}, avalp: {}, frota: {}, pendm: {}, cli: {}, usou: {}, acc: {}}; }
 function toast(t, bad){ const m = $('nMsg'); if(m){ m.className = 'msg ' + (bad ? 'err' : 'ok'); m.textContent = t; } }
+
+// ---- clientes particulares: acesso, cadastros e indicações ----
+const dkey = ts => { const d = new Date(ts); return String(d.getFullYear()*10000 + (d.getMonth() + 1)*100 + d.getDate()); };
+const creAtivosA = o => Object.entries(o || {}).filter(([k, e]) => Number(e) > Date.now()).sort((a, b) => a[1] - b[1]);
+const foneBr = f => { const d = String(f || '').replace(/^55/, ''); return d.length === 11 ? `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}` : d.length === 10 ? `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}` : f; };
+const kpi = (t, v, s) => `<div class="kpi"><small>${esc(t)}</small><b>${v}</b>${s ? `<small style="text-transform:none;letter-spacing:0;font:12px Barlow,sans-serif">${esc(s)}</small>` : ''}</div>`;
+function desenharClientes(){
+  if(!$('cAcKpis')) return;
+  const acc = S.acc || {}, cli = S.cli || {}, usou = S.usou || {}, now = Date.now();
+  const dev = n => { const s = new Set(); for(let i = 0; i < n; i++){ const o = acc[dkey(now - i*864e5)] || {}; Object.keys(o).forEach(k => s.add(k)); } return s; };
+  const dia = i => Object.values(acc[dkey(now - i*864e5)] || {});
+  const h = dia(0), w = new Set(), pedW = new Set(); let pedN = 0, appW = new Set();
+  for(let i = 0; i < 7; i++){ const o = acc[dkey(now - i*864e5)] || {}; Object.entries(o).forEach(([k, x]) => { w.add(k); if(x.p) { pedW.add(k); pedN += x.p; } if(x.s) appW.add(k); }); }
+  const m = dev(30), cad30 = new Set(); for(let i = 0; i < 30; i++){ const o = acc[dkey(now - i*864e5)] || {}; Object.entries(o).forEach(([k, x]) => { if(x.c) cad30.add(k); }); }
+  const ped30 = new Set(); for(let i = 0; i < 30; i++){ const o = acc[dkey(now - i*864e5)] || {}; Object.entries(o).forEach(([k, x]) => { if(x.p) ped30.add(k); }); }
+  $('cAcKpis').innerHTML = kpi('Aparelhos hoje', h.length, h.filter(x => x.n).length + ' novos') + kpi('Aparelhos 7 dias', w.size, pedN + ' pedidos enviados') + kpi('Aparelhos 30 dias', m.size, cad30.size + ' cadastrados · ' + ped30.size + ' pediram') + kpi('Como app instalado (7d)', w.size ? Math.round(appW.size/w.size*100) + '%' : '—', appW.size + ' de ' + w.size);
+  const dias = Array.from({length: 14}, (_, i) => { const t = now - (13 - i)*864e5, o = Object.values(acc[dkey(t)] || {}); return {t, v: o.length, p: o.reduce((a, x) => a + (x.p || 0), 0)}; });
+  const mx = Math.max(1, ...dias.map(d => d.v));
+  $('cAcGraf').innerHTML = `<div style="display:flex;gap:4px;align-items:flex-end;height:90px">${dias.map(d => `<div style="flex:1;text-align:center;font-size:11px;color:var(--muted)"><div title="${d.v} aparelhos, ${d.p} pedidos" style="height:${Math.max(2, Math.round(d.v/mx*64))}px;background:var(--taxi);border-radius:4px 4px 0 0"></div>${d.v}<br>${String(new Date(d.t).getDate()).padStart(2, '0')}/${String(new Date(d.t).getMonth() + 1).padStart(2, '0')}</div>`).join('')}</div>`;
+  const ks = Object.keys(cli).filter(k => cli[k] && cli[k].cod);
+  const n7 = ks.filter(k => now - (cli[k].t || 0) < 7*864e5).length, mes = new Date().getMonth() + 1;
+  const indTot = ks.reduce((a, k) => a + Object.keys(cli[k].ind || {}).length, 0), crTot = ks.reduce((a, k) => a + creAtivosA(cli[k].cre).length, 0);
+  const aniv = ks.filter(k => cli[k].nasc && +cli[k].nasc.slice(0, 2) === mes).length;
+  $('cInKpis').innerHTML = kpi('Cadastros', ks.length, n7 + ' nos últimos 7 dias') + kpi('Usaram cupom de amigo', Object.keys(usou).length) + kpi('Indicações concluídas', indTot) + kpi('Créditos ativos', crTot, 'de 10% em corridas') + kpi('Aniversariantes do mês', aniv);
+  const rank = ks.map(k => ({k, n: Object.keys(cli[k].ind || {}).length, c: creAtivosA(cli[k].cre).length})).filter(x => x.n > 0).sort((a, b) => b.n - a.n).slice(0, 8);
+  $('cRank').innerHTML = rank.length ? rank.map((x, i) => `<div class="item"><div class="row"><b>${i + 1}. ${esc(cli[x.k].n)}</b><span class="tag gold">${esc(cli[x.k].cod)}</span><span class="sp"></span><span>${x.n} indicado${x.n > 1 ? 's' : ''} · ${x.c} crédito${x.c === 1 ? '' : 's'} ativo${x.c === 1 ? '' : 's'}</span></div></div>`).join('') : '<p class="foot">Ainda ninguém indicou.</p>';
+  const q = ($('cBusca').value || '').trim().toLowerCase();
+  const lst = ks.filter(k => !q || (cli[k].n || '').toLowerCase().includes(q) || k.includes(q.replace(/\D/g, '') || '§')).sort((a, b) => (cli[b].t || 0) - (cli[a].t || 0));
+  $('cLista').innerHTML = lst.length ? lst.map(k => { const c = cli[k], a = creAtivosA(c.cre), por = usou[k] && cli[usou[k]] ? cli[usou[k]].n : '';
+    const dias1 = a.length ? Math.max(1, Math.ceil((a[0][1] - now)/864e5)) : 0;
+    return `<div class="item"><div class="row"><b>${esc(c.n)}</b><span>${esc(foneBr(k))}</span><span class="tag gold">${esc(c.cod)}</span>${c.dev ? '<span class="tag ok">aparelho vinculado</span>' : '<span class="tag">sem aparelho</span>'}<span class="sp"></span><span class="muted">${c.t ? new Date(c.t).toLocaleDateString('pt-BR') : ''}</span></div>
+      <div class="row muted"><span>Indicados: <b>${Object.keys(c.ind || {}).length}</b></span><span>Créditos: <b>${a.length}</b>${a.length ? ' (vence em ' + dias1 + ' d)' : ''}</span>${c.nasc ? `<span>Aniversário: ${c.nasc.slice(2)}/${c.nasc.slice(0, 2)}</span>` : ''}${por ? `<span>Indicado por: ${esc(por)}</span>` : (usou[k] ? '<span>Usou cupom de amigo</span>' : '')}</div>
+      <div class="row"><button class="btn sm" type="button" data-a="cr" data-k="${esc(k)}">+1 crédito</button>${c.dev ? `<button class="btn sm" type="button" data-a="dv" data-k="${esc(k)}">Liberar aparelho</button>` : ''}<button class="btn sm" type="button" data-a="ex" data-k="${esc(k)}" style="color:var(--bad)">Excluir cadastro</button></div></div>`; }).join('') : '<p class="foot">Nenhum cadastro encontrado.</p>';
+}
+$('cBusca').oninput = desenharClientes;
+$('cLista').onclick = async e => {
+  const b = e.target.closest('button[data-a]'); if(!b) return; const k = b.dataset.k, c = (S.cli || {})[k], m = $('cMsg'); if(!c) return;
+  const ok = t => { m.className = 'msg ok'; m.textContent = t; };
+  try{
+    if(b.dataset.a === 'cr'){ const key = 'm' + Date.now().toString(36); await db.ref('cli/' + k + '/cre/' + key).set(Date.now() + 30*864e5*Math.ceil((creAtivosA(c.cre).length + 1)/4)); ok('Crédito de 10% adicionado para ' + c.n + '.'); }
+    else if(b.dataset.a === 'dv'){ if(!confirm('Liberar o aparelho de ' + c.n + '? Na próxima vez, qualquer celular poderá se cadastrar com esse WhatsApp.')) return; await db.ref('cli/' + k + '/dev').remove(); ok('Aparelho liberado.'); }
+    else if(b.dataset.a === 'ex'){ if(!confirm('Excluir o cadastro de ' + c.n + '? O cupom, os créditos e o aniversário dele serão apagados e isso não pode ser desfeito.')) return; await db.ref().update({['cli/' + k]: null, ['cup/' + c.cod]: null, ['usou/' + k]: null}); ok('Cadastro excluído.'); }
+  }catch(x){ m.className = 'msg err'; m.textContent = 'Não foi possível concluir (permissão ou conexão).'; }
+};
 
 // ---- abas ----
 $('tabs').onclick = e => { const b = e.target.closest('button[data-t]'); if(!b) return;
   document.querySelectorAll('#tabs button').forEach(x => x.setAttribute('aria-pressed', x === b));
-  ['corridas', 'painel', 'empresas', 'usuarios', 'motoristas', 'numeracao'].forEach(t => $('t-' + t).hidden = t !== b.dataset.t); };
+  ['corridas', 'painel', 'empresas', 'usuarios', 'motoristas', 'clientes', 'numeracao'].forEach(t => $('t-' + t).hidden = t !== b.dataset.t); };
 
 // ---- empresas ----
 const empAtivas = () => Object.keys(S.empresas).filter(k => S.empresas[k].ativo).sort((a, b) => S.empresas[a].nome.localeCompare(S.empresas[b].nome, 'pt-BR'));
