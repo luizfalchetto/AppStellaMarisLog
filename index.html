@@ -203,7 +203,6 @@ h3{font:700 15px var(--f-cond);letter-spacing:.12em;text-transform:uppercase;col
 
   <div class="dispRow">
     <button class="btn disp" id="bDisp" type="button" aria-pressed="false" style="grid-column:1/-1">Indisponível</button>
-    <div class="dynsel" id="dynMain" hidden style="grid-column:1/-1;margin-top:0"></div>
     <button class="btn dem" id="bDem" type="button" aria-pressed="false" style="grid-column:1/-1;min-height:44px;font-size:15px">Alta demanda: desligada</button>
   </div>
 
@@ -322,8 +321,6 @@ h3{font:700 15px var(--f-cond);letter-spacing:.12em;text-transform:uppercase;col
       <p class="hint" style="margin:0;align-self:end">Só vale para pagamento em dinheiro. Pix e cartão: sem desconto e sem taxa.</p>
     </div>
     <div class="field"><label for="cPix">Chave Pix</label><input id="cPix" type="text" autocomplete="off"></div>
-    <div class="field"><label for="cDyn">Tarifa dinâmica — feriado: acréscimo (%)</label><input id="cDyn" type="text" inputmode="decimal" placeholder="50"></div>
-    <div class="field"><label for="cDynC">Tarifa dinâmica — chuva forte: acréscimo (%)</label><input id="cDynC" type="text" inputmode="decimal" placeholder="30"></div>
     <div class="field"><label for="cNot">Adicional noturno — partida entre 22h e 05h (%)</label><input id="cNot" type="text" inputmode="decimal" placeholder="30"></div>
     <div class="field"><label for="cPar">Parada adicional (R$, valor fixo por parada)</label><div class="money"><input id="cPar" type="text" inputmode="decimal" placeholder="3,00"></div></div>
     <div class="field"><label for="cMeta">Meta diária (R$)</label><div class="money"><input id="cMeta" type="text" inputmode="decimal" placeholder="0,00"></div></div>
@@ -340,7 +337,6 @@ h3{font:700 15px var(--f-cond);letter-spacing:.12em;text-transform:uppercase;col
   <div class="app">
     <header><h2>Corrida encerrada</h2><button class="iconbtn" type="button" id="bFimClose">Fechar</button></header>
     <div class="card"><div class="lines" id="fimLines"></div></div>
-    <div class="field"><label>Tarifa dinâmica</label><div class="dynsel" id="dynFim" hidden></div></div>
     <div class="field"><label>Forma de pagamento</label><div class="seg4" id="fPag" role="group" aria-label="Forma de pagamento"><button type="button" data-p="din">Dinheiro</button><button type="button" data-p="pix">Pix</button><button type="button" data-p="deb">Débito</button><button type="button" data-p="cre">Crédito</button></div></div>
     <div class="card pixbox" id="pixBox" hidden><div id="pixQr"></div><p class="hint" id="pixVal"></p><button class="btn" type="button" id="bPixCopy">Copiar Pix copia e cola</button></div>
     <div class="field"><label for="fOrig">Endereço de partida</label><input id="fOrig" type="text" autocomplete="off" placeholder="Preenchido pelo GPS — você pode editar"></div>
@@ -483,14 +479,6 @@ const DYN = {fer:'Feriado', chu:'Chuva forte'};
 const dynRate = (c, k) => k === 'chu' ? (c && c.dynC != null ? Number(c.dynC) : 30) : (c && c.dyn != null ? Number(c.dyn) : 50);
 const notRate = c => c && c.noturno != null ? Number(c.noturno) : 30;
 const ehNoite = ts => { const h = +new Intl.DateTimeFormat('pt-BR',{timeZone:'America/Sao_Paulo',hour:'2-digit',hour12:false}).formatToParts(new Date(ts)).find(x=>x.type==='hour').value % 24; return h >= 22 || h < 5; };
-const dynPc = r => r && r.cfg ? dynRate(r.cfg, 'fer') : 50;
-function drawDyn(el, r, fn){
-  const pc = dynRate(r && r.cfg, 'fer'), pcC = dynRate(r && r.cfg, 'chu'); el.hidden = !r || (pc <= 0 && pcC <= 0); if(el.hidden) return;
-  const key = (r.dyn || '') + '|' + pc + '|' + pcC + '|' + r.id; if(el.dataset.k === key) return; el.dataset.k = key; el.replaceChildren();
-  const p = pc.toLocaleString('pt-BR');
-  [['', 'Normal'], ['fer', 'Feriado +' + p + '%'], ['chu', 'Chuva forte +' + pcC.toLocaleString('pt-BR') + '%']].forEach(([k, t]) => { const b = document.createElement('button'); b.type = 'button'; b.textContent = t; b.setAttribute('aria-pressed', (r.dyn || '') === k); b.onclick = () => fn(k); el.append(b); });
-}
-let dynSel = store.get('tx_dyn', null) || null;
 const PAGN = {din:'Dinheiro', pix:'Pix', deb:'Débito', cre:'Crédito', fatura:'Fatura mensal (empresa)'};
 let cfg = Object.assign({}, DEF, store.get('tx_cfg', {}));
 if(!cfg.d10){ if(Number(cfg.desc) === 5) cfg.desc = 10; cfg.d10 = 1; store.set('tx_cfg', cfg); } // desconto no dinheiro passou de 5% para 10% (uma vez)
@@ -620,7 +608,7 @@ $('nCli').oninput = () => { const c = cliList().find(x => x.nome.toLowerCase() =
 function newRide(tipo, agendado, cliente, fone, direto){
   const now = Date.now();
   ride = {id: now, tipo, agendado, cliente, fone, cfg: Object.assign({}, cfg), fase: direto ? 'corrida' : 'indo',
-          criado: now, chegada: null, inicio: direto ? now : null, fim: null, m: 0, last: null, kmManual: null, dyn: dynSel || null};
+          criado: now, chegada: null, inicio: direto ? now : null, fim: null, m: 0, last: null, kmManual: null, dyn: null};
   save(); keepAwake(true); if(direto){ startGps(); capEnd(ride, 'orig'); } render();
 }
 function cheguei(){ ride.chegada = Date.now(); ride.fase = 'espera'; save(); qSync('chegou'); render(); if(ride.fone) avisar(); }
@@ -660,7 +648,7 @@ async function aplicarEmpresa(it){
   if(!(ride && ride.fila && ride.fila.sid === sid)) return;
   if(!(rt && e && rt.eid === it.eid && rt.sid === sid && e.ativo)){ toast('Atenção: não consegui validar a ' + it.rt + '. A tarifa normal foi mantida; confira antes de iniciar.'); return; }
   const t = e.tar || {};
-  ride.cfg = Object.assign({}, ride.cfg, {band: Number(t.band) || 0, km: Number(t.km) || 0, min: Number(t.min) || 0, esp: Number(t.esp) || 0, dyn: t.dyn != null ? Number(t.dyn) : 50, desc: null, semTaxa: true});
+  ride.cfg = Object.assign({}, ride.cfg, {band: Number(t.band) || 0, km: Number(t.km) || 0, min: Number(t.min) || 0, esp: Number(t.esp) || 0, desc: null, semTaxa: true});
   ride.emp = {eid: it.eid, nome: e.nome, rt: it.rt, uid: rt.uid || '', cc: rt.cc || '', solNome: rt.solNome || '', solEmail: rt.solEmail || '', pasNome: rt.pasNome || '', pasEmail: rt.pasEmail || '', pasFone: rt.pasFone || '', estimV: rt.estimV != null ? Number(rt.estimV) : 0, recDesc: rt.serie ? (Number(e.recDesc) || 0) : 0, nsPct: e.nsPct != null ? Number(e.nsPct) : 50, canH: e.canH != null ? Number(e.canH) : 6, a: rt.a || null, partida: rt.partida || '', destino: rt.destino || ''};
   ride.pag = 'fatura'; save(); render(); toast(it.rt + ' · ' + e.nome + ': tarifa da empresa aplicada.');
 }
@@ -791,7 +779,6 @@ function render(){
   $('chip').dataset.s = fase; $('chipTxt').textContent = chipTxt[fase];
   $('cliTxt').textContent = ride && ride.cliente ? ride.cliente + (ride.emp ? ' · ' + ride.emp.rt + ' · ' + ride.emp.nome : '') : '';
   const c = ride ? calc(ride) : null;
-  { const live = ride && ride.fase !== 'fim'; drawDyn($('dynMain'), {cfg: cfg, id: 'g', dyn: live ? ride.dyn : dynSel}, k => { dynSel = k || null; store.set('tx_dyn', dynSel); if(ride && ride.fase !== 'fim'){ ride.dyn = dynSel; save(); } render(); }); }
   $('total').innerHTML = '<span>R$</span>' + brl(c ? c.total : 0);
   $('totLbl').textContent = fase === 'espera' || fase === 'indo' ? 'Espera acumulada' : fase === 'fim' ? 'Total da corrida' : 'Valor';
   $('rKm').textContent = (c ? c.km : 0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -884,13 +871,13 @@ const fmtIn = v => v ? brl(v) : '';
 function openCfg(){
   $('cNome').value = cfg.nome; $('cPlaca').value = cfg.placa; $('cModelo').value = cfg.modelo || '';
   $('cBand').value = fmtIn(cfg.band); $('cKm').value = fmtIn(cfg.km); $('cMin').value = fmtIn(cfg.min); $('cEsp').value = fmtIn(cfg.esp);
-  $('cArr').value = String(cfg.arred); $('cPar').value = String(cfg.par != null ? cfg.par : 3).replace('.', ','); $('cMsg').value = cfg.msg; $('cEmp').value = cfg.empresa || ''; $('cCnpj').value = cfg.cnpj || ''; $('cWhats').value = cfg.whats || ''; $('cDesc').value = String(cfg.desc != null ? cfg.desc : 5).replace('.', ','); $('cPix').value = cfg.pix || ''; $('cMeta').value = fmtIn(cfg.meta); $('cDyn').value = String(cfg.dyn != null ? cfg.dyn : 50).replace('.', ','); $('cDynC').value = String(cfg.dynC != null ? cfg.dynC : 30).replace('.', ','); $('cNot').value = String(cfg.noturno != null ? cfg.noturno : 30).replace('.', ',');
+  $('cArr').value = String(cfg.arred); $('cPar').value = String(cfg.par != null ? cfg.par : 3).replace('.', ','); $('cMsg').value = cfg.msg; $('cEmp').value = cfg.empresa || ''; $('cCnpj').value = cfg.cnpj || ''; $('cWhats').value = cfg.whats || ''; $('cDesc').value = String(cfg.desc != null ? cfg.desc : 5).replace('.', ','); $('cPix').value = cfg.pix || ''; $('cMeta').value = fmtIn(cfg.meta); $('cNot').value = String(cfg.noturno != null ? cfg.noturno : 30).replace('.', ',');
   show('sCfg', true);
 }
 $('fCfg').onsubmit = e => {
   e.preventDefault();
   cfg = {nome:$('cNome').value.trim(), placa:$('cPlaca').value.trim().toUpperCase(), modelo:$('cModelo').value.trim(), band:numIn($('cBand').value),
-         km:numIn($('cKm').value), min:numIn($('cMin').value), esp:numIn($('cEsp').value), arred:Number($('cArr').value), msg:$('cMsg').value.trim(), empresa:$('cEmp').value.trim(), cnpj:$('cCnpj').value.trim(), whats:$('cWhats').value.replace(/\D/g,''), taxaDeb:0, taxaCre:0, semTaxa:true, desc:numIn($('cDesc').value), pix:$('cPix').value.trim(), meta:numIn($('cMeta').value), dyn:numIn($('cDyn').value), dynC:numIn($('cDynC').value), noturno:numIn($('cNot').value), par:numIn($('cPar').value), d10:1};
+         km:numIn($('cKm').value), min:numIn($('cMin').value), esp:numIn($('cEsp').value), arred:Number($('cArr').value), msg:$('cMsg').value.trim(), empresa:$('cEmp').value.trim(), cnpj:$('cCnpj').value.trim(), whats:$('cWhats').value.replace(/\D/g,''), taxaDeb:0, taxaCre:0, semTaxa:true, desc:numIn($('cDesc').value), pix:$('cPix').value.trim(), meta:numIn($('cMeta').value), noturno:numIn($('cNot').value), par:numIn($('cPar').value), d10:1};
   store.set('tx_cfg', cfg); show('sCfg', false); render();
   toast(ride && ride.fase !== 'fim' ? 'Tarifas salvas. Valem a partir da próxima corrida.' : 'Tarifas salvas');
 };
@@ -899,7 +886,7 @@ $('bLink').onclick = async () => {
   if(w.length <= 11) w = '55' + w;
   const n = s => String(s || '').replace('.', ',');
   const u = new URL('pedir.html', location.href);
-  u.search = new URLSearchParams({w, n:($('cEmp').value.trim() || 'Stella Maris Logistics'), b:n(numIn($('cBand').value)), k:n(numIn($('cKm').value)), m:n(numIn($('cMin').value)), e:n(numIn($('cEsp').value)), d:n(numIn($('cDyn').value)), dc:n(numIn($('cDynC').value)), nt:n(numIn($('cNot').value)), dd:n(numIn($('cDesc').value))}).toString();
+  u.search = new URLSearchParams({w, n:($('cEmp').value.trim() || 'Stella Maris Logistics'), b:n(numIn($('cBand').value)), k:n(numIn($('cKm').value)), m:n(numIn($('cMin').value)), e:n(numIn($('cEsp').value)), nt:n(numIn($('cNot').value)), dd:n(numIn($('cDesc').value))}).toString();
   try{ await navigator.clipboard.writeText(u.href); toast('Link copiado. Mande ao cliente.'); }catch(e){ prompt('Copie o link:', u.href); }
 };
 $('bCfg').onclick = openCfg; $('bCfg2').onclick = openCfg;
@@ -1007,7 +994,7 @@ function persistFim(){
 }
 $('fOrig').oninput = () => { fimRide.orig = $('fOrig').value.trim(); persistFim(); fillFim(fimRide); };
 $('fDest').oninput = () => { fimRide.dest = $('fDest').value.trim(); persistFim(); fillFim(fimRide); };
-function syncPag(){ drawDyn($('dynFim'), fimRide, k => { fimRide.dyn = k || null; syncPag(); persistFim(); fillFim(fimRide); if(ride) render(); }); document.querySelectorAll('#fPag button').forEach(b => b.setAttribute('aria-pressed', !(fimRide.pagPend && !fimRide.emp) && b.dataset.p === (fimRide.pag || 'din'))); }
+function syncPag(){ document.querySelectorAll('#fPag button').forEach(b => b.setAttribute('aria-pressed', !(fimRide.pagPend && !fimRide.emp) && b.dataset.p === (fimRide.pag || 'din'))); }
 function setPag(p){ fimRide.pag = p; fimRide.pagPend = 0; syncPag(); persistFim(); fillFim(fimRide); if(ride) render(); }
 document.querySelectorAll('#fPag button').forEach(b => b.onclick = () => setPag(b.dataset.p));
 function crc16(s){ let c = 0xFFFF; for(let i = 0; i < s.length; i++){ c ^= s.charCodeAt(i) << 8; for(let j = 0; j < 8; j++) c = (c & 0x8000) ? ((c << 1) ^ 0x1021) & 0xFFFF : (c << 1) & 0xFFFF; } return c.toString(16).toUpperCase().padStart(4, '0'); }
