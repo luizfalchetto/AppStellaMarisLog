@@ -52,6 +52,7 @@ legend{padding:0;margin-bottom:6px;font:700 16px "Barlow Condensed",sans-serif;l
 .disp.on i{background:var(--ok);box-shadow:0 0 8px var(--ok)}
 .disp.off i{background:#ff8a80}
 .disp small{color:var(--muted);display:block}
+.mdl{position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:60;display:grid;place-items:center;padding:16px}.mdl>div{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;max-width:560px;width:100%;max-height:88vh;overflow:auto;display:grid;gap:12px}.mdl h2{margin:0;font:700 18px "Barlow Condensed",sans-serif;letter-spacing:.08em;text-transform:uppercase;color:var(--taxi)}.mdl .aviso{border:0;padding:0;background:none}.mdl small,.mdl p{color:var(--muted)}.rg{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.rg a{color:var(--taxi);font-weight:600}
 .aviso{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px;display:grid;gap:8px;font-size:14px}
 .aviso b.t{font:700 16px "Barlow Condensed",sans-serif;letter-spacing:.08em;text-transform:uppercase;color:var(--taxi)}
 .aviso ul{margin:0;padding-left:18px;display:grid;gap:6px;color:var(--fg)}
@@ -135,7 +136,7 @@ legend{padding:0;margin-bottom:6px;font:700 16px "Barlow Condensed",sans-serif;l
     </div>
     <div id="cadNo">
       <b>🎟️ Cadastre-se e ganhe desconto</b>
-      <small>Você recebe um <b>cupom seu</b>. Seu amigo usa o cupom no <b style="display:inline">primeiro pedido dele</b> e ganha <b style="display:inline">5% de desconto</b>. Quando a corrida dele for concluída, você ganha <b style="display:inline">10% de desconto em uma corrida</b> (10 amigos = 10 corridas com 10%). Os créditos têm validade (30 dias a cada 4 créditos acumulados). Descontos não são acumulativos: em cada corrida vale só o maior. Quem já tem cadastro usa apenas os próprios créditos, não cupom de outras pessoas.</small>
+      <small style="display:block">Indique amigos e ganhe desconto. Veja as regras em “Ver regras”.</small>
       <button class="mini" type="button" id="cadAbre">Fazer meu cadastro</button>
       <div id="cadF" hidden style="display:none;gap:10px;margin-top:6px">
         <div class="field"><label for="cNome">Seu nome</label><input id="cNome" autocomplete="off" maxlength="60"></div>
@@ -148,15 +149,16 @@ legend{padding:0;margin-bottom:6px;font:700 16px "Barlow Condensed",sans-serif;l
     </div>
   </section>
   <form id="f" class="app" style="padding:0" autocomplete="off" novalidate>
+    <div class="rg"><label class="ck"><input type="checkbox" id="ciente"><span>Li as regras e concordo.</span></label><a href="#" id="verReg">Ver regras</a></div>
     <div class="field"><label for="nome">Seu nome</label><input id="nome" required placeholder="Ex.: Dona Marta"></div>
     <div class="field"><label for="fone">Seu WhatsApp (necessário para receber o recibo)</label><input id="fone" type="tel" inputmode="tel" placeholder="(22) 99999-9999"></div>
-    <div class="field"><label for="cupIn">Cupom de indicação (opcional)</label><input id="cupIn" maxlength="12" autocomplete="off" style="text-transform:uppercase" placeholder="Código de um amigo"><small id="cupMsg" style="display:block;margin-top:6px;color:var(--muted)">Vale só na sua primeira corrida com cupom e dá 5% de desconto.</small></div>
+    <div class="field"><label for="cupIn">Cupom de indicação (opcional)</label><input id="cupIn" maxlength="12" autocomplete="off" style="text-transform:uppercase" placeholder="Código de um amigo"><small id="cupMsg" style="display:block;margin-top:6px;color:var(--muted)">Vale só na primeira corrida.</small></div>
     <div class="field"><label>Para quem é a corrida?</label>
       <div class="seg"><button type="button" id="bMim" aria-pressed="true">Para mim</button><button type="button" id="bOutro" aria-pressed="false">Para outra pessoa</button></div>
     </div>
     <fieldset id="fPass" hidden><legend>Quem vai viajar</legend>
       <div class="field"><label for="pNome">Nome do passageiro</label><input id="pNome" placeholder="Ex.: João"></div>
-      <div class="field"><label for="pFone">Telefone do passageiro (opcional)</label><input id="pFone" type="tel" inputmode="tel" placeholder="(22) 99999-9999"></div>
+      <div class="field"><label for="pFone">WhatsApp do passageiro (opcional)</label><input id="pFone" type="tel" inputmode="tel" placeholder="(22) 99999-9999"></div>
     </fieldset>
     <fieldset id="fMot" hidden><legend>Escolha o carro</legend><div class="mot" id="motL"></div><small id="motAv" style="display:block;margin-top:6px;color:var(--muted)">Cada motorista tem a própria agenda e o mesmo preço.</small></fieldset>
     <fieldset><legend>Partida</legend>
@@ -180,18 +182,26 @@ legend{padding:0;margin-bottom:6px;font:700 16px "Barlow Condensed",sans-serif;l
       <div class="g2"><div class="field"><label for="sNum">Número</label><input id="sNum" inputmode="numeric" placeholder="123" autocomplete="off"></div><div class="field"><label for="sBai">Bairro</label><input id="sBai" placeholder="Bairro" autocomplete="off"></div></div>
       <div class="field"><label for="sCid">Cidade</label><input id="sCid" value="Macaé" autocomplete="off"></div>
     </fieldset>
-    <div class="field" id="fQuando"><label for="quando">Data e hora da corrida</label><input id="quando" type="datetime-local" required><small id="qAv" style="display:block;margin-top:6px"></small><small style="display:block;margin-top:6px;color:var(--muted)">Atendemos <b>somente com agendamento</b>, com pelo menos 30 minutos de antecedência e o pedido de agendamento só pode ser feito entre <b>05:00 e 21:30</b> (a partida pode ser depois desse horário). O horário fica reservado só para você, sem custo extra.</small></div>
+    <div class="field" id="fQuando"><label for="quando">Data e hora da corrida</label><input id="quando" type="datetime-local" required><small id="qAv" style="display:block;margin-top:6px"></small><small style="display:block;margin-top:6px;color:var(--muted)">Somente com agendamento, com pelo menos 30 minutos de antecedência.</small></div>
     <div class="field"><button class="mini" type="button" id="bPet" aria-expanded="false">🐾 Vou levar um pet</button></div>
     <fieldset id="fPet" hidden><legend>Pet na corrida</legend>
-      <p class="hint">Avise o motorista antes: pet precisa estar em <b>caixa de transporte</b> (pequeno porte) ou de <b>guia/coleira curta</b> (médio e grande). Cães-guia são sempre bem-vindos. O motorista pode pedir para você forrar o banco, e sujeira ou danos no carro causados pelo pet podem ser cobrados.</p>
+      <p class="hint">Avise o motorista antes. Caixa de transporte (pequeno porte) ou guia/coleira curta (médio e grande). <b>Se o pet sujar o carro, a higienização é por conta do dono.</b></p>
       <div class="g2"><div class="field"><label for="petTipo">Animal</label><select id="petTipo"><option>Cachorro</option><option>Gato</option><option>Outro</option></select></div>
       <div class="field"><label for="petPorte">Porte</label><select id="petPorte"><option value="pequeno">Pequeno (até 10 kg)</option><option value="médio">Médio (10 a 25 kg)</option><option value="grande">Grande (mais de 25 kg)</option></select></div></div>
       <div class="field"><label for="petCx">Como vai viajar?</label><select id="petCx"><option value="em caixa de transporte">Em caixa de transporte</option><option value="de guia/coleira">De guia/coleira</option></select></div>
     </fieldset>
-    <div class="field" id="credBox" hidden><label class="ck"><input type="checkbox" id="credCk" checked><span id="credTx"></span></label><small style="display:block;margin-top:6px;color:var(--muted)">Desmarque para guardar o crédito para outra corrida. Descontos não são acumulativos: crédito e dinheiro não somam, vale só o maior.</small></div>
+    <div class="field" id="credBox" hidden><label class="ck"><input type="checkbox" id="credCk" checked><span id="credTx"></span></label><small style="display:block;margin-top:6px;color:var(--muted)">Desmarque para guardar o crédito. Não soma com o desconto do dinheiro: vale só o maior.</small></div>
     <div class="field"><label for="pag">Forma de pagamento</label><select id="pag" required><option value="">Selecione…</option><option value="din">Dinheiro</option><option value="pix">Pix</option><option value="cartao">Cartão de débito/crédito</option></select><small id="pagAv" style="display:block;margin-top:6px;color:var(--muted)"></small>
       <label class="ck" id="dinBox" hidden style="margin-top:8px"><input type="checkbox" id="dinCk"><span id="dinTx"></span></label></div>
     <div class="field"><label for="obs">Observações (opcional)</label><textarea id="obs" placeholder="Ponto de referência, nº de passageiros, bagagem…"></textarea></div>
+    <div class="est" id="est" hidden></div>
+    <button class="mini" type="button" id="bEst" hidden>Calcular estimativa de valor</button>
+    <p class="err" id="err" hidden></p>
+    <button class="go" type="submit" id="go">Enviar pedido</button>
+    <p class="hint">Você acompanha o status aqui. O valor final é calculado pelo app.</p>
+  </form>
+    <div class="mdl" id="regras" hidden><div role="dialog" aria-label="Regras"><h2>Regras e informações</h2>
+      <p>Ao marcar “Li as regras e concordo”, você concorda com estas regras e com o uso dos seus dados descrito em “Privacidade e seus dados (LGPD)”, abaixo.</p>
     <div class="aviso" id="aviso">
       <b class="t">Antes de pedir, saiba que</b>
       <ul>
@@ -213,13 +223,12 @@ legend{padding:0;margin-bottom:6px;font:700 16px "Barlow Condensed",sans-serif;l
         <p><b>Cadastro e cupons:</b> se você se cadastrar, guardamos nome, WhatsApp, dia/mês do aniversário (sem o ano) e um código do seu aparelho apenas para gerar seu cupom de indicação, aplicar descontos e surpresas de aniversário e impedir que outra pessoa use os seus créditos. Seu cupom e a contagem de indicações ficam visíveis a quem souber o seu número de WhatsApp. Peça a exclusão quando quiser.</p>
       </details>
     </div>
-    <label class="ck"><input type="checkbox" id="ciente"><span>Li os avisos acima e concordo com o uso dos meus dados para atender o pedido.</span></label>
-    <div class="est" id="est" hidden></div>
-    <button class="mini" type="button" id="bEst" hidden>Calcular estimativa de valor</button>
-    <p class="err" id="err" hidden></p>
-    <button class="go" type="submit" id="go">Enviar pedido</button>
-    <p class="hint">Seu pedido fica agendado e você acompanha o status aqui. O motorista confirma o valor final. A estimativa é aproximada: o valor final é calculado pelo app.</p>
-  </form>
+      <h3 style="margin:8px 0 0;font:700 15px 'Barlow Condensed',sans-serif;letter-spacing:.08em;text-transform:uppercase;color:var(--taxi)">Indique e ganhe</h3>
+      <p>Você recebe um <b>cupom seu</b> ao se cadastrar. Seu amigo usa o cupom no <b>primeiro pedido dele</b> e ganha <b>5% de desconto</b>. Quando a corrida dele for concluída, você ganha <b>10% de desconto em uma corrida</b> (10 amigos = 10 corridas com 10%). Os créditos têm validade (30 dias a cada 4 créditos acumulados). <b>Descontos não são acumulativos:</b> em cada corrida vale só o maior (crédito, cupom de amigo ou dinheiro). Quem já tem cadastro usa apenas os próprios créditos, não cupom de outras pessoas.</p>
+      <p><b>Pet:</b> avise o motorista antes. Pet viaja em caixa de transporte (pequeno porte) ou de guia/coleira curta (médio e grande); cães-guia são sempre bem-vindos. O motorista pode pedir para forrar o banco. <b>Se o pet sujar o carro, a higienização é por conta do dono.</b></p>
+      <p>Seu pedido fica agendado e você acompanha o status na própria página. O motorista confirma o valor final; a estimativa é aproximada.</p>
+      <button class="go" type="button" id="regFecha">Fechar</button></div></div>
+
 </div>
 <script>
 (() => {
@@ -237,7 +246,7 @@ const pc = k => { const v = String(q.get(k) || '').replace(',', '.').trim(); ret
 const fmt = v => v.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
 { const e = pc('e'), d = pc('d'), td = pc('td'), tc = pc('tc');
   if(e) document.getElementById('avEsp').textContent = ` por minuto (R$ ${fmt(e)}/min)`;
-  { const dc = pc('dc'), f = d != null ? d : 50, c = dc != null ? dc : 30, li = document.getElementById('avDyn'), z = v => String(v).replace('.', ','); li.hidden = false; li.innerHTML = `<b>Tarifa dinâmica:</b> em dias de chuva o valor tem acréscimo de ${z(c)}%, e em feriados, de ${z(f)}%. Corridas com <b>partida entre 22h e 05h</b> têm adicional noturno de ${z(pc('nt') != null ? pc('nt') : 30)}%.`; }
+  { const dc = pc('dc'), f = d != null ? d : 50, c = dc != null ? dc : 30, li = document.getElementById('avDyn'), z = v => String(v).replace('.', ','); li.hidden = false; li.innerHTML = `<b>Adicional noturno:</b> corridas com <b>partida entre 22h e 05h</b> têm adicional de ${z(pc('nt') != null ? pc('nt') : 30)}%.`; }
   { const dd = pc('dd'), x = dd != null ? dd : 10; document.getElementById('avCar').innerHTML = `, ou cartão de débito/crédito, sem taxa adicional. <b>Pagando em dinheiro você tem ${String(x).replace('.', ',')}% de desconto</b> (o desconto vale somente para dinheiro, não para Pix nem cartão). Os descontos não são acumulativos: vale apenas o maior (se você usar crédito de indicação ou cupom, não soma com o do dinheiro)`; }
   const emp = q.get('n'); if(emp) document.getElementById('avEmp').textContent = emp; }
 const PAR = q.has('pa') ? num('pa') : 3, parTxt = 'R$ ' + fmt(PAR);
@@ -284,10 +293,12 @@ const piso = v => rio() ? Math.max(v, RIO_MIN) : v;
 const tot = () => piso(Math.round((evv() + (par ? PAR : 0)) * (1 - desc()/100) * 100) / 100);
 const totCheio = () => piso(Math.round((evv() + (par ? PAR : 0)) * 100) / 100);
 const pagTxt = () => { const v = $('pag').value; return v ? PAGN[v] + (v === 'din' && (melhor() || {}).k === 'din' ? ' (' + String(DD).replace('.', ',') + '% de desconto)' : '') : ''; };
-$('pagAv').textContent = `Desconto de ${String(DD).replace('.', ',')}% somente para pagamento em dinheiro. Pix e cartão não têm desconto. Descontos não são acumulativos: se você usar crédito de indicação ou cupom, vale só o maior (não soma com o do dinheiro).`;
+$('pagAv').textContent = `Desconto de ${String(DD).replace('.', ',')}% só em dinheiro. Pix e cartão não têm desconto.`;
 $('pag').onchange = () => { showEst(); dinAv(); };
-const dinAv = () => { const d = $('pag').value === 'din'; $('dinBox').hidden = !d; if(!d) $('dinCk').checked = false; $('dinTx').textContent = `O desconto de ${String(DD).replace('.', ',')}% vale apenas para pagamento em dinheiro no ato. Se a forma de pagamento for alterada, será cobrado o valor normal. Os descontos não são acumulativos: vale só o maior (se tiver crédito de indicação ou cupom, não soma com o do dinheiro).`; };
+const dinAv = () => { const d = $('pag').value === 'din'; $('dinBox').hidden = !d; if(!d) $('dinCk').checked = false; $('dinTx').textContent = `O desconto de ${String(DD).replace('.', ',')}% vale apenas para pagamento em dinheiro no ato. Se a forma de pagamento for alterada, será cobrado o valor normal. Descontos não são acumulativos: vale só o maior.`; };
 dinAv();
+const regAbre = e => { if(e) e.preventDefault(); $('regras').hidden = false; }, regFecha = () => { $('regras').hidden = true; };
+$('verReg').onclick = regAbre; $('regFecha').onclick = regFecha; $('regras').addEventListener('click', e => { if(e.target === $('regras')) regFecha(); }); document.addEventListener('keydown', e => { if(e.key === 'Escape') regFecha(); });
 $('credCk').onchange = () => { USAR = $('credCk').checked; showEst(); };
 const temTarifa = T.band > 0 || T.km > 0 || T.min > 0;
 if(nm) $('sub').textContent = `Pedido para ${nm}. Informe partida e destino e envie o pedido.`;
@@ -353,23 +364,29 @@ async function loadFrota(){
   try{ const db2 = await loadFB(); await Promise.all(frota.map(async m => { try{ const f = (await Promise.race([db2.ref('fotos/' + m.id).once('value'), new Promise((_, rj) => setTimeout(() => rj(new Error('t')), 6000))])).val(); if(f) fotosMap[m.id] = f; }catch(e){} })); }catch(e){}
   drawMot(); watchDisp(); veiculo();
 }
-async function ocupado(ts, mins){
+// viagem de/para o Rio: ocupa o motorista por ida e volta (~7h). Saindo de Macaé: reserva ~6h30 a partir da saída; buscando no Rio: reserva ~3h20 ANTES (ida vazia) e ~3h20 depois.
+const RIO_DUR = 390, RIO_PRE = 200, RIO_POS = 180;
+const rioPlan = (o, d, min) => { const ro = rioTxt(o), rd = rioTxt(d); if(!ro && !rd) return null; const m = min || 0; return ro ? {pre: RIO_PRE, mins: durTotal(Math.max(m, RIO_POS))} : {pre: 0, mins: durTotal(Math.max(2*m, RIO_DUR))}; };
+async function ocupado(ts, mins, rioN, pre){
   const db = await Promise.race([loadFB(), new Promise((_, rj) => setTimeout(() => rj(new Error('t')), 6000))]);
-  try{ const bs = (await Promise.race([db.ref(bPath()).once('value'), new Promise((_, rj) => setTimeout(() => rj(new Error('t')), 6000))])).val() || {}; for(let t = Math.floor(ts/1800000)*1800000; t < ts + mins*60000; t += 1800000) if(bs[cellKey(t)]) return {bloq: true, x: t, ate: t + 1800000}; }catch(e){}
+  const s0 = ts - (pre || 0)*60000;
+  try{ const bs = (await Promise.race([db.ref(bPath()).once('value'), new Promise((_, rj) => setTimeout(() => rj(new Error('t')), 6000))])).val() || {}; for(let t = Math.floor(s0/1800000)*1800000; t < ts + mins*60000; t += 1800000) if(bs[cellKey(t)]) return {bloq: true, x: t, ate: t + 1800000}; }catch(e){}
   const sn = await Promise.race([db.ref('pub').once('value'), new Promise((_, rj) => setTimeout(() => rj(new Error('t')), 6000))]);
   const v = sn.val() || {}, now = Date.now(), fimN = ts + mins*60000;
+  const CENTRO_ = typeof CENTRO !== 'undefined' ? CENTRO : null;
   const pt = (la, lo) => (typeof la === 'number' && typeof lo === 'number') ? {la, lo} : null;
   for(const k of Object.keys(v)){ const x = v[k];
-    if(!x || !x.a || !ATIVOS.includes(x.s) || x.a < now - 3*3600*1000) continue;
+    if(!x || !x.a || !ATIVOS.includes(x.s) || x.a + (x.m || 35)*60000 < now - 3*3600*1000) continue;
     if(cur && cur.pid === k) continue;
     if((x.mid || 'luiz') !== mid) continue;
-    const fimX = x.a + (x.m || 35)*60000;
-    if(ts < x.a){ // a nova corrida vem antes: precisa terminar e chegar na origem da outra
-      const gap = tv(pD, pt(x.oLa, x.oLo))*60000;
-      if(fimN + gap > x.a) return {antes: true, x: x.a, ate: fimN + gap};
+    const xo = pt(x.oLa, x.oLo), xr = (x.m || 0) >= RIO_POS + 20; // corrida longa = viagem ao Rio
+    const xPre = xr && (!xo || !CENTRO_ || hav(CENTRO_, xo) > 60) ? RIO_PRE*60000 : 0, xs = x.a - xPre, fimX = x.a + (x.m || 35)*60000;
+    if(s0 < xs){ // a nova corrida vem antes: precisa terminar e chegar na origem da outra
+      const gap = tv(rioN ? null : pD, xr ? null : xo)*60000;
+      if(fimN + gap > xs) return {antes: true, x: xs, ate: fimN + gap};
     }else{ // a nova vem depois: o motorista termina a outra e se desloca até a sua origem
-      const gap = tv(pt(x.dLa, x.dLo), pO)*60000;
-      if(ts < fimX + gap) return {antes: false, x: x.a, ate: fimX + gap};
+      const gap = tv(xr ? null : pt(x.dLa, x.dLo), rioN ? null : pO)*60000;
+      if(s0 < fimX + gap) return {antes: false, x: x.a, ate: fimX + gap + (pre || 0)*60000};
     }
   }
   return null;
@@ -383,7 +400,7 @@ async function chkSlot(){
   const ts = new Date(v).getTime(); if(ts < Date.now() + 25*60000){ el.style.color = '#e5484d'; el.textContent = 'Escolha um horário com pelo menos 30 minutos de antecedência.'; return false; }
   if(!horaOk()){ el.style.color = '#e5484d'; el.textContent = HORA_MSG; return false; }
   const tk = ++slotTk;
-  try{ const o = await ocupado(ts, durTotal(est ? est.min : 30)); if(tk !== slotTk) return true;
+  try{ const pl = rioPlan(addr('o'), addr('d'), est ? est.min : 0), o = await ocupado(ts, pl ? pl.mins : durTotal(est ? est.min : 30), !!pl, pl ? pl.pre : 0); if(tk !== slotTk) return true;
     if(o && o.bloq){ el.style.color = '#e5484d'; el.textContent = 'Horário indisponível: não há atendimento nesse horário. Escolha outro horário ou outro dia.'; return false; }
     if(o){ const h = t => new Date(t).toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'}); el.style.color = '#e5484d'; el.textContent = o.antes ? `Horário indisponível: há outra corrida agendada às ${h(o.x)} e não haveria tempo de terminar a sua e se deslocar até lá. Escolha um horário anterior ou depois das ${h(o.ate)}.` : `Horário indisponível: a agenda está travada até as ${h(o.ate)} (duração da corrida em andamento e deslocamento até você). Escolha um horário a partir desse.`; return false; }
     el.style.color = '#2fb36d'; el.textContent = 'Horário disponível ✓'; return true;
@@ -596,7 +613,7 @@ $('f').onsubmit = async e => {
   if(!mid){ $('err').hidden = false; $('err').textContent = 'Escolha o carro em que você quer ir.'; $('fMot').scrollIntoView({block: 'center'}); return; }
   if(!$('pag').value){ $('err').hidden = false; $('err').textContent = 'Selecione a forma de pagamento.'; $('pag').focus(); return; }
   if($('pag').value === 'din' && !$('dinCk').checked){ $('err').hidden = false; $('err').textContent = 'Marque o aviso do pagamento em dinheiro para enviar o pedido.'; $('dinCk').focus(); return; }
-  if(!$('ciente').checked){ $('err').hidden = false; $('err').textContent = 'Marque que leu os avisos para enviar o pedido.'; $('ciente').focus(); return; }
+  if(!$('ciente').checked){ $('err').hidden = false; $('err').textContent = 'Marque “Li as regras e concordo” (lá em cima) para enviar o pedido.'; $('ciente').scrollIntoView({block: 'center'}); return; }
   $('err').hidden = true;
   let quando = 'Agora';
   if(agendar){
@@ -627,7 +644,7 @@ $('f').onsubmit = async e => {
   try{
     const db = await Promise.race([loadFB(), new Promise((_, rj) => setTimeout(() => rj(new Error('t')), 8000))]);
     const sid = db.ref().push().key, pid = db.ref().push().key, TS = firebase.database.ServerValue.TIMESTAMP;
-    const m = durTotal(est ? est.min : 30);
+    const pl = rioPlan(addr('o'), addr('d'), est ? est.min : 0), m = pl ? pl.mins : durTotal(est ? est.min : 30);
     const f = {nome, fone, passageiro: outro ? $('pNome').value.trim() : '', foneP: outro ? $('pFone').value.trim() : '', partida: o, destino: d, obs: obsFinal(), quando, estim: est ? `R$ ${brl(tot())} · ${est.km.toLocaleString('pt-BR',{maximumFractionDigits:1})} km${rio() ? ' · pedágio incluso' : ''}` : (rio() ? 'a partir de R$ 1.000,00 · pedágio incluso' : ''), pid, pag: PAGN[$('pag').value], c: TS, s: 'aguardando'};
     if(par) f.parada = addr('s').slice(0, 200);
     { const b = melhor(); if(CL && CL.f && foneKey(fone) === CL.f){ f.fcl = CL.f; if(CL.cod) f.mc = CL.cod; } if(b && (b.k === 'niv' || b.k === 'ind')){ f.cp = b.p; f.uc = b.k; } else if(b && b.k === 'ci'){ f.fcl = CI.f; f.cod = CI.cod; f.ci = CUPI; } if(f.fcl && DEV) f.dv = DEV; }
@@ -640,7 +657,7 @@ $('f').onsubmit = async e => {
     await Promise.race([db.ref().update(up), new Promise((_, rj) => setTimeout(() => rj(new Error('t')), 8000))]);
     if(mid === 'luiz') avisar(agendar ? 'Novo AGENDAMENTO de corrida' : 'Novo pedido de corrida');
     const sv = {sid, pid, wa, mid, t: Date.now()}; if(f.a) sv.a = f.a;
-    { const g = id => $('o' + id).value.trim(); sv.po = {rua: g('Rua'), num: g('Num'), bai: g('Bai'), cid: g('Cid')}; sv.pt = o; sv.pc = pO ? {la: pO.la, lo: pO.lo} : null; sv.dc = pD ? {la: pD.la, lo: pD.lo} : null; sv.ps = par ? addr('s') : ''; sv.pg = $('pag').value; sv.cp = f.cp || 0; sv.ci = f.ci || 0; sv.rio = rio() ? 1 : 0; if(est) sv.es = {v: est.v, km: est.km, min: est.min, ap: !!est.aprox}; }
+    { const g = id => $('o' + id).value.trim(); sv.po = {rua: g('Rua'), num: g('Num'), bai: g('Bai'), cid: g('Cid')}; sv.pt = o; sv.pc = pO ? {la: pO.la, lo: pO.lo} : null; sv.dc = pD ? {la: pD.la, lo: pD.lo} : null; sv.ps = par ? addr('s') : ''; sv.pg = $('pag').value; sv.cp = f.cp || 0; sv.ci = f.ci || 0; sv.rio = rio() ? 1 : 0; sv.dt = d.slice(0, 200); if(est) sv.es = {v: est.v, km: est.km, min: est.min, ap: !!est.aprox}; }
     try{ localStorage.setItem('sm_ped', JSON.stringify(sv)); }catch(x){}
     accLog(true);
     g.disabled = false; g.textContent = 'Enviar pedido';
@@ -739,7 +756,7 @@ let ciT = 0, ciD = 0;
 async function cupChk(){
   const cod = $('cupIn').value.trim().toUpperCase().replace(/[^A-Z0-9]/g, ''), f = foneKey($('fone').value), m = $('cupMsg'), seq = ++ciT;
   CI = {cod, f: '', ok: false};
-  if(!cod){ m.textContent = 'Vale só na sua primeira corrida com cupom e dá ' + CUPI + '% de desconto.'; showEst(); return; }
+  if(!cod){ m.textContent = 'Vale só na primeira corrida.'; showEst(); return; }
   if(!f){ m.textContent = 'Informe o seu WhatsApp acima para validar o cupom.'; showEst(); return; }
   m.textContent = 'Validando cupom…'; showEst();
   try{
@@ -859,7 +876,7 @@ $('xSalvar').onclick = async () => {
     // agenda: horário livre com a nova partida?
     if(cur.a && (horaMudou || partidaMudou)){
       const sMid = mid, sO = pO, sD = pD; mid = mid2; pO = pc; pD = cur.dc || null;
-      let o = null; try{ o = await ocupado(ts, durTotal(min != null ? min : (cur.es ? cur.es.min : 30))); }catch(e){} mid = sMid; pO = sO; pD = sD;
+      let o = null; try{ const mn = min != null ? min : (cur.es ? cur.es.min : 30), pl = rioPlan(novoO, cur.dt || (cur.rio ? 'galeao' : ''), mn); o = await ocupado(ts, pl ? pl.mins : durTotal(mn), !!pl, pl ? pl.pre : 0); }catch(e){} mid = sMid; pO = sO; pD = sD;
       if(o){ const h = t => new Date(t).toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'});
         err(o.bloq ? 'Horário indisponível: não há atendimento nesse horário. Escolha outro.' : (o.antes ? `Horário indisponível: há outra corrida às ${h(o.x)}. Escolha um horário anterior ou depois das ${h(o.ate)}.` : `Horário indisponível: a agenda está travada até as ${h(o.ate)}. Escolha um horário depois disso.`)); return; }
     }
@@ -872,7 +889,7 @@ $('xSalvar').onclick = async () => {
     if(km != null){
       const hh = new Date(ts || Date.now()).getHours(), noite = cur.a && NT > 0 && (hh >= 22 || hh < 5), dsc = Math.max((cur.pg === 'din' && DD > 0) ? DD : 0, Number(cur.cp) || 0, Number(cur.ci) || 0);
       const v0 = Math.max(T.band, km*T.km) + min*T.min, ev2 = Math.round(v0 * (1 + (noite ? NT : 0)/100) * 100) / 100, tt = Math.round((ev2 + (xPar ? PAR : 0)) * (1 - dsc/100) * 100) / 100; if(cur.rio || rioTxt(novoO) || rioTxt(cur.dt)) tt = Math.max(tt, RIO_MIN);
-      estNova = `R$ ${brl(tt)} · ${km.toLocaleString('pt-BR', {maximumFractionDigits: 1})} km`; up[B + 'estim'] = estNova; up[P + 'm'] = durTotal(min);
+      estNova = `R$ ${brl(tt)} · ${km.toLocaleString('pt-BR', {maximumFractionDigits: 1})} km`; up[B + 'estim'] = estNova; up[P + 'm'] = (() => { const pl = rioPlan(novoO, cur.dt || (cur.rio ? 'galeao' : ''), min); return pl ? pl.mins : durTotal(min); })();
     }
     const db = await Promise.race([loadFB(), new Promise((_, rj) => setTimeout(() => rj(new Error('t')), 8000))]);
     await Promise.race([db.ref().update(up), new Promise((_, rj) => setTimeout(() => rj(new Error('t')), 8000))]);
