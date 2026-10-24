@@ -135,12 +135,12 @@ legend{padding:0;margin-bottom:6px;font:700 16px "Barlow Condensed",sans-serif;l
     </div>
     <div id="cadNo">
       <b>🎟️ Cadastre-se e ganhe desconto</b>
-      <small>Você recebe um <b>cupom seu</b>. Seu amigo usa o cupom no <b style="display:inline">primeiro pedido dele</b> e ganha <b style="display:inline">5% de desconto</b>. Quando a corrida dele for concluída, você ganha <b style="display:inline">10% de desconto em uma corrida</b> (10 amigos = 10 corridas com 10%). E no mês do seu aniversário você ganha <b style="display:inline">10% de desconto</b> em uma corrida.</small>
+      <small>Você recebe um <b>cupom seu</b>. Seu amigo usa o cupom no <b style="display:inline">primeiro pedido dele</b> e ganha <b style="display:inline">5% de desconto</b>. Quando a corrida dele for concluída, você ganha <b style="display:inline">10% de desconto em uma corrida</b> (10 amigos = 10 corridas com 10%). Os créditos têm validade (30 dias a cada 4 créditos acumulados).</small>
       <button class="mini" type="button" id="cadAbre">Fazer meu cadastro</button>
       <div id="cadF" hidden style="display:none;gap:10px;margin-top:6px">
         <div class="field"><label for="cNome">Seu nome</label><input id="cNome" autocomplete="off" maxlength="60"></div>
         <div class="field"><label for="cFone">Seu WhatsApp</label><input id="cFone" type="tel" inputmode="tel" placeholder="(22) 99999-9999"></div>
-        <div class="field"><label for="cNasc">Dia e mês do aniversário</label><input id="cNasc" inputmode="numeric" placeholder="dd/mm" maxlength="5" autocomplete="off"><small>Só dia e mês, sem o ano.</small></div>
+        <div class="field"><label for="cNasc">Dia e mês do aniversário (para uma surpresa 🎁)</label><input id="cNasc" inputmode="numeric" placeholder="dd/mm" maxlength="5" autocomplete="off"><small>Só dia e mês, sem o ano.</small></div>
         <label class="ck"><input type="checkbox" id="cCiente"><span>Autorizo guardar meu nome, WhatsApp e dia/mês do aniversário para gerar meu cupom e conceder os descontos. Posso pedir a exclusão a qualquer momento.</span></label>
         <small id="cMsg" style="color:#e5484d"></small>
         <button class="mini" type="button" id="cSalvar" style="background:#0a7d4f;color:#fff;border:0">Criar meu cadastro</button>
@@ -206,7 +206,7 @@ legend{padding:0;margin-bottom:6px;font:700 16px "Barlow Condensed",sans-serif;l
         <p>Usamos seu nome, telefone, endereços, observações e, se você permitir, sua localização GPS <b>somente</b> para receber e atender o pedido, calcular o valor, entrar em contato e emitir o recibo. Não vendemos nem compartilhamos seus dados para outras finalidades.</p>
         <p>O pedido fica em um serviço de nuvem do Google (Firebase), cujos servidores podem estar fora do Brasil, e é limpo periodicamente da fila. O motorista pode manter nome, telefone e dados da corrida no histórico dele para recibo e controle da atividade.</p>
         <p>Controlador: <span id="avEmp">Stella Maris Logistics</span>. Para acessar, corrigir ou pedir a exclusão dos seus dados, fale conosco pelo WhatsApp. Se pedir para outra pessoa, informe só dados que ela autorizou.</p>
-        <p><b>Cadastro e cupons:</b> se você se cadastrar, guardamos nome, WhatsApp e dia/mês do aniversário (sem o ano) apenas para gerar seu cupom de indicação e aplicar os descontos. Seu cupom e a contagem de indicações ficam visíveis a quem souber o seu número de WhatsApp. Peça a exclusão quando quiser.</p>
+        <p><b>Cadastro e cupons:</b> se você se cadastrar, guardamos nome, WhatsApp, dia/mês do aniversário (sem o ano) e um código do seu aparelho apenas para gerar seu cupom de indicação, aplicar descontos e surpresas de aniversário e impedir que outra pessoa use os seus créditos. Seu cupom e a contagem de indicações ficam visíveis a quem souber o seu número de WhatsApp. Peça a exclusão quando quiser.</p>
       </details>
     </div>
     <label class="ck"><input type="checkbox" id="ciente"><span>Li os avisos acima e concordo com o uso dos meus dados para atender o pedido.</span></label>
@@ -246,13 +246,16 @@ const evv = () => Math.round(est.v * (1 + nAdd()/100) * 100) / 100;
 const DD = pc('dd') != null ? pc('dd') : 5;
 const CUP = 10; // % de desconto do cupom de indicação / aniversário (não acumula com o desconto do dinheiro: vale o maior)
 let CL = null;  // cadastro do cliente (cli/<whatsapp>)
+const DEV = (() => { try{ let d = localStorage.getItem('sm_dev'); if(!d){ d = Math.random().toString(36).slice(2, 12) + Date.now().toString(36); localStorage.setItem('sm_dev', d); } return d; }catch(x){ return ''; } })();
+const creAtivos = o => Object.entries(o || {}).filter(([k, e]) => Number(e) > Date.now()).sort((a, b) => a[1] - b[1]);
 const foneKey = s => { let d = String(s || '').replace(/\D/g, ''); if(d.length === 10 || d.length === 11) d = '55' + d; return /^\d{10,14}$/.test(d) ? d : ''; };
 const cupAtual = () => {
   if(!CL || !CL.f || foneKey($('fone').value) !== CL.f) return null;
   const dt = (typeof agendar !== 'undefined' && agendar && $('quando').value) ? new Date($('quando').value) : new Date();
   if(isNaN(dt)) return null;
-  if(CL.nasc && CL.nasc.slice(0, 2) === String(dt.getMonth() + 1).padStart(2, '0') && !(CL.niv && CL.niv[dt.getFullYear()])) return {pct: CUP, uc: 'niv', txt: 'cupom de aniversário'};
-  if(Number(CL.cr) > 0) return {pct: CUP, uc: 'ind', txt: 'cupom de indicação'};
+  if(CL.dev && CL.dev !== DEV) return null; // créditos e surpresa só no aparelho do cadastro
+  if(CL.nasc && CL.nasc.slice(0, 2) === String(dt.getMonth() + 1).padStart(2, '0') && !(CL.niv && CL.niv[dt.getFullYear()]) && CL.t && Date.now() - CL.t >= 30*864e5) return {pct: CUP, uc: 'niv', txt: 'surpresa de aniversário'};
+  if(creAtivos(CL.cre).length) return {pct: CUP, uc: 'ind', txt: 'crédito de indicação'};
   return null;
 };
 const cupPct = () => { const c = cupAtual(); return c ? c.pct : 0; };
@@ -597,7 +600,7 @@ $('f').onsubmit = async e => {
     const m = durTotal(est ? est.min : 30);
     const f = {nome, fone, passageiro: outro ? $('pNome').value.trim() : '', foneP: outro ? $('pFone').value.trim() : '', partida: o, destino: d, obs: obsFinal(), quando, estim: est ? `R$ ${brl(tot())} · ${est.km.toLocaleString('pt-BR',{maximumFractionDigits:1})} km` : '', pid, pag: PAGN[$('pag').value], c: TS, s: 'aguardando'};
     if(par) f.parada = addr('s').slice(0, 200);
-    { const cu = cupAtual(); if(CL && CL.f && foneKey(fone) === CL.f) f.fcl = CL.f; if(cu){ f.cp = cu.pct; f.uc = cu.uc; } if(cupIPct()){ f.fcl = CI.f; f.cod = CI.cod; f.ci = CUPI; } }
+    { const cu = cupAtual(); if(CL && CL.f && foneKey(fone) === CL.f) f.fcl = CL.f; if(cu){ f.cp = cu.pct; f.uc = cu.uc; } if(cupIPct()){ f.fcl = CI.f; f.cod = CI.cod; f.ci = CUPI; } if(f.fcl && DEV) f.dv = DEV; }
     if(agendar){ f.a = new Date($('quando').value).getTime(); }
     if(pO){ f.oLa = pO.la; f.oLo = pO.lo; } if(pD){ f.dLa = pD.la; f.dLo = pD.lo; }
     for(const k of ['nome', 'passageiro']) f[k] = f[k].slice(0, 80);
@@ -643,10 +646,11 @@ function cadShow(ok){ $('cadOk').hidden = !ok; $('cadOk').style.display = ok ? '
 function cadDesenhar(){
   if(!CL || !CL.cod){ cadShow(false); return; }
   cadShow(true); $('cadCod').textContent = CL.cod;
-  const n = Object.keys(CL.ind || {}).length, cr = Number(CL.cr) || 0;
-  $('cadInfo').innerHTML = `Amigos que já fizeram corrida com seu cupom: <b style="display:inline">${n}</b>. Corridas com ${CUP}% de desconto disponíveis: <b style="display:inline">${cr}</b>${cr ? ' (aplicado automaticamente quando você pedir com o seu WhatsApp)' : ''}.`;
-  const hoje = new Date(), mm = CL.nasc ? +CL.nasc.slice(0, 2) : 0, usado = !!(CL.niv && CL.niv[hoje.getFullYear()]);
-  $('cadNiv').innerHTML = !mm ? '' : usado ? '🎂 Cupom de aniversário deste ano: já usado.' : (mm === hoje.getMonth() + 1 ? `🎂 <b style="display:inline">Seu cupom de aniversário está ativo</b>: ${CUP}% de desconto em uma corrida em ${MESES[mm - 1]}.` : `🎂 Seu cupom de aniversário (${CUP}% em uma corrida) vale em ${MESES[mm - 1]}.`);
+  const n = Object.keys(CL.ind || {}).length, a = creAtivos(CL.cre), cr = a.length, dias = cr ? Math.max(1, Math.ceil((a[0][1] - Date.now()) / 864e5)) : 0;
+  $('cadInfo').innerHTML = `Amigos que já fizeram corrida com seu cupom: <b style="display:inline">${n}</b>. Corridas com ${CUP}% de desconto disponíveis: <b style="display:inline">${cr}</b>${cr ? ` (o mais próximo vence em ${dias} dia${dias > 1 ? 's' : ''}; aplicado automaticamente quando você pedir com o seu WhatsApp)` : ''}.`;
+  const hoje = new Date(), mm = CL.nasc ? +CL.nasc.slice(0, 2) : 0, usado = !!(CL.niv && CL.niv[hoje.getFullYear()]), velho = !!(CL.t && Date.now() - CL.t >= 30*864e5);
+  $('cadNiv').innerHTML = (mm === hoje.getMonth() + 1 && !usado && velho) ? `🎁 <b style="display:inline">Surpresa de aniversário ativa</b>: ${CUP}% de desconto em uma corrida neste mês.` : '';
+  if(CL.dev && CL.dev !== DEV) $('cadNiv').innerHTML += (($('cadNiv').innerHTML) ? '<br>' : '') + '⚠ Este cadastro foi feito em outro aparelho: seus créditos só valem lá. Para usar neste, fale com o motorista.';
   if(!$('nome').value.trim() && CL.n) $('nome').value = CL.n;
   if(!$('fone').value.trim() && CL.f) $('fone').value = CL.f.replace(/^55/, '');
 }
@@ -672,10 +676,10 @@ $('cSalvar').onclick = async () => {
   try{
     const db = await Promise.race([loadFB(), new Promise((_, rj) => setTimeout(() => rj(new Error('t')), 8000))]);
     const ex = (await db.ref('cli/' + f).once('value')).val();
-    if(ex && ex.cod){ try{ localStorage.setItem('sm_cli', f); }catch(x){} await cadOuvir(f); $('cadF').hidden = true; $('cadF').style.display = 'none'; return; }
+    if(ex && ex.cod){ if(ex.dev && ex.dev !== DEV) return msg('Este WhatsApp já tem cadastro em outro aparelho. Para usar os créditos neste celular, fale com o motorista.'); try{ localStorage.setItem('sm_cli', f); }catch(x){} await cadOuvir(f); $('cadF').hidden = true; $('cadF').style.display = 'none'; return; }
     const base = (nome.normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().replace(/[^A-Z]/g, '') + 'XXXX').slice(0, 4) + f.slice(-4);
     let cod = base; for(let i = 0; i < 6; i++){ const e = (await db.ref('cup/' + cod).once('value')).val(); if(!e || e === f) break; cod = base + 'ABCDEFGHJK'[Math.floor(Math.random() * 10)]; if(i === 5) throw new Error('cod'); }
-    const up = {}, B = 'cli/' + f + '/'; up[B + 'n'] = nome; up[B + 'nasc'] = nasc; up[B + 'cod'] = cod; up[B + 't'] = firebase.database.ServerValue.TIMESTAMP; up['cup/' + cod] = f;
+    const up = {}, B = 'cli/' + f + '/'; up[B + 'n'] = nome; up[B + 'nasc'] = nasc; up[B + 'cod'] = cod; if(DEV) up[B + 'dev'] = DEV; up[B + 't'] = firebase.database.ServerValue.TIMESTAMP; up['cup/' + cod] = f;
     await Promise.race([db.ref().update(up), new Promise((_, rj) => setTimeout(() => rj(new Error('t')), 8000))]);
     try{ localStorage.setItem('sm_cli', f); }catch(x){}
     $('cadF').hidden = true; $('cadF').style.display = 'none'; await cadOuvir(f);
