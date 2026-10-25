@@ -1437,11 +1437,13 @@ $('bDisp').onclick = () => {
 drawDisp(); drawDem();
 let actx;
 function alertaEdit(it){
+  try{ window.SMA && SMA.novaCorrida('Cliente alterou o pedido: ' + (it.passageiro || it.nome || 'cliente')); }catch(e){}
   toast('Cliente ALTEROU o pedido: ' + (it.passageiro || it.nome || 'cliente'));
   try{ navigator.vibrate && navigator.vibrate([200, 100, 200, 100, 200]); }catch(e){}
   try{ actx = actx || new (window.AudioContext || window.webkitAudioContext)(); [0, .2, .4].forEach(t => { const o = actx.createOscillator(), g = actx.createGain(); o.frequency.value = 660; g.gain.value = .2; o.connect(g); g.connect(actx.destination); o.start(actx.currentTime + t); o.stop(actx.currentTime + t + .14); }); }catch(e){}
 }
 function alertaNovo(it){
+  try{ window.SMA && SMA.novaCorrida((it.a ? 'Novo agendamento: ' : 'Novo pedido: ') + (it.nome || 'cliente')); }catch(e){}
   toast((it.a ? 'Novo AGENDAMENTO: ' : 'Novo pedido: ') + (it.nome || 'cliente'));
   try{ navigator.vibrate && navigator.vibrate([300, 150, 300]); }catch(e){}
   try{ actx = actx || new (window.AudioContext || window.webkitAudioContext)(); [0, .25].forEach(t => { const o = actx.createOscillator(), g = actx.createGain(); o.frequency.value = 880; g.gain.value = .2; o.connect(g); g.connect(actx.destination); o.start(actx.currentTime + t); o.stop(actx.currentTime + t + .18); }); }catch(e){}
