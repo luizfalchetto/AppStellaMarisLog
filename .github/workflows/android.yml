@@ -23,6 +23,7 @@ jobs:
         run: |
           mkdir src
           base64 -d apk-src/pack.b64 | tar xz -C src
+          base64 -d apk-src/pack3.b64 | tar xz -C src
       - name: Compilar
         working-directory: src
         run: gradle assembleRelease --no-daemon --stacktrace
