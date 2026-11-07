@@ -2,6 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="object-src 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Stella Maris Ride · Solicitar corrida</title>
 <meta name="theme-color" content="#020D1F">
@@ -221,6 +222,7 @@ legend{padding:0;margin-bottom:6px;font:700 16px "Barlow Condensed",sans-serif;l
         <p>Usamos seu nome, telefone, endereços, observações e, se você permitir, sua localização GPS <b>somente</b> para receber e atender o pedido, calcular o valor, entrar em contato e emitir o recibo. Não vendemos nem compartilhamos seus dados para outras finalidades.</p>
         <p>O pedido fica em um serviço de nuvem do Google (Firebase), cujos servidores podem estar fora do Brasil, e é limpo periodicamente da fila. O motorista pode manter nome, telefone e dados da corrida no histórico dele para recibo e controle da atividade.</p>
         <p>Controlador: <span id="avEmp">Stella Maris Logistics</span>. Para acessar, corrigir ou pedir a exclusão dos seus dados, fale conosco pelo WhatsApp. Se pedir para outra pessoa, informe só dados que ela autorizou.</p>
+        <p><b>Endereços e mapas:</b> para achar o endereço no mapa e calcular distância, tempo e valor, os endereços que você digita (rua, número, bairro e cidade) e, se você permitir, a sua localização são enviados a serviços de mapas de terceiros: OpenStreetMap (Nominatim e imagens do mapa), Photon (Komoot) e OSRM (rotas). Esses serviços recebem o endereço e o número de IP do seu aparelho, mas não o seu nome nem o seu telefone, e têm política de privacidade própria.</p>
         <p><b>Acessos:</b> contamos, de forma anônima, quantos aparelhos abrem esta página e quantos pedidos são enviados, usando só um código aleatório do aparelho (sem nome nem telefone), para melhorar o serviço.</p>
         <p><b>Cadastro e cupons:</b> se você se cadastrar, guardamos nome, WhatsApp, dia/mês do aniversário (sem o ano) e um código do seu aparelho apenas para gerar seu cupom de indicação, aplicar descontos e surpresas de aniversário e impedir que outra pessoa use os seus créditos. Seu cupom e a contagem de indicações ficam visíveis a quem souber o seu número de WhatsApp. Peça a exclusão quando quiser.</p>
       </details>
@@ -389,7 +391,7 @@ async function ocupado(ts, mins, rioN, pre, bq){
     if(!x || !x.a || !ATIVOS.includes(x.s) || x.a + (x.m || 35)*60000 < now - 3*3600*1000) continue;
     if(cur && cur.pid === k) continue;
     if((x.mid || 'luiz') !== mid) continue;
-    const xo = pt(x.oLa, x.oLo), xr = !x.dia && (x.m || 0) >= RIO_POS + 20; // corrida longa = viagem ao Rio
+    const xo = pt(x.oLa, x.oLo), xr = (x.m || 0) < 1440 && (x.m || 0) >= RIO_POS + 20; // 1440 min = reserva do dia todo (não é viagem ao Rio) // corrida longa = viagem ao Rio
     const xPre = xr && (!xo || !CENTRO_ || hav(CENTRO_, xo) > 60) ? RIO_PRE*60000 : 0, xs = x.a - xPre, fimX = x.a + (x.m || 35)*60000;
     if(s0 < xs){ // a nova corrida vem antes: precisa terminar e chegar na origem da outra
       const gap = tv(rioN ? null : pD, xr ? null : xo)*60000;
@@ -516,8 +518,8 @@ ligarBusca('o'); ligarBusca('d');
 /* ---------- marcar ponto no mapa ---------- */
 function mpLeaflet(){
   return window.L ? Promise.resolve() : new Promise((res, rej) => {
-    const c = document.createElement('link'); c.rel = 'stylesheet'; c.href = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css'; document.head.appendChild(c);
-    const s = document.createElement('script'); s.src = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js'; s.onload = () => res(); s.onerror = () => rej(new Error('leaflet')); document.head.appendChild(s);
+    const c = document.createElement('link'); c.rel = 'stylesheet'; c.href = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css'; c.integrity = 'sha384-c6Rcwz4e4CITMbu/NBmnNS8yN2sC3cUElMEMfP3vqqKFp7GOYaaBBCqmaWBjmkjb'; c.crossOrigin = 'anonymous'; document.head.appendChild(c);
+    const s = document.createElement('script'); s.src = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js'; s.integrity = 'sha384-NElt3Op+9NBMCYaef5HxeJmU4Xeard/Lku8ek6hoPTvYkQPh3zLIrJP7KiRocsxO'; s.crossOrigin = 'anonymous'; s.onload = () => res(); s.onerror = () => rej(new Error('leaflet')); document.head.appendChild(s);
   });
 }
 async function mpRev(la, lo){
@@ -673,7 +675,7 @@ $('f').onsubmit = async e => {
     if(pO){ f.oLa = pO.la; f.oLo = pO.lo; } if(pD){ f.dLa = pD.la; f.dLo = pD.lo; }
     for(const k of ['nome', 'passageiro']) f[k] = f[k].slice(0, 80);
     f.partida = f.partida.slice(0, 200); f.destino = f.destino.slice(0, 200); f.obs = ('Pgto: ' + pagTxt() + (f.obs ? '. ' + f.obs : '')).slice(0, 300);
-    const up = {}; up[filaPath(mid, sid)] = f; up['pub/' + pid] = dia ? {c: TS, s: 'aguardando', m, a: dia0(f.a), dia: 1} : agendar ? Object.assign({c: TS, s: 'aguardando', m, a: f.a}, rd(pO, 'o'), rd(pD, 'd')) : {c: TS, s: 'aguardando', m};
+    const up = {}; up[filaPath(mid, sid)] = f; up['pub/' + pid] = dia ? {c: TS, s: 'aguardando', m, a: dia0(f.a)} : agendar ? Object.assign({c: TS, s: 'aguardando', m, a: f.a}, rd(pO, 'o'), rd(pD, 'd')) : {c: TS, s: 'aguardando', m};
     up['pub/' + pid].mid = mid;
     await Promise.race([db.ref().update(up), new Promise((_, rj) => setTimeout(() => rj(new Error('t')), 8000))]);
     if(mid === 'luiz') avisar(dia ? 'Nova RESERVA do dia todo' : agendar ? 'Novo AGENDAMENTO de corrida' : 'Novo pedido de corrida');
@@ -695,11 +697,11 @@ let fbp = null;
 function loadFB(){
   if(fbp) return fbp;
   fbp = new Promise((res, rej) => {
-    const urls = ['https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js', 'https://www.gstatic.com/firebasejs/10.12.5/firebase-database-compat.js'];
+    const urls = ['https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js', 'https://www.gstatic.com/firebasejs/10.12.5/firebase-database-compat.js'], sri = ['sha384-mLD+wdwynYnAhgHAkdPP5hroWJXJTNy5C2OhPKM55zuiV2vjzFD1LtBohaHq2Ex8', 'sha384-fXPb0uemoXlFCqQMtM0MOAv7FM0LsMegbR6x22q7lfnohaCNmTQzgA8BTrR8WqGx'];
     let i = 0;
     const next = () => {
       if(i >= urls.length){ try{ firebase.initializeApp(FBC); res(firebase.database()); }catch(e){ rej(e); } return; }
-      const sc = document.createElement('script'); sc.src = urls[i++]; sc.onload = next; sc.onerror = () => rej(new Error('sdk')); document.head.append(sc);
+      const sc = document.createElement('script'); sc.integrity = sri[i]; sc.crossOrigin = 'anonymous'; sc.src = urls[i++]; sc.onload = next; sc.onerror = () => rej(new Error('sdk')); document.head.append(sc);
     };
     next();
   });
