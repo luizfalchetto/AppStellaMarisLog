@@ -619,13 +619,13 @@ const nomeEmp = eid => (S.empresas[eid] || {}).nome || eid;
 
 function desenharAval(){
   if(!$('avalKpis')) return; const L = [];
-  Object.keys(S.aval || {}).forEach(eid => Object.keys(S.aval[eid] || {}).forEach(rt => { const x = S.aval[eid][rt]; if(x && x.n) L.push({n: x.n, t: x.t, c: x.c || 0, quem: nomeEmp(eid), rt}); }));
-  Object.keys(S.avalp || {}).forEach(pid => { const x = S.avalp[pid]; if(x && x.n) L.push({n: x.n, t: x.t, c: x.c || 0, quem: 'Particular', rt: ''}); });
+  Object.keys(S.aval || {}).forEach(eid => Object.keys(S.aval[eid] || {}).forEach(rt => { const x = S.aval[eid][rt]; if(x && (x.n || x.t)) L.push({n: x.n || 0, t: x.t, c: x.c || 0, quem: nomeEmp(eid), rt}); }));
+  Object.keys(S.avalp || {}).forEach(pid => { const x = S.avalp[pid]; if(x && (x.n || x.t)) L.push({n: x.n || 0, t: x.t, c: x.c || 0, quem: 'Particular', rt: ''}); });
   $('avalVazio').hidden = !!L.length; $('avalTb').innerHTML = ''; $('avalKpis').innerHTML = ''; if(!L.length) return;
-  const med = A => A.length ? (A.reduce((s, x) => s + x.n, 0) / A.length) : 0, f1 = v => v.toFixed(1).replace('.', ',');
-  const part = L.filter(x => x.quem === 'Particular'), emp = L.filter(x => x.quem !== 'Particular'), baixas = L.filter(x => x.n <= 2).length;
-  $('avalKpis').innerHTML = [['Média geral', f1(med(L)) + ' ★'], ['Avaliações', L.length], ['Empresas', emp.length ? f1(med(emp)) + ' ★ (' + emp.length + ')' : '—'], ['Particulares', part.length ? f1(med(part)) + ' ★ (' + part.length + ')' : '—'], ['Notas baixas (1–2)', baixas]].map(k => `<div class="kpi"><small>${k[0]}</small><b>${esc(k[1])}</b></div>`).join('');
-  $('avalTb').innerHTML = '<tr><th>Data</th><th>Cliente</th><th>RT</th><th>Nota</th><th>Comentário</th></tr>' + L.sort((a, b) => b.c - a.c).slice(0, 30).map(x => `<tr><td>${x.c ? new Date(x.c).toLocaleDateString('pt-BR') : ''}</td><td>${esc(x.quem)}</td><td>${esc(x.rt)}</td><td style="color:var(--taxi)">${'★'.repeat(x.n)}${'☆'.repeat(5 - x.n)}</td><td style="white-space:normal">${esc(x.t || '')}</td></tr>`).join('');
+  const med = A => { A = A.filter(x => x.n); return A.length ? (A.reduce((s, x) => s + x.n, 0) / A.length) : 0; }, f1 = v => v.toFixed(1).replace('.', ',');
+  const part = L.filter(x => x.quem === 'Particular' && x.n), emp = L.filter(x => x.quem !== 'Particular' && x.n), baixas = L.filter(x => x.n && x.n <= 2).length;
+  $('avalKpis').innerHTML = [['Média geral', L.some(x => x.n) ? f1(med(L)) + ' ★' : '—'], ['Avaliações', L.length], ['Empresas', emp.length ? f1(med(emp)) + ' ★ (' + emp.length + ')' : '—'], ['Particulares', part.length ? f1(med(part)) + ' ★ (' + part.length + ')' : '—'], ['Notas baixas (1–2)', baixas]].map(k => `<div class="kpi"><small>${k[0]}</small><b>${esc(k[1])}</b></div>`).join('');
+  $('avalTb').innerHTML = '<tr><th>Data</th><th>Cliente</th><th>RT</th><th>Nota</th><th>Comentário</th></tr>' + L.sort((a, b) => b.c - a.c).slice(0, 30).map(x => `<tr><td>${x.c ? new Date(x.c).toLocaleDateString('pt-BR') : ''}</td><td>${esc(x.quem)}</td><td>${esc(x.rt)}</td><td style="color:var(--taxi)">${x.n ? '★'.repeat(x.n) + '☆'.repeat(5 - x.n) : '—'}</td><td style="white-space:normal">${esc(x.t || '')}</td></tr>`).join('');
 }
 function atualizarPainel(){ if(!PN) return; const L = [];
   Object.keys(S.corridas).forEach(eid => { const g = S.corridas[eid]; if(!g || typeof g !== 'object') return; Object.keys(g).forEach(rt => { const r = g[rt]; if(!r || typeof r !== 'object') return;
