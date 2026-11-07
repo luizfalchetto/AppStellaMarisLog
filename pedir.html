@@ -27,6 +27,11 @@ input,textarea{background:var(--panel);border:1px solid var(--line);border-radiu
 textarea{padding:12px 14px;min-height:72px;resize:vertical}
 input:focus,textarea:focus{outline:2px solid var(--taxi);outline-offset:1px}
 .row{display:flex;gap:8px}.row input{flex:1}
+.cadDest{border:1px solid #C8933A!important;background:rgba(200,147,58,.10);border-radius:12px;padding:12px;display:grid;gap:6px}
+.cadDest[hidden]{display:none}
+.pulso{animation:pulso 2.2s ease-in-out infinite}
+@keyframes pulso{0%,100%{box-shadow:0 0 0 0 rgba(200,147,58,.55)}50%{box-shadow:0 0 0 9px rgba(200,147,58,0)}}
+@media (prefers-reduced-motion:reduce){.pulso{animation:none}}
 .mini{border:1px solid var(--line);background:var(--panel);color:var(--fg);border-radius:12px;padding:0 14px;min-height:52px;font:600 14px "Barlow",sans-serif;cursor:pointer;white-space:nowrap}
 .seg{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .seg button{min-height:52px;border-radius:12px;border:1px solid var(--line);background:var(--panel);color:var(--fg);font:700 16px "Barlow Condensed",sans-serif;letter-spacing:.06em;text-transform:uppercase;cursor:pointer}
@@ -101,6 +106,7 @@ legend{padding:0;margin-bottom:6px;font:700 16px "Barlow Condensed",sans-serif;l
     <div class="vei" id="stV" hidden></div>
     <div class="vei" id="stEd" hidden style="border-color:#C8933A"></div>
     <div class="card"><div class="tit" id="stT"></div><div class="pos" id="stP"></div><p class="eta" id="stE"></p><p id="stD"></p></div>
+    <div id="stCad" class="cadDest"><b>🎟️ Ganhe desconto nas próximas corridas</b><small>Cadastre-se grátis em 1 minuto: seus dados do pedido já vêm preenchidos.</small><button class="mini pulso" type="button" id="stCadBt" style="background:#C8933A;color:#0b1220;border:0">Cadastrar agora</button></div>
     <button class="mini" type="button" id="stEb" hidden style="width:100%">✎ Editar horário, partida ou adicionar parada</button>
     <div id="stEdP" class="vei" hidden style="display:none;gap:10px">
       <b>Alterar pedido</b>
@@ -134,10 +140,10 @@ legend{padding:0;margin-bottom:6px;font:700 16px "Barlow Condensed",sans-serif;l
       <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="mini" type="button" id="cadZap">📤 Enviar para um amigo</button><button class="mini" type="button" id="cadCopia">Copiar cupom</button></div>
       <button class="lnk" type="button" id="cadSair" style="font-size:13px;padding:8px">Não sou eu / sair do cadastro</button>
     </div>
-    <div id="cadNo">
-      <b>🎟️ Cadastre-se e ganhe desconto</b>
-      <small style="display:block">Indique amigos e ganhe desconto. Veja as regras em “Ver regras”.</small>
-      <button class="mini" type="button" id="cadAbre">Fazer meu cadastro</button>
+    <div id="cadNo" class="cadDest">
+      <b style="font-size:17px">🎟️ Cadastre-se grátis e ganhe desconto</b>
+      <small style="display:block">🎁 <span class="cdP"></span>% de desconto no mês do seu aniversário (após 30 dias de cadastro)<br>🤝 <span class="cdP"></span>% de crédito a cada amigo que você indicar (e seu amigo ganha <span id="cdI"></span>%)<br>Leva menos de 1 minuto. Veja as regras em “Ver regras”.</small>
+      <button class="mini pulso" type="button" id="cadAbre" style="background:#C8933A;color:#0b1220;border:0">Quero meu cadastro grátis</button>
       <div id="cadF" hidden style="display:none;gap:10px;margin-top:6px">
         <div class="field"><label for="cNome">Seu nome</label><input id="cNome" autocomplete="off" maxlength="60"></div>
         <div class="field"><label for="cFone">Seu WhatsApp</label><input id="cFone" type="tel" inputmode="tel" placeholder="(22) 99999-9999"></div>
@@ -286,6 +292,7 @@ const cupAtual = () => {
 const cupPct = () => { const c = cupAtual(); return c ? c.pct : 0; };
 const CUPI = 5; // % de quem usa o cupom de indicação de um amigo (1ª vez; soma com os demais descontos)
 let CI = {cod: '', f: '', ok: false};
+document.querySelectorAll('.cdP').forEach(e => e.textContent = CUP); $('cdI').textContent = CUPI;
 const cupIPct = () => (CI.ok && CI.f && foneKey($('fone').value) === CI.f && !cadOk()) ? CUPI : 0;
 const PAGN = {din: 'Dinheiro', pix: 'Pix', cartao: 'Cartão de débito/crédito'};
 const descDin = () => ($('pag').value === 'din' && DD > 0) ? DD : 0;
@@ -718,7 +725,9 @@ function avisar(msg){ try{ fetch(NTFY, {method: 'POST', body: msg, headers: {'Ti
 const MESES = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
 let clOff = null;
 function cadShow(ok){ $('cadOk').hidden = !ok; $('cadOk').style.display = ok ? 'grid' : 'none'; $('cadNo').hidden = ok; }
+$('stCadBt').onclick = () => { if($('cadF').hidden) $('cadAbre').onclick(); $('cad').scrollIntoView({behavior: 'smooth', block: 'center'}); };
 function cadDesenhar(){
+  $('stCad').hidden = !!(CL && CL.cod);
   if(!CL || !CL.cod){ cadShow(false); return; }
   cadShow(true); $('cadCod').textContent = CL.cod;
   const n = Object.keys(CL.ind || {}).length, a = creAtivos(CL.cre), cr = a.length, dias = cr ? Math.max(1, Math.ceil((a[0][1] - Date.now()) / 864e5)) : 0;
@@ -736,7 +745,7 @@ async function cadOuvir(f){
     clOff = () => rf.off('value', cb);
   }catch(x){}
 }
-$('cadAbre').onclick = () => { const a = $('cadF'); a.hidden = !a.hidden; a.style.display = a.hidden ? 'none' : 'grid'; if(!a.hidden){ if(!$('cNome').value) $('cNome').value = $('nome').value; if(!$('cFone').value) $('cFone').value = $('fone').value; } };
+$('cadAbre').onclick = () => { $('cadAbre').classList.remove('pulso'); const a = $('cadF'); a.hidden = !a.hidden; a.style.display = a.hidden ? 'none' : 'grid'; if(!a.hidden){ if(!$('cNome').value) $('cNome').value = $('nome').value; if(!$('cFone').value) $('cFone').value = $('fone').value; } };
 $('cNasc').oninput = e => { let d = e.target.value.replace(/\D/g, '').slice(0, 4); e.target.value = d.length > 2 ? d.slice(0, 2) + '/' + d.slice(2) : d; };
 $('cSalvar').onclick = async () => {
   const msg = t => { $('cMsg').textContent = t; }, bt = $('cSalvar'); msg('');
