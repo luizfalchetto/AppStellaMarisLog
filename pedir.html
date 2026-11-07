@@ -120,9 +120,8 @@ legend{padding:0;margin-bottom:6px;font:700 16px "Barlow Condensed",sans-serif;l
     <button class="lnk red" type="button" id="stC">Cancelar pedido</button>
     <div id="stA" hidden style="display:grid;gap:8px">
       <b>Como foi a sua corrida?</b>
-      <div class="stars" id="stS" style="display:flex;gap:4px"><button type="button" data-n="1" aria-label="1 estrela">★</button><button type="button" data-n="2" aria-label="2 estrelas">★</button><button type="button" data-n="3" aria-label="3 estrelas">★</button><button type="button" data-n="4" aria-label="4 estrelas">★</button><button type="button" data-n="5" aria-label="5 estrelas">★</button></div>
-      <input id="stAt" maxlength="250" placeholder="Comentário (opcional)">
-      <button class="lnk" type="button" id="stAe" disabled>Enviar avaliação</button>
+      <textarea id="stAt" maxlength="250" placeholder="Observações e sugestões para melhorarmos"></textarea>
+      <button class="lnk" type="button" id="stAe" disabled>Enviar observações</button>
     </div>
     <button class="lnk" type="button" id="stN" hidden>Fazer novo pedido</button>
   </section>
@@ -152,7 +151,7 @@ legend{padding:0;margin-bottom:6px;font:700 16px "Barlow Condensed",sans-serif;l
   <form id="f" class="app" style="padding:0" autocomplete="off" novalidate>
     <div class="rg"><label class="ck"><input type="checkbox" id="ciente"><span>Li as regras e concordo.</span></label><a href="#" id="verReg">Ver regras</a></div>
     <div class="field"><label for="nome">Seu nome</label><input id="nome" required placeholder="Ex.: Dona Marta"></div>
-    <div class="field"><label for="fone">Seu WhatsApp (necessário para receber o recibo)</label><input id="fone" type="tel" inputmode="tel" placeholder="(22) 99999-9999"></div>
+    <div class="field"><label for="fone">Seu WhatsApp (necessário para receber o recibo)</label><input id="fone" type="tel" inputmode="tel" placeholder="(22) 99999-9999"><small style="display:block;margin-top:6px;color:var(--muted)">O motorista confirma o pedido por mensagem de WhatsApp neste número. Informe um número que tenha WhatsApp.</small></div>
     <div class="field"><label for="cupIn">Cupom de indicação (opcional)</label><input id="cupIn" maxlength="12" autocomplete="off" style="text-transform:uppercase" placeholder="Código de um amigo"><small id="cupMsg" style="display:block;margin-top:6px;color:var(--muted)">Vale só na primeira corrida.</small></div>
     <div class="field"><label>Para quem é a corrida?</label>
       <div class="seg"><button type="button" id="bMim" aria-pressed="true">Para mim</button><button type="button" id="bOutro" aria-pressed="false">Para outra pessoa</button></div>
@@ -230,7 +229,7 @@ legend{padding:0;margin-bottom:6px;font:700 16px "Barlow Condensed",sans-serif;l
       <h3 style="margin:8px 0 0;font:700 15px 'Barlow Condensed',sans-serif;letter-spacing:.08em;text-transform:uppercase;color:var(--taxi)">Indique e ganhe</h3>
       <p>Você recebe um <b>cupom seu</b> ao se cadastrar. Seu amigo usa o cupom no <b>primeiro pedido dele</b> e ganha <b>5% de desconto</b>. Quando a corrida dele for concluída, você ganha <b>10% de desconto em uma corrida</b> (10 amigos = 10 corridas com 10%). Os créditos têm validade (30 dias a cada 4 créditos acumulados). <b>Descontos não são acumulativos:</b> em cada corrida vale só o maior (crédito, cupom de amigo ou dinheiro). Quem já tem cadastro usa apenas os próprios créditos, não cupom de outras pessoas.</p>
       <p><b>Pet:</b> avise o motorista antes. Pet viaja em caixa de transporte (pequeno porte) ou de guia/coleira curta (médio e grande); cães-guia são sempre bem-vindos. O motorista pode pedir para forrar o banco. <b>Se o pet sujar o carro, a higienização é por conta do dono.</b></p>
-      <p>Seu pedido fica agendado e você acompanha o status na própria página. O motorista confirma o valor final; a estimativa é aproximada.</p>
+      <p>Seu pedido fica agendado e você acompanha o status na própria página. O motorista confirma o pedido por mensagem de WhatsApp no telefone informado; se o número não existir no WhatsApp ou não responder, o pedido pode não ser confirmado. O motorista confirma o valor final; a estimativa é aproximada.</p>
       <button class="go" type="button" id="regFecha">Fechar</button></div></div>
 
 </div>
@@ -246,6 +245,10 @@ const W = (q.get('w') || '5522999299851').replace(/\D/g, '');
 const nm = q.get('n') || '';
 const num = k => { const v = parseFloat(String(q.get(k) || '').replace(',', '.')); return isFinite(v) ? v : 0; };
 const T = (q.has('b') || q.has('k') || q.has('m')) ? {band: num('b'), km: num('k'), min: num('m')} : {band: 5.5, km: 5, min: 0.4};
+const AR = String(q.get('ar') || '').split('|').map(s => s.trim()).filter(Boolean).slice(0, 40);
+const nz = s => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+const riscoEm = (...t) => AR.find(a => { const k = nz(a); return k && t.some(x => nz(x).includes(k)); });
+const RISCO_MSG = 'Não atendemos corridas com partida, parada ou destino nessa região. Escolha outro endereço.';
 const pc = k => { const v = String(q.get(k) || '').replace(',', '.').trim(); return v !== '' && isFinite(+v) ? +v : null; };
 // RESERVA DO DIA TODO (12 horas): os valores vêm do link do cliente (configurados no app do motorista); sem valor, a opção fica desligada.
 const DIA = {v: pc('dv') || 0, km: pc('dk') || 0, kmEx: pc('dke') || 0, hx: pc('dhx') != null ? pc('dhx') : 300, ini: '07:00', fim: '19:00', min: 720};
@@ -631,6 +634,7 @@ $('f').onsubmit = async e => {
   if(!nome || (!pO && !$('oRua').value.trim()) || (!dia && !$('dRua').value.trim())){ $('err').hidden = false; $('err').textContent = dia ? 'Preencha nome e rua de partida.' : 'Preencha nome, rua de partida e rua de destino.'; return; }
   if(outro && !$('pNome').value.trim()){ $('err').hidden = false; $('err').textContent = 'Informe o nome do passageiro.'; return; }
   if(par && !$('sRua').value.trim()){ $('err').hidden = false; $('err').textContent = 'Informe a rua da parada ou remova a parada.'; return; }
+  if(riscoEm(o, d, par ? addr('s') : '')){ $('err').hidden = false; $('err').textContent = RISCO_MSG; return; }
   if(!mid){ $('err').hidden = false; $('err').textContent = 'Escolha o carro em que você quer ir.'; $('fMot').scrollIntoView({block: 'center'}); return; }
   if(!$('pag').value){ $('err').hidden = false; $('err').textContent = 'Selecione a forma de pagamento.'; $('pag').focus(); return; }
   if($('pag').value === 'din' && !dia && !$('dinCk').checked){ $('err').hidden = false; $('err').textContent = 'Marque o aviso do pagamento em dinheiro para enviar o pedido.'; $('dinCk').focus(); return; }
@@ -888,6 +892,7 @@ $('xSalvar').onclick = async () => {
     if(cur.a && xTime){ const v = $('xQ').value; if(!v){ err('Escolha a data e a hora.'); return; } ts = new Date(v).getTime(); horaMudou = ts !== cur.a;
       if(horaMudou && cur.a - Date.now() < TMIN){ err('Faltam menos de 15 minutos para o horário marcado: o horário não pode mais ser alterado.'); return; }
       if(horaMudou){ if(ts < Date.now() + 25*60000){ err('Escolha um horário com pelo menos 30 minutos de antecedência.'); return; } if(!horaOk()){ err(HORA_MSG); return; } } }
+    if(riscoEm(novoO, cur.dt || '', xPar ? addr('xs0') : '')){ err(RISCO_MSG); return; }
     let pc = cur.pc || null;
     if(partidaMudou || !pc){ pc = xPin || await achar('xo'); if(!pc){ err('Não achei esse endereço no mapa. Confira a rua e o bairro ou toque em “Marcar a partida no mapa”.'); return; } }
     // valor novo (se o pedido tem os dados da estimativa)
@@ -924,19 +929,17 @@ $('xSalvar').onclick = async () => {
   }catch(e){ err('Não foi possível alterar agora. Se o motorista já marcou que chegou, só ele pode alterar. Avise pelo WhatsApp.'); }
   finally{ xBusy = false; bt.disabled = false; bt.textContent = 'Salvar alterações'; }
 };
-let avNota = 0;
 const avKey = () => 'sm_aval_' + (cur && cur.pid);
 function avalInit(){
   let feito = false; try{ feito = !!localStorage.getItem(avKey()); }catch(x){}
   if(feito){ $('stA').hidden = true; return; }
-  if(!$('stA').hidden) return; $('stA').hidden = false; avNota = 0; $('stAe').disabled = true;
-  document.querySelectorAll('#stS button').forEach(b => b.style.cssText = 'background:none;border:0;font-size:32px;line-height:1;color:#4a5a78;cursor:pointer;padding:2px');
+  if(!$('stA').hidden) return; $('stA').hidden = false; $('stAe').disabled = true;
 }
-$('stS').onclick = e => { const b = e.target.closest('button[data-n]'); if(!b) return; avNota = +b.dataset.n; document.querySelectorAll('#stS button').forEach(x => x.style.color = +x.dataset.n <= avNota ? '#DDB066' : '#4a5a78'); $('stAe').disabled = false; };
+$('stAt').oninput = () => { $('stAe').disabled = $('stAt').value.trim().length < 3; };
 $('stAe').onclick = async () => {
-  if(!cur || !avNota) return; $('stAe').disabled = true;
-  try{ const db = await loadFB(); const t = $('stAt').value.trim().slice(0, 250); await Promise.race([db.ref('avalp/' + cur.pid).set(Object.assign({n: avNota, c: firebase.database.ServerValue.TIMESTAMP}, t ? {t} : {})), new Promise((_, rj) => setTimeout(() => rj(new Error('t')), 8000))]);
-    try{ localStorage.setItem(avKey(), '1'); }catch(x){} $('stA').innerHTML = '<b>Obrigado pela avaliação!</b>'; }
+  const t = $('stAt').value.trim().slice(0, 250); if(!cur || t.length < 3) return; $('stAe').disabled = true;
+  try{ const db = await loadFB(); await Promise.race([db.ref('avalp/' + cur.pid).set({t, c: firebase.database.ServerValue.TIMESTAMP}), new Promise((_, rj) => setTimeout(() => rj(new Error('t')), 8000))]);
+    try{ localStorage.setItem(avKey(), '1'); }catch(x){} $('stA').innerHTML = '<b>Obrigado pelas observações!</b>'; }
   catch(x){ $('stAe').disabled = false; $('stAe').textContent = 'Não enviou. Tentar de novo'; }
 };
 $('stW').onclick = () => { if(cur) location.href = cur.wa; };
