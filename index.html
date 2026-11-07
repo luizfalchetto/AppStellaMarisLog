@@ -331,6 +331,10 @@ h3{font:700 15px var(--f-cond);letter-spacing:.12em;text-transform:uppercase;col
     <div class="field"><label for="cDiaKmEx">Km excedente (R$ por km)</label><div class="money"><input id="cDiaKmEx" type="text" inputmode="decimal" placeholder="0,00"></div></div>
     <div class="field"><label for="cDiaHx">Hora extra após as 12 horas (R$ por hora)</label><div class="money"><input id="cDiaHx" type="text" inputmode="decimal" placeholder="300,00"></div></div>
     <div class="field"><label for="cMeta">Meta diária (R$)</label><div class="money"><input id="cMeta" type="text" inputmode="decimal" placeholder="0,00"></div></div>
+    <h3>Reserva por horas</h3>
+    <div class="field"><label for="cHrV">Valor da hora (R$) — vazio desliga a opção</label><div class="money"><input id="cHrV" type="text" inputmode="decimal" placeholder="250,00"></div></div>
+    <div class="field"><label for="cHrKm">Km incluídos por hora</label><input id="cHrKm" type="text" inputmode="decimal" placeholder="50"></div>
+    <p class="hint">O cliente reserva no mínimo 1 hora e depois de 30 em 30 minutos (até 8 horas). O que passar do tempo ou dos km incluídos é cobrado pelo valor do minuto e do km das suas tarifas. Depois de alterar, copie o link de novo.</p>
     <h3>Áreas de risco</h3>
     <div class="field"><label for="cRisco">Bairros ou locais que você não atende (um por linha)</label><textarea id="cRisco" rows="4" maxlength="1200" placeholder="Um bairro ou local por linha"></textarea></div>
     <p class="hint">Pedidos com partida, parada ou destino que contenham esses nomes são barrados no link do cliente. Depois de alterar a lista, copie o link de novo e envie aos clientes.</p>
@@ -481,6 +485,7 @@ const pad = n => String(n).padStart(2,'0');
 const mmss = ms => { const s = Math.max(0, Math.floor(ms/1000)); const h = Math.floor(s/3600); const m = Math.floor(s%3600/60); return h ? `${h}:${pad(m)}:${pad(s%60)}` : `${pad(m)}:${pad(s%60)}`; };
 const hhmm = t => { const d = new Date(t); return `${pad(d.getHours())}:${pad(d.getMinutes())}`; };
 const dia = t => new Date(t).toLocaleDateString('pt-BR');
+const hrTxt = h => { const m = Math.round(h*60), hh = Math.floor(m/60), mm = m % 60; return mm ? `${hh}h${String(mm).padStart(2, '0')}` : `${hh}h`; };
 const minTxt = ms => { const m = ms/60000; return m < 10 ? m.toLocaleString('pt-BR',{maximumFractionDigits:1}) : String(Math.round(m)); };
 
 /* ---------- config ---------- */
@@ -509,35 +514,36 @@ function calc(r, now){
   const km = (r.kmManual != null ? r.kmManual : r.m/1000);
   const corrMs = r.inicio ? ((r.fim || t) - r.inicio) : 0;
   let espMs = 0, espTotal = 0, espStart = null;
-  if(r.chegada){
+  if(r.chegada && !r.pacote){
     const until = r.inicio || r.fim || t;
     espStart = (r.tipo === 'agendada' && r.agendado && r.agendado > r.chegada) ? r.agendado : r.chegada;
     espMs = Math.max(0, until - espStart);
     espTotal = Math.max(0, until - r.chegada);
   }
   const vKm = km*c.km, vMin = corrMs/60000*c.min, vEsp = espMs/60000*c.esp;
-  let corrida = 0, minimoAplicado = false;
-  if(r.inicio){ minimoAplicado = c.band > vKm; corrida = Math.max(c.band, vKm) + vMin; }
+  let corrida = 0, minimoAplicado = false, exKm = 0, exMin = 0, vExK = 0, vExM = 0;
+  if(r.inicio && r.pacote){ exKm = Math.max(0, km - (r.pacote.km || 0)); exMin = Math.max(0, corrMs/60000 - r.pacote.h*60); vExK = exKm*c.km; vExM = exMin*c.min; corrida = r.pacote.v + vExK + vExM; } // reserva por horas: pacote + km e minutos excedentes
+  else if(r.inicio){ minimoAplicado = c.band > vKm; corrida = Math.max(c.band, vKm) + vMin; }
   let sub = corrida + vEsp;
-  const dynPct = (r.dyn && !(r.emp && r.dyn === 'chu')) ? dynRate(c, r.dyn) : 0; // chuva não incide sobre empresas
+  const dynPct = (r.dyn && !r.pacote && !(r.emp && r.dyn === 'chu')) ? dynRate(c, r.dyn) : 0; // chuva não incide sobre empresas
   const refT = (r.tipo === 'agendada' && r.agendado) ? r.agendado : (r.inicio || t);
-  const notPct = (r.inicio && ehNoite(refT)) ? notRate(c) : 0;
+  const notPct = (r.inicio && !r.pacote && ehNoite(refT)) ? notRate(c) : 0;
   const vNot = Math.round(sub*notPct)/100;
   const vDyn = Math.round(sub*dynPct)/100; sub += vDyn + vNot;
-  const vPar = r.par ? (c.par != null ? Number(c.par) : 3) : 0; sub += vPar;
+  const vPar = (r.par && !r.pacote) ? (c.par != null ? Number(c.par) : 3) : 0; sub += vPar;
   const arr = Number(c.arred)||0;
   if(arr > 0 && sub > 0) sub = Math.ceil(sub/arr - 1e-9)*arr;
   const pct = (c.semTaxa || !r.fim || r.fim >= CUT_TAXA) ? 0 : (r.pag === 'deb' ? (c.taxaDeb != null ? c.taxaDeb : cfg.taxaDeb) : r.pag === 'cre' ? (c.taxaCre != null ? c.taxaCre : cfg.taxaCre) : 0);
   const taxa = Math.round(sub*(pct||0))/100;
-  const descPct0 = (r.emp && Number(r.emp.recDesc) > 0) ? Number(r.emp.recDesc) : (c.desc != null && !r.emp && (r.pag === 'din' || (!r.pag && r.fim))) ? Number(c.desc) : 0;
-  const cupP = (!r.emp && Number(r.cup) > 0) ? Number(r.cup) : 0, cupI = (!r.emp && Number(r.cupI) > 0) ? Number(r.cupI) : 0, descPct = Math.max(descPct0, cupP, cupI); // descontos não se acumulam: vale só o maior
+  const descPct0 = r.pacote ? 0 : (r.emp && Number(r.emp.recDesc) > 0) ? Number(r.emp.recDesc) : (c.desc != null && !r.emp && (r.pag === 'din' || (!r.pag && r.fim))) ? Number(c.desc) : 0;
+  const cupP = (!r.emp && !r.pacote && Number(r.cup) > 0) ? Number(r.cup) : 0, cupI = (!r.emp && !r.pacote && Number(r.cupI) > 0) ? Number(r.cupI) : 0, descPct = Math.max(descPct0, cupP, cupI); // descontos não se acumulam: vale só o maior
   const descNm = []; if(cupP > 0 && cupP >= descPct0 && cupP >= cupI) descNm.push('cupom de ' + (r.cupT === 'niv' ? 'aniversário' : 'indicação')); else if(cupI > 0 && cupI >= descPct0) descNm.push('cupom do amigo');
   const descCup = descNm.join(' + ');
   const vDesc = Math.round(sub*descPct)/100;
   const tot0 = Math.round((sub + taxa - vDesc)*100)/100;
-  const rio = !!(!r.emp && r.inicio && !r.cancelada && rioTxt((r.orig || '') + ' ' + (r.dest || '')));
+  const rio = !!(!r.emp && !r.pacote && r.inicio && !r.cancelada && rioTxt((r.orig || '') + ' ' + (r.dest || '')));
   const vRio = rio && tot0 < RIO_MIN ? Math.round((RIO_MIN - tot0)*100)/100 : 0, total = Math.round((tot0 + vRio)*100)/100;
-  return {rio, vRio, dynPct, vDyn, vNot, notPct, vPar, km, corrMs, espMs, espTotal, espStart, vKm, vMin, vEsp, corrida, minimoAplicado, sub, taxa, pct: pct||0, vDesc, descPct, descCup, total};
+  return {pacote: r.pacote || null, exKm, exMin, vExK, vExM, rio, vRio, dynPct, vDyn, vNot, notPct, vPar, km, corrMs, espMs, espTotal, espStart, vKm, vMin, vEsp, corrida, minimoAplicado, sub, taxa, pct: pct||0, vDesc, descPct, descCup, total};
 }
 
 /* ---------- GPS ---------- */
@@ -752,7 +758,13 @@ function receipt(r){
   if(r.orig) L.push(`Partida: ${r.orig}`);
   if(r.dest) L.push(`Destino: ${r.dest}`);
   L.push('');
-  if(r.inicio){
+  if(r.inicio && r.pacote){
+    L.push(`Reserva por horas (${hrTxt(r.pacote.h)}): R$ ${brl(r.pacote.v)}`);
+    L.push(`Distância: ${c.km.toLocaleString('pt-BR',{maximumFractionDigits:2})} km (inclusos ${Number(r.pacote.km).toLocaleString('pt-BR')} km)`);
+    if(c.exKm > 0) L.push(`Km excedente: ${c.exKm.toLocaleString('pt-BR',{maximumFractionDigits:2})} km × R$ ${brl(k.km)} = R$ ${brl(c.vExK)}`);
+    L.push(`Tempo: ${minTxt(c.corrMs)} min (contratado ${hrTxt(r.pacote.h)})`);
+    if(c.exMin > 0) L.push(`Tempo excedente: ${minTxt(c.exMin*60000)} min × R$ ${brl(k.min)} = R$ ${brl(c.vExM)}`);
+  }else if(r.inicio){
     if(c.minimoAplicado) L.push(`Bandeirada: R$ ${brl(k.band)} (${c.km.toLocaleString('pt-BR',{maximumFractionDigits:2})} km)`);
     else L.push(`Distância: ${c.km.toLocaleString('pt-BR',{maximumFractionDigits:2})} km × R$ ${brl(k.km)} = R$ ${brl(c.vKm)}`);
     L.push(`Tempo: ${minTxt(c.corrMs)} min × R$ ${brl(k.min)} = R$ ${brl(c.vMin)}`);
@@ -881,13 +893,13 @@ const fmtIn = v => v ? brl(v) : '';
 function openCfg(){
   $('cfNome').value = cfg.nome; $('cfPlaca').value = cfg.placa; $('cModelo').value = cfg.modelo || '';
   $('cBand').value = fmtIn(cfg.band); $('cKm').value = fmtIn(cfg.km); $('cMin').value = fmtIn(cfg.min); $('cEsp').value = fmtIn(cfg.esp);
-  $('cArr').value = String(cfg.arred); $('cPar').value = String(cfg.par != null ? cfg.par : 3).replace('.', ','); $('cMsg').value = cfg.msg; $('cEmp').value = cfg.empresa || ''; $('cCnpj').value = cfg.cnpj || ''; $('cWhats').value = cfg.whats || ''; $('cDesc').value = String(cfg.desc != null ? cfg.desc : 5).replace('.', ','); $('cPix').value = cfg.pix || ''; $('cMeta').value = fmtIn(cfg.meta); $('cRisco').value = (cfg.risco || []).join('\n'); $('cDiaV').value = cfg.diaV ? fmtIn(cfg.diaV) : ''; $('cDiaKm').value = cfg.diaKm ? String(cfg.diaKm).replace('.', ',') : ''; $('cDiaKmEx').value = cfg.diaKmEx ? fmtIn(cfg.diaKmEx) : ''; $('cDiaHx').value = fmtIn(cfg.diaHx != null ? cfg.diaHx : 300); $('cNot').value = String(cfg.noturno != null ? cfg.noturno : 30).replace('.', ',');
+  $('cArr').value = String(cfg.arred); $('cPar').value = String(cfg.par != null ? cfg.par : 3).replace('.', ','); $('cMsg').value = cfg.msg; $('cEmp').value = cfg.empresa || ''; $('cCnpj').value = cfg.cnpj || ''; $('cWhats').value = cfg.whats || ''; $('cDesc').value = String(cfg.desc != null ? cfg.desc : 5).replace('.', ','); $('cPix').value = cfg.pix || ''; $('cMeta').value = fmtIn(cfg.meta); $('cHrV').value = cfg.hrV ? fmtIn(cfg.hrV) : ''; $('cHrKm').value = String(cfg.hrKm != null ? cfg.hrKm : 50).replace('.', ','); $('cRisco').value = (cfg.risco || []).join('\n'); $('cDiaV').value = cfg.diaV ? fmtIn(cfg.diaV) : ''; $('cDiaKm').value = cfg.diaKm ? String(cfg.diaKm).replace('.', ',') : ''; $('cDiaKmEx').value = cfg.diaKmEx ? fmtIn(cfg.diaKmEx) : ''; $('cDiaHx').value = fmtIn(cfg.diaHx != null ? cfg.diaHx : 300); $('cNot').value = String(cfg.noturno != null ? cfg.noturno : 30).replace('.', ',');
   show('sCfg', true);
 }
 $('fCfg').onsubmit = e => {
   e.preventDefault();
   cfg = {nome:$('cfNome').value.trim(), placa:$('cfPlaca').value.trim().toUpperCase(), modelo:$('cModelo').value.trim(), band:numIn($('cBand').value),
-         km:numIn($('cKm').value), min:numIn($('cMin').value), esp:numIn($('cEsp').value), arred:Number($('cArr').value), msg:$('cMsg').value.trim(), empresa:$('cEmp').value.trim(), cnpj:$('cCnpj').value.trim(), whats:$('cWhats').value.replace(/\D/g,''), taxaDeb:0, taxaCre:0, semTaxa:true, desc:numIn($('cDesc').value), pix:$('cPix').value.trim(), meta:numIn($('cMeta').value), noturno:numIn($('cNot').value), par:numIn($('cPar').value), diaV:numIn($('cDiaV').value), diaKm:numIn($('cDiaKm').value), diaKmEx:numIn($('cDiaKmEx').value), diaHx:numIn($('cDiaHx').value), risco:riscoLista(), d10:1};
+         km:numIn($('cKm').value), min:numIn($('cMin').value), esp:numIn($('cEsp').value), arred:Number($('cArr').value), msg:$('cMsg').value.trim(), empresa:$('cEmp').value.trim(), cnpj:$('cCnpj').value.trim(), whats:$('cWhats').value.replace(/\D/g,''), taxaDeb:0, taxaCre:0, semTaxa:true, desc:numIn($('cDesc').value), pix:$('cPix').value.trim(), meta:numIn($('cMeta').value), noturno:numIn($('cNot').value), par:numIn($('cPar').value), diaV:numIn($('cDiaV').value), diaKm:numIn($('cDiaKm').value), diaKmEx:numIn($('cDiaKmEx').value), diaHx:numIn($('cDiaHx').value), risco:riscoLista(), hrV:numIn($('cHrV').value), hrKm:(numIn($('cHrKm').value) || 50), d10:1};
   store.set('tx_cfg', cfg); show('sCfg', false); render();
   toast(ride && ride.fase !== 'fim' ? 'Tarifas salvas. Valem a partir da próxima corrida.' : 'Tarifas salvas');
 };
@@ -897,6 +909,7 @@ $('bLink').onclick = async () => {
   const n = s => String(s || '').replace('.', ',');
   const u = new URL('pedir.html', location.href);
   u.search = new URLSearchParams({w, n:($('cEmp').value.trim() || 'Stella Maris Logistics'), b:n(numIn($('cBand').value)), k:n(numIn($('cKm').value)), m:n(numIn($('cMin').value)), e:n(numIn($('cEsp').value)), nt:n(numIn($('cNot').value)), dd:n(numIn($('cDesc').value))}); if(numIn($('cDiaV').value) > 0){ const dq = {dv:numIn($('cDiaV').value), dk:numIn($('cDiaKm').value), dke:numIn($('cDiaKmEx').value), dhx:numIn($('cDiaHx').value)}; Object.keys(dq).forEach(k => u.searchParams.set(k, n(dq[k]))); } u.search = u.searchParams.toString();
+  if(numIn($('cHrV').value) > 0){ u.searchParams.set('hv', n(numIn($('cHrV').value))); u.searchParams.set('hk', n(numIn($('cHrKm').value) || 50)); }
   { const rl = riscoLista(); if(rl.length) u.searchParams.set('ar', rl.join('|')); }
   try{ await navigator.clipboard.writeText(u.href); toast('Link copiado. Mande ao cliente.'); }catch(e){ prompt('Copie o link:', u.href); }
 };
@@ -952,7 +965,13 @@ $('hLib').onclick = () => horRange(false, false);
 function linhas(r){
   const c = calc(r), k = r.cfg, rows = [];
   if(r.noshow) return {c, k, rows: [[`No-Show (${c.nsPct.toLocaleString('pt-BR')}% de R$ ${brl((r.emp || {}).estimV || 0)} estimado)`, 'R$ ' + brl(c.total)]]};
-  if(r.inicio){
+  if(r.inicio && r.pacote){
+    rows.push([`Reserva por horas (${hrTxt(r.pacote.h)})`, 'R$ '+brl(r.pacote.v)]);
+    rows.push([`Distância ${c.km.toLocaleString('pt-BR',{maximumFractionDigits:2})} km (inclusos ${Number(r.pacote.km).toLocaleString('pt-BR')} km)`, '']);
+    if(c.exKm > 0) rows.push([`Km excedente ${c.exKm.toLocaleString('pt-BR',{maximumFractionDigits:2})} km × R$ ${brl(k.km)}`, 'R$ '+brl(c.vExK)]);
+    rows.push([`Tempo ${minTxt(c.corrMs)} min (contratado ${hrTxt(r.pacote.h)})`, '']);
+    if(c.exMin > 0) rows.push([`Tempo excedente ${minTxt(c.exMin*60000)} min × R$ ${brl(k.min)}`, 'R$ '+brl(c.vExM)]);
+  }else if(r.inicio){
     if(c.minimoAplicado) rows.push([`Bandeirada (${c.km.toLocaleString('pt-BR',{maximumFractionDigits:2})} km)`, 'R$ '+brl(k.band)]);
     else rows.push([`Distância ${c.km.toLocaleString('pt-BR',{maximumFractionDigits:2})} km × R$ ${brl(k.km)}`, 'R$ '+brl(c.vKm)]);
     rows.push([`Tempo ${minTxt(c.corrMs)} min × R$ ${brl(k.min)}`, 'R$ '+brl(c.vMin)]);
@@ -1445,6 +1464,7 @@ $('bShare').onclick = async () => {
   const n = v => String(v || 0).replace('.', ','), u = new URL('pedir.html', location.href);
   u.search = new URLSearchParams({w, n:(cfg.empresa || 'Stella Maris Logistics'), b:n(cfg.band), k:n(cfg.km), m:n(cfg.min), e:n(cfg.esp), nt:n(cfg.noturno != null ? cfg.noturno : 30), dd:n(cfg.desc != null ? cfg.desc : 5)});
   if(cfg.diaV > 0){ const dq = {dv:cfg.diaV, dk:cfg.diaKm, dke:cfg.diaKmEx, dhx:cfg.diaHx != null ? cfg.diaHx : 300}; Object.keys(dq).forEach(k => u.searchParams.set(k, n(dq[k]))); }
+  if(cfg.hrV > 0){ u.searchParams.set('hv', n(cfg.hrV)); u.searchParams.set('hk', n(cfg.hrKm || 50)); }
   if((cfg.risco || []).length) u.searchParams.set('ar', cfg.risco.join('|'));
   u.search = u.searchParams.toString();
   try{ if(navigator.share){ await navigator.share({title: 'Peça sua corrida', text: 'Peça sua corrida pelo link:', url: u.href}); return; } }catch(e){ if(e && e.name === 'AbortError') return; }
@@ -1465,8 +1485,8 @@ function alertaEdit(it){
   try{ actx = actx || new (window.AudioContext || window.webkitAudioContext)(); [0, .2, .4].forEach(t => { const o = actx.createOscillator(), g = actx.createGain(); o.frequency.value = 660; g.gain.value = .2; o.connect(g); g.connect(actx.destination); o.start(actx.currentTime + t); o.stop(actx.currentTime + t + .14); }); }catch(e){}
 }
 function alertaNovo(it){
-  try{ window.SMA && SMA.novaCorrida((it.dia ? 'Nova reserva do dia: ' : it.a ? 'Novo agendamento: ' : 'Novo pedido: ') + (it.nome || 'cliente')); }catch(e){}
-  toast((it.dia ? 'Nova RESERVA DO DIA: ' : it.a ? 'Novo AGENDAMENTO: ' : 'Novo pedido: ') + (it.nome || 'cliente'));
+  try{ window.SMA && SMA.novaCorrida((it.dia ? 'Nova reserva do dia: ' : it.hr ? 'Nova reserva por horas: ' : it.a ? 'Novo agendamento: ' : 'Novo pedido: ') + (it.nome || 'cliente')); }catch(e){}
+  toast((it.dia ? 'Nova RESERVA DO DIA: ' : it.hr ? 'Nova RESERVA POR HORAS: ' : it.a ? 'Novo AGENDAMENTO: ' : 'Novo pedido: ') + (it.nome || 'cliente'));
   try{ navigator.vibrate && navigator.vibrate([300, 150, 300]); }catch(e){}
   try{ actx = actx || new (window.AudioContext || window.webkitAudioContext)(); [0, .25].forEach(t => { const o = actx.createOscillator(), g = actx.createGain(); o.frequency.value = 880; g.gain.value = .2; o.connect(g); g.connect(actx.destination); o.start(actx.currentTime + t); o.stop(actx.currentTime + t + .18); }); }catch(e){}
 }
@@ -1526,6 +1546,7 @@ function iniciarAg(sid){
   if(ride && ride.fase !== 'fim'){ toast('Termine ou cancele a corrida em andamento antes.'); return; }
   newRide('agendada', it.a, it.passageiro || it.nome || '', (it.passageiro ? it.foneP : it.fone) || '', false);
   ride.orig = it.partida || ''; ride.dest = it.destino || ''; ride.obs = it.obs || ''; ride.mc = /^[A-Z0-9]{4,12}$/.test(it.mc || '') ? it.mc : '';
+  if(it.hr > 0 && it.hv > 0) ride.pacote = {h: it.hr, v: it.hv, km: it.hk || 0};
   ride.fila = {sid, pid: it.pid, s: 'aceito', oLa: it.oLa, oLo: it.oLo, dLa: it.dLa, dLo: it.dLo, partida: it.partida, destino: it.destino, cod: it.cod || '', fcl: it.fcl || '', uc: '', ci: 0};
   save(); render(); aplicarCupom(it, sid);
   toast('Corrida agendada iniciada. Toque em "Ir até o cliente".'); aplicarEmpresa(Object.assign({sid}, it));
@@ -1760,7 +1781,7 @@ function drawFila(){
     const pf = x.passageiro ? x.foneP : x.fone, px = paxDe(pf), np = nPedidos(pf), rz = riscoDe(x);
     const info = `<p><small>${np ? np + ' corrida(s) concluída(s) com este cliente' : 'Primeiro pedido deste cliente (neste aparelho)'}</small></p>` + (px.bloq ? `<p style="color:#e5484d;font-weight:700">⛔ Passageiro bloqueado${px.motivo ? ': ' + escapeHtml(px.motivo) : ''}</p>` : '') + (px.obs ? `<p style="color:#e0a800"><small>Obs. do passageiro:</small> ${escapeHtml(px.obs)}</p>` : '') + (rz ? `<p style="color:#e5484d;font-weight:700">⚠ Área de risco: ${escapeHtml(rz)}</p>` : '');
     const prox = x.dist != null && x.s === 'aguardando' ? `<p class="prox">${kmFila(x.dist)} de onde você termina${x.furou ? ' · passou na frente por proximidade' : ''}</p>` : '';
-    return `<div class="fcard${x.a ? ' ag' : ''}"><div class="st">${x.a ? '<span class="agblink">' + (x.dia ? 'RESERVA DIA TODO' : 'AGENDADA') + '</span> ' + fmtAg(x.a) + ' · prioridade · ' : ''}${FLBL[x.s]}${meu ? ' · sua corrida atual' : ''}</div><h3><span class="pos">${i + 1}º</span>${nome}</h3>
+    return `<div class="fcard${x.a ? ' ag' : ''}"><div class="st">${x.a ? '<span class="agblink">' + (x.dia ? 'RESERVA DIA TODO' : x.hr ? 'RESERVA POR HORAS (' + hrTxt(x.hr) + ')' : 'AGENDADA') + '</span> ' + fmtAg(x.a) + ' · prioridade · ' : ''}${FLBL[x.s]}${meu ? ' · sua corrida atual' : ''}</div><h3><span class="pos">${i + 1}º</span>${nome}</h3>
       <small>Pedido às ${hora} · ${escapeHtml(x.quando || 'Agora')}</small>${info}
       ${(x.cp || x.ci) ? `<p style="color:#0a9d63;font-weight:700">🎟️ Cupom do cliente: ${[x.cp ? x.cp + '% (' + (x.uc === 'niv' ? 'aniversário' : 'crédito de indicação') + ')' : '', x.ci ? x.ci + '% (cupom de amigo)' : ''].filter(Boolean).join(' + ')} — conferido ao aceitar</p>` : ''}
       ${x.edc ? `<p style="color:#e0a800;font-weight:700">✎ Alterado pelo cliente às ${new Date(x.edc).toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'})}</p>` : ''}
