@@ -388,8 +388,13 @@ async function loadFrota(){
 }
 // viagem de/para o Rio: ocupa o motorista por ida e volta (~7h). Saindo de Macaé: reserva ~6h30 a partir da saída; buscando no Rio: reserva ~3h20 ANTES (ida vazia) e ~3h20 depois.
 const RIO_DUR = 390, RIO_PRE = 200, RIO_POS = 180;
-const rioPlan = (o, d, min) => { const ro = rioTxt(o), rd = rioTxt(d); if(!ro && !rd) return null; const m = min || 0; return ro ? {pre: RIO_PRE, mins: durTotal(Math.max(m, RIO_POS))} : {pre: 0, mins: durTotal(Math.max(2*m, RIO_DUR))}; };
-async function ocupado(ts, mins, rioN, pre, bq){
+const LONGE = 60, FOLGA_CH = 30; // viagem longa = ponto a mais de 60 km do centro de Macaé; folga (min) depois de chegar ao destino
+const far = p => !!(p && typeof CENTRO !== 'undefined' && hav(CENTRO, p) > LONGE);
+const perto = (a, b) => (a && b) ? hav(a, b) < LONGE : true;
+// ida (sai daqui, vai longe): trava ida + volta vazia. Volta (sai de longe, vem para cá): trava o tempo para o motorista chegar lá.
+const rioPlan = (o, d, min, po, pd) => { const ro = rioTxt(o), rd = rioTxt(d), fo = ro || far(po), fd = rd || far(pd); if(fo === fd) return null; const m = min || 0;
+  return fo ? {lado: 'volta', pre: ro ? RIO_PRE : durTotal(m), mins: durTotal(Math.max(m, ro ? RIO_POS : 0))} : {lado: 'ida', ida: m, pre: 0, mins: durTotal(Math.max(2*m, rd ? RIO_DUR : 0))}; };
+async function ocupado(ts, mins, rioN, pre, bq, pl){
   const db = await Promise.race([loadFB(), new Promise((_, rj) => setTimeout(() => rj(new Error('t')), 6000))]);
   const s0 = ts - (pre || 0)*60000;
   try{ const bs = (await Promise.race([db.ref(bPath()).once('value'), new Promise((_, rj) => setTimeout(() => rj(new Error('t')), 6000))])).val() || {}; for(let t = Math.floor((bq ? bq[0] : s0)/1800000)*1800000; t < (bq ? bq[1] : ts + mins*60000); t += 1800000) if(bs[cellKey(t)]) return {bloq: true, x: t, ate: t + 1800000}; }catch(e){}
@@ -401,8 +406,19 @@ async function ocupado(ts, mins, rioN, pre, bq){
     if(!x || !x.a || !ATIVOS.includes(x.s) || x.a + (x.m || 35)*60000 < now - 3*3600*1000) continue;
     if(cur && cur.pid === k) continue;
     if((x.mid || 'luiz') !== mid) continue;
-    const xo = pt(x.oLa, x.oLo), xr = (x.m || 0) < 1440 && (x.m || 0) >= RIO_POS + 20; // 1440 min = reserva do dia todo (não é viagem ao Rio) // corrida longa = viagem ao Rio
-    const xPre = xr && (!xo || !CENTRO_ || hav(CENTRO_, xo) > 60) ? RIO_PRE*60000 : 0, xs = x.a - xPre, fimX = x.a + (x.m || 35)*60000;
+    const xo = pt(x.oLa, x.oLo), xd = pt(x.dLa, x.dLo), xFo = far(xo), xr = (x.m || 0) < 1440 && ((x.m || 0) >= RIO_POS + 20 || xFo || far(xd)); // 1440 min = reserva do dia todo; corrida longa = viagem para longe
+    const xV = xr && (!xo || xFo); // corrida que sai de longe (volta)
+    const xPre = xV ? Math.min(Math.max(x.m || 0, 60), 480)*60000 : 0, xs = x.a - xPre, fimX = x.a + (x.m || 35)*60000;
+    if(pl && pl.lado === 'volta' && xr && !xV && x.a <= ts && perto(xd, pO)){ // minha volta sai de onde a ida dele chega: livre depois da chegada
+      const chega = x.a + Math.ceil((x.m || 0)/2.2)*60000, pronto = chega + FOLGA_CH*60000;
+      if(ts >= pronto) continue;
+      return {antes: false, casar: true, x: x.a, chega, ate: pronto};
+    }
+    if(pl && pl.lado === 'ida' && xr && xV && ts < x.a && perto(xo, pD)){ // minha ida chega onde a volta dele sai: precisa chegar antes
+      const lim = x.a - (pl.ida + FOLGA_CH)*60000;
+      if(ts <= lim) continue;
+      return {antes: true, casar: true, x: x.a, max: lim, ate: x.a};
+    }
     if(s0 < xs){ // a nova corrida vem antes: precisa terminar e chegar na origem da outra
       const gap = tv(rioN ? null : pD, xr ? null : xo)*60000;
       if(fimN + gap > xs) return {antes: true, x: xs, ate: fimN + gap};
@@ -423,10 +439,11 @@ async function chkSlot(){
   const ts = new Date(v).getTime(); if(ts < Date.now() + 25*60000){ el.style.color = '#e5484d'; el.textContent = 'Escolha um horário com pelo menos 30 minutos de antecedência.'; return false; }
   if(!horaOk()){ el.style.color = '#e5484d'; el.textContent = HORA_MSG; return false; }
   const tk = ++slotTk;
-  try{ const pl = dia ? null : rioPlan(addr('o'), addr('d'), est ? est.min : 0), o = await ocupado(dia ? dia0(ts) : ts, dia ? 1440 : (pl ? pl.mins : durTotal(est ? est.min : 30)), !!pl, pl ? pl.pre : 0, dia ? [ts, ts + DIA.min*60000] : null); if(tk !== slotTk) return true;
+  try{ const pl = dia ? null : rioPlan(addr('o'), addr('d'), est ? est.min : 0, pO, pD), o = await ocupado(dia ? dia0(ts) : ts, dia ? 1440 : (pl ? pl.mins : durTotal(est ? est.min : 30)), !!pl, pl ? pl.pre : 0, dia ? [ts, ts + DIA.min*60000] : null, pl); if(tk !== slotTk) return true;
     if(o && dia){ el.style.color = '#e5484d'; el.textContent = 'Data indisponível: ' + (o.bloq ? 'não há atendimento nesse período.' : 'já existe corrida agendada nesse dia.') + ' Escolha outra data.'; return false; }
     if(o && o.bloq){ el.style.color = '#e5484d'; el.textContent = 'Horário indisponível: não há atendimento nesse horário. Escolha outro horário ou outro dia.'; return false; }
-    if(o){ const h = t => new Date(t).toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'}); el.style.color = '#e5484d'; el.textContent = o.antes ? `Horário indisponível: há outra corrida agendada às ${h(o.x)} e não haveria tempo de terminar a sua e se deslocar até lá. Escolha um horário anterior ou depois das ${h(o.ate)}.` : `Horário indisponível: a agenda está travada até as ${h(o.ate)} (duração da corrida em andamento e deslocamento até você). Escolha um horário a partir desse.`; return false; }
+    if(o){ const h = t => new Date(t).toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'}); el.style.color = '#e5484d'; if(o.casar){ if(o.antes){ el.textContent = `Horário indisponível: há uma corrida saindo de lá às ${h(o.x)} e a sua ida precisa chegar antes. Escolha um horário até as ${h(o.max)}.`; }else{ el.textContent = `Horário indisponível: o motorista estará no destino da corrida das ${h(o.x)} por volta das ${h(o.chega)}. Você pode agendar a partir das ${h(o.ate)}. `; const sg = new Date(Math.ceil(o.ate/300000)*300000), p2 = n => String(n).padStart(2, '0'), bt = document.createElement('button'); bt.type = 'button'; bt.className = 'lnk'; bt.textContent = `Usar ${h(sg)}`; bt.onclick = () => { $('quando').value = `${sg.getFullYear()}-${p2(sg.getMonth() + 1)}-${p2(sg.getDate())}T${p2(sg.getHours())}:${p2(sg.getMinutes())}`; chkSlot(); showEst(); }; el.append(bt); } return false; }
+      el.textContent = o.antes ? `Horário indisponível: há outra corrida agendada às ${h(o.x)} e não haveria tempo de terminar a sua e se deslocar até lá. Escolha um horário anterior ou depois das ${h(o.ate)}.` : `Horário indisponível: a agenda está travada até as ${h(o.ate)} (duração da corrida em andamento e deslocamento até você). Escolha um horário a partir desse.`; return false; }
     el.style.color = '#2fb36d'; el.textContent = dia ? 'Data disponível ✓' : 'Horário disponível ✓'; return true;
   }catch(x){ return true; }
 }
@@ -677,7 +694,7 @@ $('f').onsubmit = async e => {
   try{
     const db = await Promise.race([loadFB(), new Promise((_, rj) => setTimeout(() => rj(new Error('t')), 8000))]);
     const sid = db.ref().push().key, pid = db.ref().push().key, TS = firebase.database.ServerValue.TIMESTAMP;
-    const pl = dia ? null : rioPlan(addr('o'), addr('d'), est ? est.min : 0), m = dia ? 1440 : (pl ? pl.mins : durTotal(est ? est.min : 30));
+    const pl = dia ? null : rioPlan(addr('o'), addr('d'), est ? est.min : 0, pO, pD), m = dia ? 1440 : (pl ? pl.mins : durTotal(est ? est.min : 30));
     const f = {nome, fone, passageiro: outro ? $('pNome').value.trim() : '', foneP: outro ? $('pFone').value.trim() : '', partida: o, destino: d, obs: obsFinal(), quando, estim: dia ? `Reserva do dia todo · R$ ${brl(DIA.v)} · ${DIA.ini} às ${DIA.fim}` + (DIA.km > 0 ? ` · até ${DIA.km} km` : '') : est ? `R$ ${brl(tot())} · ${est.km.toLocaleString('pt-BR',{maximumFractionDigits:1})} km${rio() ? ' · pedágio incluso' : ''}` : (rio() ? 'a partir de R$ 1.000,00 · pedágio incluso' : ''), pid, pag: PAGN[$('pag').value], c: TS, s: 'aguardando'};
     if(par) f.parada = addr('s').slice(0, 200);
     { const b = dia ? null : melhor(); if(CL && CL.f && foneKey(fone) === CL.f){ f.fcl = CL.f; if(CL.cod) f.mc = CL.cod; } if(b && (b.k === 'niv' || b.k === 'ind')){ f.cp = b.p; f.uc = b.k; } else if(b && b.k === 'ci'){ f.fcl = CI.f; f.cod = CI.cod; f.ci = CUPI; } if(f.fcl && DEV) f.dv = DEV; }
@@ -913,7 +930,7 @@ $('xSalvar').onclick = async () => {
     // agenda: horário livre com a nova partida?
     if(cur.a && (horaMudou || partidaMudou)){
       const sMid = mid, sO = pO, sD = pD; mid = mid2; pO = pc; pD = cur.dc || null;
-      let o = null; try{ const mn = min != null ? min : (cur.es ? cur.es.min : 30), pl = rioPlan(novoO, cur.dt || (cur.rio ? 'galeao' : ''), mn); o = await ocupado(ts, pl ? pl.mins : durTotal(mn), !!pl, pl ? pl.pre : 0); }catch(e){} mid = sMid; pO = sO; pD = sD;
+      let o = null; try{ const mn = min != null ? min : (cur.es ? cur.es.min : 30), pl = rioPlan(novoO, cur.dt || (cur.rio ? 'galeao' : ''), mn, pc, cur.dc || null); o = await ocupado(ts, pl ? pl.mins : durTotal(mn), !!pl, pl ? pl.pre : 0, null, pl); }catch(e){} mid = sMid; pO = sO; pD = sD;
       if(o){ const h = t => new Date(t).toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'});
         err(o.bloq ? 'Horário indisponível: não há atendimento nesse horário. Escolha outro.' : (o.antes ? `Horário indisponível: há outra corrida às ${h(o.x)}. Escolha um horário anterior ou depois das ${h(o.ate)}.` : `Horário indisponível: a agenda está travada até as ${h(o.ate)}. Escolha um horário depois disso.`)); return; }
     }
@@ -926,7 +943,7 @@ $('xSalvar').onclick = async () => {
     if(km != null){
       const hh = new Date(ts || Date.now()).getHours(), noite = cur.a && NT > 0 && (hh >= 22 || hh < 5), dsc = Math.max((cur.pg === 'din' && DD > 0) ? DD : 0, Number(cur.cp) || 0, Number(cur.ci) || 0);
       const v0 = Math.max(T.band, km*T.km) + min*T.min, ev2 = Math.round(v0 * (1 + (noite ? NT : 0)/100) * 100) / 100, tt = Math.round((ev2 + (xPar ? PAR : 0)) * (1 - dsc/100) * 100) / 100; if(cur.rio || rioTxt(novoO) || rioTxt(cur.dt)) tt = Math.max(tt, RIO_MIN);
-      estNova = `R$ ${brl(tt)} · ${km.toLocaleString('pt-BR', {maximumFractionDigits: 1})} km`; up[B + 'estim'] = estNova; up[P + 'm'] = (() => { const pl = rioPlan(novoO, cur.dt || (cur.rio ? 'galeao' : ''), min); return pl ? pl.mins : durTotal(min); })();
+      estNova = `R$ ${brl(tt)} · ${km.toLocaleString('pt-BR', {maximumFractionDigits: 1})} km`; up[B + 'estim'] = estNova; up[P + 'm'] = (() => { const pl = rioPlan(novoO, cur.dt || (cur.rio ? 'galeao' : ''), min, pc, cur.dc || null); return pl ? pl.mins : durTotal(min); })();
     }
     const db = await Promise.race([loadFB(), new Promise((_, rj) => setTimeout(() => rj(new Error('t')), 8000))]);
     await Promise.race([db.ref().update(up), new Promise((_, rj) => setTimeout(() => rj(new Error('t')), 8000))]);
