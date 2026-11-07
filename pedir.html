@@ -189,6 +189,7 @@ legend{padding:0;margin-bottom:6px;font:700 16px "Barlow Condensed",sans-serif;l
       <div class="field"><label for="sCid">Cidade</label><input id="sCid" value="Macaé" autocomplete="off"></div>
     </fieldset>
     <div class="field" id="fDia" hidden><label class="ck"><input type="checkbox" id="diaCk"><span id="diaTx"></span></label><small id="diaSm" style="display:block;margin-top:6px;color:var(--muted)"></small></div>
+    <div class="field" id="fHr" hidden><label class="ck"><input type="checkbox" id="hrCk"><span id="hrTx"></span></label><div id="hrBox" hidden style="margin-top:8px"><label for="hrN">Quantas horas?</label><select id="hrN"></select></div><small id="hrSm" style="display:block;margin-top:6px;color:var(--muted)"></small></div>
     <div class="field" id="fQuando"><label for="quando" id="quandoL">Data e hora da corrida</label><input id="quando" type="datetime-local" required><input id="quandoD" type="date" hidden><small id="qAv" style="display:block;margin-top:6px"></small><small style="display:block;margin-top:6px;color:var(--muted)">Somente com agendamento, com pelo menos 30 minutos de antecedência.</small></div>
     <div class="field"><button class="mini" type="button" id="bPet" aria-expanded="false">🐾 Vou levar um pet</button></div>
     <fieldset id="fPet" hidden><legend>Pet na corrida</legend>
@@ -217,6 +218,7 @@ legend{padding:0;margin-bottom:6px;font:700 16px "Barlow Condensed",sans-serif;l
         <li><b>Espera:</b> o tempo de espera do passageiro é cobrado<span id="avEsp"></span>. Se o motorista já tiver chegado e você cancelar, a espera pode ser cobrada.</li>
         <li id="avDyn" hidden></li>
         <li><b>Somente com agendamento:</b> não atendemos pedidos imediatos. Escolha data e hora com pelo menos 30 minutos de antecedência e o pedido de agendamento só pode ser feito entre 05:00 e 21:30 (a partida pode ser depois). O horário fica reservado para você, sem acréscimo de preço.</li>
+        <li id="regHr" hidden><b>Reserva por horas:</b> <span id="regHrT"></span></li>
         <li id="regDia" hidden><b>Reserva do dia todo:</b> <span id="regDiaT"></span></li>
         <li><b>Agenda travada:</b> cada corrida reserva o tempo estimado, mais uma folga e o tempo de deslocamento do motorista até a próxima. Se o horário escolhido estiver ocupado, o app avisa e mostra quando a agenda fica livre. Se a viagem demorar mais que o previsto (trânsito, desvio), o valor e os horários seguintes podem mudar.</li>
         <li><b>Corrida exclusiva:</b> até 4 passageiros, água e cortesias a bordo.</li>
@@ -259,6 +261,10 @@ const pc = k => { const v = String(q.get(k) || '').replace(',', '.').trim(); ret
 // RESERVA DO DIA TODO (12 horas): os valores vêm do link do cliente (configurados no app do motorista); sem valor, a opção fica desligada.
 const DIA = {v: pc('dv') || 0, km: pc('dk') || 0, kmEx: pc('dke') || 0, hx: pc('dhx') != null ? pc('dhx') : 300, ini: '07:00', fim: '19:00', min: 720};
 const fmt = v => v.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+// RESERVA POR HORAS: valor da hora e km incluídos por hora vêm do link (app do motorista). Mínimo 1 hora, depois de 30 em 30 minutos.
+const HR = {v: pc('hv') || 0, km: pc('hk') != null ? pc('hk') : 50, min: 1, max: 8};
+const hrTxt = h => { const m = Math.round(h*60), hh = Math.floor(m/60), mm = m % 60; return mm ? `${hh}h${String(mm).padStart(2, '0')}` : `${hh}h`; };
+const hrTermos = h => `${hrTxt(h)} com o carro à disposição, até ${(HR.km*h).toLocaleString('pt-BR')} km inclusos (${HR.km.toLocaleString('pt-BR')} km por hora). O que passar do tempo contratado é cobrado por minuto (R$ ${fmt(T.min)} por minuto) e o que passar dos km, por km rodado (R$ ${fmt(T.km)} por km).`;
 { const e = pc('e'), d = pc('d'), td = pc('td'), tc = pc('tc');
   if(e) document.getElementById('avEsp').textContent = ` por minuto (R$ ${fmt(e)}/min)`;
   { const dc = pc('dc'), f = d != null ? d : 50, c = dc != null ? dc : 30, li = document.getElementById('avDyn'), z = v => String(v).replace('.', ','); li.hidden = false; li.innerHTML = `<b>Adicional noturno:</b> corridas com <b>partida entre 22h e 05h</b> têm adicional de ${z(pc('nt') != null ? pc('nt') : 30)}%.`; }
@@ -297,7 +303,7 @@ const cupIPct = () => (CI.ok && CI.f && foneKey($('fone').value) === CI.f && !ca
 const PAGN = {din: 'Dinheiro', pix: 'Pix', cartao: 'Cartão de débito/crédito'};
 const descDin = () => ($('pag').value === 'din' && DD > 0) ? DD : 0;
 // descontos NÃO se acumulam: vale só o maior (empate: aniversário/crédito > cupom de amigo > dinheiro)
-const melhor = () => { if(dia) return null; const a = [], cu = cupAtual(); if(cu) a.push({p: cu.pct, t: cu.txt, k: cu.uc}); if(cupIPct()) a.push({p: CUPI, t: 'cupom de indicação de amigo', k: 'ci'}); if(descDin()) a.push({p: descDin(), t: 'pagamento em dinheiro', k: 'din'}); let b = null; a.forEach(x => { if(!b || x.p > b.p) b = x; }); return b; };
+const melhor = () => { if(dia || hr) return null; const a = [], cu = cupAtual(); if(cu) a.push({p: cu.pct, t: cu.txt, k: cu.uc}); if(cupIPct()) a.push({p: CUPI, t: 'cupom de indicação de amigo', k: 'ci'}); if(descDin()) a.push({p: descDin(), t: 'pagamento em dinheiro', k: 'din'}); let b = null; a.forEach(x => { if(!b || x.p > b.p) b = x; }); return b; };
 const desc = () => { const b = melhor(); return b ? b.p : 0; };
 const descTxt = () => { const b = melhor(); return b ? b.t : ''; };
 // viagens de/para o Rio (Galeão, Santos Dumont, Rodoviária Novo Rio): mínimo R$ 1.000, pedágio incluso
@@ -310,7 +316,7 @@ const tot = () => piso(Math.round((evv() + (par ? PAR : 0)) * (1 - desc()/100) *
 const totCheio = () => piso(Math.round((evv() + (par ? PAR : 0)) * 100) / 100);
 const pagTxt = () => { const v = $('pag').value; return v ? PAGN[v] + (v === 'din' && (melhor() || {}).k === 'din' ? ' (' + String(DD).replace('.', ',') + '% de desconto)' : '') : ''; };
 $('pagAv').textContent = `Desconto de ${String(DD).replace('.', ',')}% só em dinheiro. Pix e cartão não têm desconto.`;
-$('pag').onchange = () => { showEst(); dinAv(); if(dia) $('dinBox').hidden = true; };
+$('pag').onchange = () => { showEst(); dinAv(); if(dia || hr) $('dinBox').hidden = true; };
 const dinAv = () => { const d = $('pag').value === 'din'; $('dinBox').hidden = !d; if(!d) $('dinCk').checked = false; $('dinTx').textContent = `O desconto de ${String(DD).replace('.', ',')}% vale apenas para pagamento em dinheiro no ato. Se a forma de pagamento for alterada, será cobrado o valor normal. Descontos não são acumulativos: vale só o maior.`; };
 dinAv();
 const regAbre = e => { if(e) e.preventDefault(); $('regras').hidden = false; }, regFecha = () => { $('regras').hidden = true; };
@@ -325,7 +331,7 @@ const diaTermos = () => { const n = v => v.toLocaleString('pt-BR', {minimumFract
   L.push(`após as 12 horas: R$ ${n(DIA.hx)} por hora` + (DIA.km > 0 ? ' + km excedente' : ''));
   L.push('pernoite: a hospedagem (hotel) do motorista é cobrada à parte');
   return L.join('; ') + '.'; };
-let agendar = true, dia = false, pO = null, pD = null, est = null, par = false;
+let agendar = true, dia = false, hr = 0, pO = null, pD = null, est = null, par = false;
 function setPar(v){ par = v; $('fPar').hidden = !v; $('bPar').textContent = v ? '− Remover parada' : '+ Adicionar parada'; showEst(); }
 $('bPar').onclick = () => setPar(!par);
 const brl = v => v.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
@@ -338,7 +344,7 @@ function credUI(){
   const dias = Math.max(1, Math.ceil((cu[0][1] - Date.now()) / 864e5));
   $('credTx').textContent = `Usar meu crédito de indicação (${cu.length} ${cu.length > 1 ? 'disponíveis' : 'disponível'} de ${CUP}%; o mais próximo vence em ${dias} dia${dias > 1 ? 's' : ''})`;
 }
-function showEst(){ if(dia){ $('credBox').hidden = true; $('est').hidden = false; $('est').innerHTML = `<small>Reserva do dia todo · 12 horas (${DIA.ini} às ${DIA.fim})</small><b>R$ ${brl(DIA.v)}</b><small>${DIA.km > 0 ? 'Até ' + DIA.km.toLocaleString('pt-BR') + ' km inclusos · ' : ''}hora extra R$ ${brl(DIA.hx)} · hotel de pernoite à parte</small>`; return; } credUI(); if(!est) return; $('est').hidden = false;
+function showEst(){ if(hr){ $('credBox').hidden = true; $('est').hidden = false; $('est').innerHTML = `<small>Reserva por horas · ${hrTxt(hr)}</small><b>R$ ${brl(HR.v*hr)}</b><small>Até ${(HR.km*hr).toLocaleString('pt-BR')} km inclusos · excedente: R$ ${brl(T.km)} por km e R$ ${brl(T.min)} por minuto</small>`; return; } if(dia){ $('credBox').hidden = true; $('est').hidden = false; $('est').innerHTML = `<small>Reserva do dia todo · 12 horas (${DIA.ini} às ${DIA.fim})</small><b>R$ ${brl(DIA.v)}</b><small>${DIA.km > 0 ? 'Até ' + DIA.km.toLocaleString('pt-BR') + ' km inclusos · ' : ''}hora extra R$ ${brl(DIA.hx)} · hotel de pernoite à parte</small>`; return; } credUI(); if(!est) return; $('est').hidden = false;
   $('est').innerHTML = `<small>Estimativa${est.aprox ? ' aproximada' : ''}</small>${$('pag').value === 'din' && desc() > 0 && totCheio() > tot() ? `<small>Valor normal: <s>R$ ${brl(totCheio())}</s></small>` : ''}<b>≈ R$ ${brl(tot())}</b>${$('pag').value === 'din' && desc() > 0 && totCheio() > tot() ? `<small><b style="display:inline">Você economiza R$ ${brl(totCheio() - tot())}</b></small>` : ''}${rio() ? '<small>Pedágio incluso · valor mínimo de R$ 1.000,00 para o Rio</small>' : ''}<small>${est.km.toLocaleString('pt-BR',{maximumFractionDigits:1})} km · cerca de ${Math.round(est.min)} min${par ? ' · inclui parada ' + parTxt : ''}${nAdd() ? ' · inclui adicional noturno de ' + String(NT).replace('.', ',') + '%' : ''}${desc() ? ' · com ' + String(desc()).replace('.', ',') + '% de desconto (' + descTxt() + ')' : ''}</small>`; }
 function setQuando(){ const d = new Date(Date.now() + 30*60000), p = n => String(n).padStart(2, '0'); $('quando').min = `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`; showEst(); }
 const rd = (p, k) => p ? {[k + 'La']: Math.round(p.la*100)/100, [k + 'Lo']: Math.round(p.lo*100)/100} : {}; // coordenadas arredondadas (~1 km): só para calcular o deslocamento da agenda
@@ -439,7 +445,7 @@ async function chkSlot(){
   const ts = new Date(v).getTime(); if(ts < Date.now() + 25*60000){ el.style.color = '#e5484d'; el.textContent = 'Escolha um horário com pelo menos 30 minutos de antecedência.'; return false; }
   if(!horaOk()){ el.style.color = '#e5484d'; el.textContent = HORA_MSG; return false; }
   const tk = ++slotTk;
-  try{ const pl = dia ? null : rioPlan(addr('o'), addr('d'), est ? est.min : 0, pO, pD), o = await ocupado(dia ? dia0(ts) : ts, dia ? 1440 : (pl ? pl.mins : durTotal(est ? est.min : 30)), !!pl, pl ? pl.pre : 0, dia ? [ts, ts + DIA.min*60000] : null, pl); if(tk !== slotTk) return true;
+  try{ const pl = (dia || hr) ? null : rioPlan(addr('o'), addr('d'), est ? est.min : 0, pO, pD), o = await ocupado(dia ? dia0(ts) : ts, dia ? 1440 : hr ? durTotal(hr*60) : (pl ? pl.mins : durTotal(est ? est.min : 30)), !!pl, pl ? pl.pre : 0, dia ? [ts, ts + DIA.min*60000] : null, pl); if(tk !== slotTk) return true;
     if(o && dia){ el.style.color = '#e5484d'; el.textContent = 'Data indisponível: ' + (o.bloq ? 'não há atendimento nesse período.' : 'já existe corrida agendada nesse dia.') + ' Escolha outra data.'; return false; }
     if(o && o.bloq){ el.style.color = '#e5484d'; el.textContent = 'Horário indisponível: não há atendimento nesse horário. Escolha outro horário ou outro dia.'; return false; }
     if(o){ const h = t => new Date(t).toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'}); el.style.color = '#e5484d'; if(o.casar){ if(o.antes){ el.textContent = `Horário indisponível: há uma corrida saindo de lá às ${h(o.x)} e a sua ida precisa chegar antes. Escolha um horário até as ${h(o.max)}.`; }else{ el.textContent = `Horário indisponível: o motorista estará no destino da corrida das ${h(o.x)} por volta das ${h(o.chega)}. Você pode agendar a partir das ${h(o.ate)}. `; const sg = new Date(Math.ceil(o.ate/300000)*300000), p2 = n => String(n).padStart(2, '0'), bt = document.createElement('button'); bt.type = 'button'; bt.className = 'lnk'; bt.textContent = `Usar ${h(sg)}`; bt.onclick = () => { $('quando').value = `${sg.getFullYear()}-${p2(sg.getMonth() + 1)}-${p2(sg.getDate())}T${p2(sg.getHours())}:${p2(sg.getMinutes())}`; chkSlot(); showEst(); }; el.append(bt); } return false; }
@@ -451,10 +457,18 @@ $('quando').onchange = () => { chkSlot(); showEst(); }; $('quando').oninput = ()
 setQuando();
 { const p = n => String(n).padStart(2, '0'), d = new Date(); $('quandoD').min = `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`; }
 $('quandoD').onchange = () => { $('quando').value = $('quandoD').value ? $('quandoD').value + 'T' + DIA.ini : ''; chkSlot(); showEst(); };
-function setDia(on){ dia = on; $('quando').hidden = on; $('quando').required = !on; $('quandoD').hidden = !on; $('quandoD').required = on;
+function setDia(on){ if(on && hr){ hr = 0; $('hrCk').checked = false; $('hrBox').hidden = true; } dia = on; $('quando').hidden = on; $('quando').required = !on; $('quandoD').hidden = !on; $('quandoD').required = on;
   $('quandoL').textContent = on ? 'Data da reserva' : 'Data e hora da corrida';
   if(on){ $('quando').value = $('quandoD').value ? $('quandoD').value + 'T' + DIA.ini : ''; $('bEst').hidden = true; $('dinBox').hidden = true; } else { $('bEst').hidden = !temTarifa; dinAv(); }
   chkSlot(); showEst(); }
+function setHr(on){ if(on && dia){ $('diaCk').checked = false; setDia(false); } hr = on ? +$('hrN').value : 0; $('hrBox').hidden = !on;
+  if(on){ $('bEst').hidden = true; $('dinBox').hidden = true; } else if(!dia){ $('bEst').hidden = !temTarifa; dinAv(); }
+  chkSlot(); showEst(); }
+if(HR.v > 0){ $('fHr').hidden = false; $('hrTx').textContent = `Reservar o carro por horas: R$ ${brl(HR.v)} por hora`;
+  for(let h = HR.min; h <= HR.max; h += 0.5){ const o = document.createElement('option'); o.value = h; o.textContent = `${hrTxt(h)} · R$ ${brl(HR.v*h)}`; $('hrN').append(o); }
+  $('hrSm').textContent = `Mínimo de 1 hora e depois de 30 em 30 minutos. ${HR.km.toLocaleString('pt-BR')} km inclusos por hora. Valor fixo, sem descontos. O que passar do tempo ou dos km é cobrado por minuto e por km. O destino é opcional: combine o roteiro com o motorista.`;
+  $('regHr').hidden = false; $('regHrT').textContent = `R$ ${brl(HR.v)} por hora (mínimo 1 hora, depois de 30 em 30 minutos), ${HR.km.toLocaleString('pt-BR')} km inclusos por hora. Tempo ou km a mais: cobrados por minuto (R$ ${fmt(T.min)}) e por km (R$ ${fmt(T.km)}). Sem descontos.`;
+  $('hrCk').onchange = () => setHr($('hrCk').checked); $('hrN').onchange = () => { if(hr){ hr = +$('hrN').value; chkSlot(); showEst(); } }; }
 if(DIA.v > 0){ $('fDia').hidden = false; $('diaTx').textContent = `Reserva do dia todo (12 horas) por R$ ${brl(DIA.v)}`; $('diaSm').textContent = 'Valor fixo, sem descontos. ' + diaTermos()[0].toUpperCase() + diaTermos().slice(1) + ' O destino é opcional: combine o roteiro com o motorista. A agenda daquele dia fica fechada para outros pedidos.'; $('regDia').hidden = false; $('regDiaT').textContent = diaTermos(); $('diaCk').onchange = () => setDia($('diaCk').checked); }
 if(temTarifa) $('bEst').hidden = false;
 { let dp = null; const st = (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone;
@@ -653,25 +667,25 @@ $('bEst').onclick = estimar;
 
 $('f').onsubmit = async e => {
   e.preventDefault();
-  const nome = $('nome').value.trim(), o = addr('o'), d = (dia && !$('dRua').value.trim()) ? 'Roteiro livre (reserva do dia todo)' : addr('d');
+  const nome = $('nome').value.trim(), o = addr('o'), d = ((dia || hr) && !$('dRua').value.trim()) ? (dia ? 'Roteiro livre (reserva do dia todo)' : 'Roteiro livre (reserva por horas)') : addr('d');
   if(!W){ return; }
-  if(!nome || (!pO && !$('oRua').value.trim()) || (!dia && !$('dRua').value.trim())){ $('err').hidden = false; $('err').textContent = dia ? 'Preencha nome e rua de partida.' : 'Preencha nome, rua de partida e rua de destino.'; return; }
+  if(!nome || (!pO && !$('oRua').value.trim()) || (!dia && !hr && !$('dRua').value.trim())){ $('err').hidden = false; $('err').textContent = (dia || hr) ? 'Preencha nome e rua de partida.' : 'Preencha nome, rua de partida e rua de destino.'; return; }
   if(outro && !$('pNome').value.trim()){ $('err').hidden = false; $('err').textContent = 'Informe o nome do passageiro.'; return; }
   if(par && !$('sRua').value.trim()){ $('err').hidden = false; $('err').textContent = 'Informe a rua da parada ou remova a parada.'; return; }
   if(riscoEm(o, d, par ? addr('s') : '')){ $('err').hidden = false; $('err').textContent = RISCO_MSG; return; }
   if(!mid){ $('err').hidden = false; $('err').textContent = 'Escolha o carro em que você quer ir.'; $('fMot').scrollIntoView({block: 'center'}); return; }
   if(!$('pag').value){ $('err').hidden = false; $('err').textContent = 'Selecione a forma de pagamento.'; $('pag').focus(); return; }
-  if($('pag').value === 'din' && !dia && !$('dinCk').checked){ $('err').hidden = false; $('err').textContent = 'Marque o aviso do pagamento em dinheiro para enviar o pedido.'; $('dinCk').focus(); return; }
+  if($('pag').value === 'din' && !dia && !hr && !$('dinCk').checked){ $('err').hidden = false; $('err').textContent = 'Marque o aviso do pagamento em dinheiro para enviar o pedido.'; $('dinCk').focus(); return; }
   if(!$('ciente').checked){ $('err').hidden = false; $('err').textContent = 'Marque “Li as regras e concordo” (lá em cima) para enviar o pedido.'; $('ciente').scrollIntoView({block: 'center'}); return; }
   $('err').hidden = true;
   let quando = 'Agora';
   if(agendar){
     const v = $('quando').value; if(!v){ $('err').hidden = false; $('err').textContent = 'Escolha a data e a hora.'; return; }
-    quando = dia ? 'Reserva do dia todo: ' + new Date(v).toLocaleDateString('pt-BR') + ' (' + DIA.ini + ' às ' + DIA.fim + ')' : new Date(v).toLocaleString('pt-BR', {dateStyle:'short', timeStyle:'short'}) + ' (agendada)';
-    if(!dia && temTarifa && !est){ try{ await calcular(); }catch(x){} }
+    quando = hr ? 'Reserva por horas: ' + new Date(v).toLocaleString('pt-BR', {dateStyle:'short', timeStyle:'short'}) + ' (' + hrTxt(hr) + ')' : dia ? 'Reserva do dia todo: ' + new Date(v).toLocaleDateString('pt-BR') + ' (' + DIA.ini + ' às ' + DIA.fim + ')' : new Date(v).toLocaleString('pt-BR', {dateStyle:'short', timeStyle:'short'}) + ' (agendada)';
+    if(!dia && !hr && temTarifa && !est){ try{ await calcular(); }catch(x){} }
     if(!(await chkSlot())){ $('err').hidden = false; $('err').textContent = 'Esse horário não está disponível. Veja a mensagem abaixo do campo de data e escolha outro.'; return; }
   }
-  if(!dia && temTarifa && !est){ const g = $('go'); g.disabled = true; g.textContent = 'Calculando valor…'; try{ await calcular(); }catch(x){} g.disabled = false; g.textContent = 'Enviar pedido'; }
+  if(!dia && !hr && temTarifa && !est){ const g = $('go'); g.disabled = true; g.textContent = 'Calculando valor…'; try{ await calcular(); }catch(x){} g.disabled = false; g.textContent = 'Enviar pedido'; }
   const org = pO ? `${pO.la},${pO.lo}` : o, dst = pD ? `${pD.la},${pD.lo}` : d;
   const mapa = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(org)}&destination=${encodeURIComponent(dst)}&travelmode=driving`;
   const L = ['*Stella Maris Ride · Pedido de corrida*', outro ? `Pedido feito por: ${nome}` : `Nome: ${nome}`];
@@ -681,33 +695,34 @@ $('f').onsubmit = async e => {
   L.push(`Quando: ${quando}`, `Partida: ${o}`);
   if(par) L.push(`Parada: ${addr('s')} (+${parTxt})`);
   L.push(`Destino: ${d}`);
-  if(dia){ L.push(`Valor da reserva: R$ ${brl(DIA.v)} (fixo, sem descontos)`); L.push(`Condições: ${diaTermos()}`); }
+  if(dia){ L.push(`Valor da reserva: R$ ${brl(DIA.v)} (fixo, sem descontos)`); L.push(`Condições: ${diaTermos()}`); } else if(hr){ L.push(`Valor da reserva: R$ ${brl(HR.v*hr)} (${hrTxt(hr)}, sem descontos)`); L.push(`Condições: ${hrTermos(hr)}`); }
   else if(est) L.push(`Estimativa: ≈ R$ ${brl(tot())}${nAdd() ? ' com adicional noturno de ' + String(NT).replace('.', ',') + '%' : ''} (${est.km.toLocaleString('pt-BR',{maximumFractionDigits:1})} km${est.aprox ? ', aproximada' : ''})`);
   else if(temTarifa) L.push('Estimativa: a confirmar');
   { const b = melhor(); if(b && b.k !== 'din') L.push(`Desconto: ${b.p}% (${b.t}${b.k === 'ci' ? ' ' + CI.cod : ''})`); }
-  if(rio() && !dia) L.push('Pedágio incluso · valor mínimo de R$ 1.000,00');
+  if(rio() && !dia && !hr) L.push('Pedágio incluso · valor mínimo de R$ 1.000,00');
   L.push(`Pagamento: ${pagTxt()}`);
   const obs = obsFinal(); if(obs) L.push(`Obs.: ${obs}`);
-  if(!dia) L.push(`Rota: ${mapa}`);
+  if(!dia && !hr) L.push(`Rota: ${mapa}`);
   const msg = L.join('\n'), mf = motObj() ? String(motObj().fone || '').replace(/\D/g, '') : '', WN = mid !== 'luiz' && mf.length >= 10 ? (mf.startsWith('55') ? mf : '55' + mf) : W, wa = `https://wa.me/${WN}?text=${encodeURIComponent(msg)}`;
   const g = $('go'); g.disabled = true; g.textContent = 'Enviando…';
   try{
     const db = await Promise.race([loadFB(), new Promise((_, rj) => setTimeout(() => rj(new Error('t')), 8000))]);
     const sid = db.ref().push().key, pid = db.ref().push().key, TS = firebase.database.ServerValue.TIMESTAMP;
-    const pl = dia ? null : rioPlan(addr('o'), addr('d'), est ? est.min : 0, pO, pD), m = dia ? 1440 : (pl ? pl.mins : durTotal(est ? est.min : 30));
-    const f = {nome, fone, passageiro: outro ? $('pNome').value.trim() : '', foneP: outro ? $('pFone').value.trim() : '', partida: o, destino: d, obs: obsFinal(), quando, estim: dia ? `Reserva do dia todo · R$ ${brl(DIA.v)} · ${DIA.ini} às ${DIA.fim}` + (DIA.km > 0 ? ` · até ${DIA.km} km` : '') : est ? `R$ ${brl(tot())} · ${est.km.toLocaleString('pt-BR',{maximumFractionDigits:1})} km${rio() ? ' · pedágio incluso' : ''}` : (rio() ? 'a partir de R$ 1.000,00 · pedágio incluso' : ''), pid, pag: PAGN[$('pag').value], c: TS, s: 'aguardando'};
+    const pl = (dia || hr) ? null : rioPlan(addr('o'), addr('d'), est ? est.min : 0, pO, pD), m = dia ? 1440 : hr ? durTotal(hr*60) : (pl ? pl.mins : durTotal(est ? est.min : 30));
+    const f = {nome, fone, passageiro: outro ? $('pNome').value.trim() : '', foneP: outro ? $('pFone').value.trim() : '', partida: o, destino: d, obs: obsFinal(), quando, estim: hr ? `Reserva por horas · ${hrTxt(hr)} · R$ ${brl(HR.v*hr)} · até ${HR.km*hr} km` : dia ? `Reserva do dia todo · R$ ${brl(DIA.v)} · ${DIA.ini} às ${DIA.fim}` + (DIA.km > 0 ? ` · até ${DIA.km} km` : '') : est ? `R$ ${brl(tot())} · ${est.km.toLocaleString('pt-BR',{maximumFractionDigits:1})} km${rio() ? ' · pedágio incluso' : ''}` : (rio() ? 'a partir de R$ 1.000,00 · pedágio incluso' : ''), pid, pag: PAGN[$('pag').value], c: TS, s: 'aguardando'};
     if(par) f.parada = addr('s').slice(0, 200);
     { const b = dia ? null : melhor(); if(CL && CL.f && foneKey(fone) === CL.f){ f.fcl = CL.f; if(CL.cod) f.mc = CL.cod; } if(b && (b.k === 'niv' || b.k === 'ind')){ f.cp = b.p; f.uc = b.k; } else if(b && b.k === 'ci'){ f.fcl = CI.f; f.cod = CI.cod; f.ci = CUPI; } if(f.fcl && DEV) f.dv = DEV; }
     if(agendar){ f.a = new Date($('quando').value).getTime(); }
     if(dia) f.dia = 1;
+    if(hr){ f.hr = hr; f.hv = Math.round(HR.v*hr*100)/100; f.hk = HR.km*hr; }
     if(pO){ f.oLa = pO.la; f.oLo = pO.lo; } if(pD){ f.dLa = pD.la; f.dLo = pD.lo; }
     for(const k of ['nome', 'passageiro']) f[k] = f[k].slice(0, 80);
     f.partida = f.partida.slice(0, 200); f.destino = f.destino.slice(0, 200); f.obs = ('Pgto: ' + pagTxt() + (f.obs ? '. ' + f.obs : '')).slice(0, 300);
     const up = {}; up[filaPath(mid, sid)] = f; up['pub/' + pid] = dia ? {c: TS, s: 'aguardando', m, a: dia0(f.a)} : agendar ? Object.assign({c: TS, s: 'aguardando', m, a: f.a}, rd(pO, 'o'), rd(pD, 'd')) : {c: TS, s: 'aguardando', m};
     up['pub/' + pid].mid = mid;
     await Promise.race([db.ref().update(up), new Promise((_, rj) => setTimeout(() => rj(new Error('t')), 8000))]);
-    if(mid === 'luiz') avisar(dia ? 'Nova RESERVA do dia todo' : agendar ? 'Novo AGENDAMENTO de corrida' : 'Novo pedido de corrida');
-    const sv = {sid, pid, wa, mid, t: Date.now()}; if(f.a) sv.a = f.a; if(dia) sv.dia = 1;
+    if(mid === 'luiz') avisar(dia ? 'Nova RESERVA do dia todo' : hr ? 'Nova RESERVA por horas' : agendar ? 'Novo AGENDAMENTO de corrida' : 'Novo pedido de corrida');
+    const sv = {sid, pid, wa, mid, t: Date.now()}; if(f.a) sv.a = f.a; if(dia) sv.dia = 1; if(hr) sv.hr = hr;
     { const g = id => $('o' + id).value.trim(); sv.po = {rua: g('Rua'), num: g('Num'), bai: g('Bai'), cid: g('Cid')}; sv.pt = o; sv.pc = pO ? {la: pO.la, lo: pO.lo} : null; sv.dc = pD ? {la: pD.la, lo: pD.lo} : null; sv.ps = par ? addr('s') : ''; sv.pg = $('pag').value; sv.cp = f.cp || 0; sv.ci = f.ci || 0; sv.rio = rio() ? 1 : 0; sv.dt = d.slice(0, 200); if(est) sv.es = {v: est.v, km: est.km, min: est.min, ap: !!est.aprox}; }
     try{ localStorage.setItem('sm_ped', JSON.stringify(sv)); }catch(x){}
     accLog(true);
@@ -862,7 +877,7 @@ function desenhar(all){
   const fmtA = t => new Date(t).toLocaleString('pt-BR', {day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'});
   if(!me){ $('stEb').hidden = true; $('stT').textContent = 'Pedido enviado'; $('stE').textContent = 'Aguardando confirmação…'; return; }
   const s = me.s; curS = s;
-  { const okEd = EDOK.includes(s) && !canc && !cur.dia; if(!okEd){ $('stEdP').hidden = true; $('stEdP').style.display = 'none'; } $('stEb').hidden = !okEd || !$('stEdP').hidden; }
+  { const okEd = EDOK.includes(s) && !canc && !cur.dia && !cur.hr; if(!okEd){ $('stEdP').hidden = true; $('stEdP').style.display = 'none'; } $('stEb').hidden = !okEd || !$('stEdP').hidden; }
   $('stC').hidden = !['aguardando', 'aceito', 'a_caminho'].includes(s) || canc;
   if(me.a && (s === 'aguardando' || s === 'aceito')){
     $('stT').textContent = s === 'aceito' ? 'Agendamento confirmado' : 'Agendamento solicitado'; $('stP').textContent = fmtA(me.a);
