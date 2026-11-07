@@ -323,6 +323,12 @@ h3{font:700 15px var(--f-cond);letter-spacing:.12em;text-transform:uppercase;col
     <div class="field"><label for="cPix">Chave Pix</label><input id="cPix" type="text" autocomplete="off"></div>
     <div class="field"><label for="cNot">Adicional noturno — partida entre 22h e 05h (%)</label><input id="cNot" type="text" inputmode="decimal" placeholder="30"></div>
     <div class="field"><label for="cPar">Parada adicional (R$, valor fixo por parada)</label><div class="money"><input id="cPar" type="text" inputmode="decimal" placeholder="3,00"></div></div>
+    <h3>Reserva do dia todo (12 horas)</h3>
+    <p class="hint">Deixe o valor do pacote vazio para desligar a opção. Depois de salvar, copie o link do cliente de novo.</p>
+    <div class="field"><label for="cDiaV">Valor do pacote de 12 horas (R$)</label><div class="money"><input id="cDiaV" type="text" inputmode="decimal" placeholder="0,00"></div></div>
+    <div class="field"><label for="cDiaKm">Km incluídos no pacote (vazio = sem limite)</label><input id="cDiaKm" type="text" inputmode="decimal" placeholder="200"></div>
+    <div class="field"><label for="cDiaKmEx">Km excedente (R$ por km)</label><div class="money"><input id="cDiaKmEx" type="text" inputmode="decimal" placeholder="0,00"></div></div>
+    <div class="field"><label for="cDiaHx">Hora extra após as 12 horas (R$ por hora)</label><div class="money"><input id="cDiaHx" type="text" inputmode="decimal" placeholder="300,00"></div></div>
     <div class="field"><label for="cMeta">Meta diária (R$)</label><div class="money"><input id="cMeta" type="text" inputmode="decimal" placeholder="0,00"></div></div>
     <h3>Pedidos de clientes</h3>
     <div class="field"><label for="cWhats">Seu WhatsApp para receber pedidos (com DDD)</label><input id="cWhats" type="tel" inputmode="tel" placeholder="22999999999"></div>
@@ -871,13 +877,13 @@ const fmtIn = v => v ? brl(v) : '';
 function openCfg(){
   $('cNome').value = cfg.nome; $('cPlaca').value = cfg.placa; $('cModelo').value = cfg.modelo || '';
   $('cBand').value = fmtIn(cfg.band); $('cKm').value = fmtIn(cfg.km); $('cMin').value = fmtIn(cfg.min); $('cEsp').value = fmtIn(cfg.esp);
-  $('cArr').value = String(cfg.arred); $('cPar').value = String(cfg.par != null ? cfg.par : 3).replace('.', ','); $('cMsg').value = cfg.msg; $('cEmp').value = cfg.empresa || ''; $('cCnpj').value = cfg.cnpj || ''; $('cWhats').value = cfg.whats || ''; $('cDesc').value = String(cfg.desc != null ? cfg.desc : 5).replace('.', ','); $('cPix').value = cfg.pix || ''; $('cMeta').value = fmtIn(cfg.meta); $('cNot').value = String(cfg.noturno != null ? cfg.noturno : 30).replace('.', ',');
+  $('cArr').value = String(cfg.arred); $('cPar').value = String(cfg.par != null ? cfg.par : 3).replace('.', ','); $('cMsg').value = cfg.msg; $('cEmp').value = cfg.empresa || ''; $('cCnpj').value = cfg.cnpj || ''; $('cWhats').value = cfg.whats || ''; $('cDesc').value = String(cfg.desc != null ? cfg.desc : 5).replace('.', ','); $('cPix').value = cfg.pix || ''; $('cMeta').value = fmtIn(cfg.meta); $('cDiaV').value = cfg.diaV ? fmtIn(cfg.diaV) : ''; $('cDiaKm').value = cfg.diaKm ? String(cfg.diaKm).replace('.', ',') : ''; $('cDiaKmEx').value = cfg.diaKmEx ? fmtIn(cfg.diaKmEx) : ''; $('cDiaHx').value = fmtIn(cfg.diaHx != null ? cfg.diaHx : 300); $('cNot').value = String(cfg.noturno != null ? cfg.noturno : 30).replace('.', ',');
   show('sCfg', true);
 }
 $('fCfg').onsubmit = e => {
   e.preventDefault();
   cfg = {nome:$('cNome').value.trim(), placa:$('cPlaca').value.trim().toUpperCase(), modelo:$('cModelo').value.trim(), band:numIn($('cBand').value),
-         km:numIn($('cKm').value), min:numIn($('cMin').value), esp:numIn($('cEsp').value), arred:Number($('cArr').value), msg:$('cMsg').value.trim(), empresa:$('cEmp').value.trim(), cnpj:$('cCnpj').value.trim(), whats:$('cWhats').value.replace(/\D/g,''), taxaDeb:0, taxaCre:0, semTaxa:true, desc:numIn($('cDesc').value), pix:$('cPix').value.trim(), meta:numIn($('cMeta').value), noturno:numIn($('cNot').value), par:numIn($('cPar').value), d10:1};
+         km:numIn($('cKm').value), min:numIn($('cMin').value), esp:numIn($('cEsp').value), arred:Number($('cArr').value), msg:$('cMsg').value.trim(), empresa:$('cEmp').value.trim(), cnpj:$('cCnpj').value.trim(), whats:$('cWhats').value.replace(/\D/g,''), taxaDeb:0, taxaCre:0, semTaxa:true, desc:numIn($('cDesc').value), pix:$('cPix').value.trim(), meta:numIn($('cMeta').value), noturno:numIn($('cNot').value), par:numIn($('cPar').value), diaV:numIn($('cDiaV').value), diaKm:numIn($('cDiaKm').value), diaKmEx:numIn($('cDiaKmEx').value), diaHx:numIn($('cDiaHx').value), d10:1};
   store.set('tx_cfg', cfg); show('sCfg', false); render();
   toast(ride && ride.fase !== 'fim' ? 'Tarifas salvas. Valem a partir da próxima corrida.' : 'Tarifas salvas');
 };
@@ -886,7 +892,7 @@ $('bLink').onclick = async () => {
   if(w.length <= 11) w = '55' + w;
   const n = s => String(s || '').replace('.', ',');
   const u = new URL('pedir.html', location.href);
-  u.search = new URLSearchParams({w, n:($('cEmp').value.trim() || 'Stella Maris Logistics'), b:n(numIn($('cBand').value)), k:n(numIn($('cKm').value)), m:n(numIn($('cMin').value)), e:n(numIn($('cEsp').value)), nt:n(numIn($('cNot').value)), dd:n(numIn($('cDesc').value))}).toString();
+  u.search = new URLSearchParams({w, n:($('cEmp').value.trim() || 'Stella Maris Logistics'), b:n(numIn($('cBand').value)), k:n(numIn($('cKm').value)), m:n(numIn($('cMin').value)), e:n(numIn($('cEsp').value)), nt:n(numIn($('cNot').value)), dd:n(numIn($('cDesc').value))}); if(numIn($('cDiaV').value) > 0){ const dq = {dv:numIn($('cDiaV').value), dk:numIn($('cDiaKm').value), dke:numIn($('cDiaKmEx').value), dhx:numIn($('cDiaHx').value)}; Object.keys(dq).forEach(k => u.searchParams.set(k, n(dq[k]))); } u.search = u.searchParams.toString();
   try{ await navigator.clipboard.writeText(u.href); toast('Link copiado. Mande ao cliente.'); }catch(e){ prompt('Copie o link:', u.href); }
 };
 $('bCfg').onclick = openCfg; $('bCfg2').onclick = openCfg;
@@ -1443,8 +1449,8 @@ function alertaEdit(it){
   try{ actx = actx || new (window.AudioContext || window.webkitAudioContext)(); [0, .2, .4].forEach(t => { const o = actx.createOscillator(), g = actx.createGain(); o.frequency.value = 660; g.gain.value = .2; o.connect(g); g.connect(actx.destination); o.start(actx.currentTime + t); o.stop(actx.currentTime + t + .14); }); }catch(e){}
 }
 function alertaNovo(it){
-  try{ window.SMA && SMA.novaCorrida((it.a ? 'Novo agendamento: ' : 'Novo pedido: ') + (it.nome || 'cliente')); }catch(e){}
-  toast((it.a ? 'Novo AGENDAMENTO: ' : 'Novo pedido: ') + (it.nome || 'cliente'));
+  try{ window.SMA && SMA.novaCorrida((it.dia ? 'Nova reserva do dia: ' : it.a ? 'Novo agendamento: ' : 'Novo pedido: ') + (it.nome || 'cliente')); }catch(e){}
+  toast((it.dia ? 'Nova RESERVA DO DIA: ' : it.a ? 'Novo AGENDAMENTO: ' : 'Novo pedido: ') + (it.nome || 'cliente'));
   try{ navigator.vibrate && navigator.vibrate([300, 150, 300]); }catch(e){}
   try{ actx = actx || new (window.AudioContext || window.webkitAudioContext)(); [0, .25].forEach(t => { const o = actx.createOscillator(), g = actx.createGain(); o.frequency.value = 880; g.gain.value = .2; o.connect(g); g.connect(actx.destination); o.start(actx.currentTime + t); o.stop(actx.currentTime + t + .18); }); }catch(e){}
 }
@@ -1710,7 +1716,7 @@ function drawFila(){
     else a += `<button class="btn ghost" data-a="vc" data-k="${x.sid}">Ir até o cliente</button><button class="btn ghost" data-a="rc" data-k="${x.sid}">Cancelar</button>`;
     if(fone) a += `<button class="btn wa full" data-a="wa" data-k="${x.sid}">WhatsApp</button>`;
     const prox = x.dist != null && x.s === 'aguardando' ? `<p class="prox">${kmFila(x.dist)} de onde você termina${x.furou ? ' · passou na frente por proximidade' : ''}</p>` : '';
-    return `<div class="fcard${x.a ? ' ag' : ''}"><div class="st">${x.a ? '<span class="agblink">AGENDADA</span> ' + fmtAg(x.a) + ' · prioridade · ' : ''}${FLBL[x.s]}${meu ? ' · sua corrida atual' : ''}</div><h3><span class="pos">${i + 1}º</span>${nome}</h3>
+    return `<div class="fcard${x.a ? ' ag' : ''}"><div class="st">${x.a ? '<span class="agblink">' + (x.dia ? 'RESERVA DIA TODO' : 'AGENDADA') + '</span> ' + fmtAg(x.a) + ' · prioridade · ' : ''}${FLBL[x.s]}${meu ? ' · sua corrida atual' : ''}</div><h3><span class="pos">${i + 1}º</span>${nome}</h3>
       <small>Pedido às ${hora} · ${escapeHtml(x.quando || 'Agora')}</small>
       ${(x.cp || x.ci) ? `<p style="color:#0a9d63;font-weight:700">🎟️ Cupom do cliente: ${[x.cp ? x.cp + '% (' + (x.uc === 'niv' ? 'aniversário' : 'crédito de indicação') + ')' : '', x.ci ? x.ci + '% (cupom de amigo)' : ''].filter(Boolean).join(' + ')} — conferido ao aceitar</p>` : ''}
       ${x.edc ? `<p style="color:#e0a800;font-weight:700">✎ Alterado pelo cliente às ${new Date(x.edc).toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'})}</p>` : ''}
