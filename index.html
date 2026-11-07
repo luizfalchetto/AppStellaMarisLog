@@ -204,7 +204,7 @@ h3{font:700 15px var(--f-cond);letter-spacing:.12em;text-transform:uppercase;col
 
   <div class="dispRow">
     <button class="btn disp" id="bDisp" type="button" aria-pressed="false" style="grid-column:1/-1">Indisponível</button>
-    <button class="btn dem" id="bDem" type="button" aria-pressed="false" style="grid-column:1/-1;min-height:44px;font-size:15px">Alta demanda: desligada</button>
+    <button class="btn" id="bShare" type="button" style="grid-column:1/-1;min-height:44px;font-size:15px">Compartilhar link de pedido de corrida</button>
   </div>
 
   <section class="meter" aria-live="polite">
@@ -1437,9 +1437,19 @@ function podarPub(){
 }
 let dispOn = store.get('tx_disp', false) === true;
 function drawDisp(){ const b = $('bDisp'); b.setAttribute('aria-pressed', dispOn); b.textContent = dispOn ? 'Disponível' : 'Indisponível'; }
-let demOn = store.get('tx_dem', false) === true;
-function drawDem(){ const b = $('bDem'); b.setAttribute('aria-pressed', demOn); b.textContent = demOn ? 'Alta demanda: ligada (cliente avisado)' : 'Alta demanda: desligada'; }
-$('bDem').onclick = () => { demOn = !demOn; store.set('tx_dem', demOn); drawDem(); if(fready) pushDisp(); else { toast('Entre com Google em "Fila" para o cliente ver'); fbInit().catch(() => {}); } };
+let demOn = false; store.set('tx_dem', false); // botão de alta demanda removido: o aviso fica sempre desligado
+function drawDem(){}
+$('bShare').onclick = async () => {
+  let w = String(cfg.whats || '').replace(/\D/g, ''); if(!w){ toast('Informe seu WhatsApp em Configurações primeiro'); return; }
+  if(w.length <= 11) w = '55' + w;
+  const n = v => String(v || 0).replace('.', ','), u = new URL('pedir.html', location.href);
+  u.search = new URLSearchParams({w, n:(cfg.empresa || 'Stella Maris Logistics'), b:n(cfg.band), k:n(cfg.km), m:n(cfg.min), e:n(cfg.esp), nt:n(cfg.noturno != null ? cfg.noturno : 30), dd:n(cfg.desc != null ? cfg.desc : 5)});
+  if(cfg.diaV > 0){ const dq = {dv:cfg.diaV, dk:cfg.diaKm, dke:cfg.diaKmEx, dhx:cfg.diaHx != null ? cfg.diaHx : 300}; Object.keys(dq).forEach(k => u.searchParams.set(k, n(dq[k]))); }
+  if((cfg.risco || []).length) u.searchParams.set('ar', cfg.risco.join('|'));
+  u.search = u.searchParams.toString();
+  try{ if(navigator.share){ await navigator.share({title: 'Peça sua corrida', text: 'Peça sua corrida pelo link:', url: u.href}); return; } }catch(e){ if(e && e.name === 'AbortError') return; }
+  try{ await navigator.clipboard.writeText(u.href); toast('Link copiado. Mande ao cliente.'); }catch(e){ prompt('Copie o link:', u.href); }
+};
 function pushDisp(){ if(fready) fdb.ref(fPaths().disp).set({on: dispOn, dem: demOn, t: firebase.database.ServerValue.TIMESTAMP}).catch(() => toast('Não consegui atualizar a disponibilidade.')); }
 $('bDisp').onclick = () => {
   dispOn = !dispOn; store.set('tx_disp', dispOn); drawDisp();
