@@ -290,8 +290,8 @@ h3{font:700 15px var(--f-cond);letter-spacing:.12em;text-transform:uppercase;col
     <header><h2>Tarifas</h2><button class="iconbtn" type="button" data-close>Fechar</button></header>
     <h3>Motorista</h3>
     <div class="grid2">
-      <div class="field"><label for="cNome">Seu nome</label><input id="cNome" type="text" autocomplete="name"></div>
-      <div class="field"><label for="cPlaca">Placa</label><input id="cPlaca" type="text" autocapitalize="characters"></div>
+      <div class="field"><label for="cfNome">Seu nome</label><input id="cfNome" type="text" autocomplete="name"></div>
+      <div class="field"><label for="cfPlaca">Placa</label><input id="cfPlaca" type="text" autocapitalize="characters"></div>
       <div class="field"><label for="cModelo">Modelo do carro</label><input id="cModelo" type="text" autocomplete="off" placeholder="Ex.: Fiat Argo prata"></div>
     </div>
     <h3>Valores</h3>
@@ -875,14 +875,14 @@ $('bDireto').onclick = () => { newRide('avulsa', null, $('nCli').value.trim(), $
 
 const fmtIn = v => v ? brl(v) : '';
 function openCfg(){
-  $('cNome').value = cfg.nome; $('cPlaca').value = cfg.placa; $('cModelo').value = cfg.modelo || '';
+  $('cfNome').value = cfg.nome; $('cfPlaca').value = cfg.placa; $('cModelo').value = cfg.modelo || '';
   $('cBand').value = fmtIn(cfg.band); $('cKm').value = fmtIn(cfg.km); $('cMin').value = fmtIn(cfg.min); $('cEsp').value = fmtIn(cfg.esp);
   $('cArr').value = String(cfg.arred); $('cPar').value = String(cfg.par != null ? cfg.par : 3).replace('.', ','); $('cMsg').value = cfg.msg; $('cEmp').value = cfg.empresa || ''; $('cCnpj').value = cfg.cnpj || ''; $('cWhats').value = cfg.whats || ''; $('cDesc').value = String(cfg.desc != null ? cfg.desc : 5).replace('.', ','); $('cPix').value = cfg.pix || ''; $('cMeta').value = fmtIn(cfg.meta); $('cDiaV').value = cfg.diaV ? fmtIn(cfg.diaV) : ''; $('cDiaKm').value = cfg.diaKm ? String(cfg.diaKm).replace('.', ',') : ''; $('cDiaKmEx').value = cfg.diaKmEx ? fmtIn(cfg.diaKmEx) : ''; $('cDiaHx').value = fmtIn(cfg.diaHx != null ? cfg.diaHx : 300); $('cNot').value = String(cfg.noturno != null ? cfg.noturno : 30).replace('.', ',');
   show('sCfg', true);
 }
 $('fCfg').onsubmit = e => {
   e.preventDefault();
-  cfg = {nome:$('cNome').value.trim(), placa:$('cPlaca').value.trim().toUpperCase(), modelo:$('cModelo').value.trim(), band:numIn($('cBand').value),
+  cfg = {nome:$('cfNome').value.trim(), placa:$('cfPlaca').value.trim().toUpperCase(), modelo:$('cModelo').value.trim(), band:numIn($('cBand').value),
          km:numIn($('cKm').value), min:numIn($('cMin').value), esp:numIn($('cEsp').value), arred:Number($('cArr').value), msg:$('cMsg').value.trim(), empresa:$('cEmp').value.trim(), cnpj:$('cCnpj').value.trim(), whats:$('cWhats').value.replace(/\D/g,''), taxaDeb:0, taxaCre:0, semTaxa:true, desc:numIn($('cDesc').value), pix:$('cPix').value.trim(), meta:numIn($('cMeta').value), noturno:numIn($('cNot').value), par:numIn($('cPar').value), diaV:numIn($('cDiaV').value), diaKm:numIn($('cDiaKm').value), diaKmEx:numIn($('cDiaKmEx').value), diaHx:numIn($('cDiaHx').value), d10:1};
   store.set('tx_cfg', cfg); show('sCfg', false); render();
   toast(ride && ride.fase !== 'fim' ? 'Tarifas salvas. Valem a partir da próxima corrida.' : 'Tarifas salvas');
