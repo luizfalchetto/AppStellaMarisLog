@@ -331,6 +331,9 @@ h3{font:700 15px var(--f-cond);letter-spacing:.12em;text-transform:uppercase;col
     <div class="field"><label for="cDiaKmEx">Km excedente (R$ por km)</label><div class="money"><input id="cDiaKmEx" type="text" inputmode="decimal" placeholder="0,00"></div></div>
     <div class="field"><label for="cDiaHx">Hora extra após as 12 horas (R$ por hora)</label><div class="money"><input id="cDiaHx" type="text" inputmode="decimal" placeholder="300,00"></div></div>
     <div class="field"><label for="cMeta">Meta diária (R$)</label><div class="money"><input id="cMeta" type="text" inputmode="decimal" placeholder="0,00"></div></div>
+    <h3>Áreas de risco</h3>
+    <div class="field"><label for="cRisco">Bairros ou locais que você não atende (um por linha)</label><textarea id="cRisco" rows="4" maxlength="1200" placeholder="Um bairro ou local por linha"></textarea></div>
+    <p class="hint">Pedidos com partida, parada ou destino que contenham esses nomes são barrados no link do cliente. Depois de alterar a lista, copie o link de novo e envie aos clientes.</p>
     <h3>Pedidos de clientes</h3>
     <div class="field"><label for="cWhats">Seu WhatsApp para receber pedidos (com DDD)</label><input id="cWhats" type="tel" inputmode="tel" placeholder="22999999999"></div>
     <div class="actions" style="margin:4px 0 8px"><button class="btn" type="button" id="bLink">Copiar link para o cliente</button></div>
@@ -878,13 +881,13 @@ const fmtIn = v => v ? brl(v) : '';
 function openCfg(){
   $('cfNome').value = cfg.nome; $('cfPlaca').value = cfg.placa; $('cModelo').value = cfg.modelo || '';
   $('cBand').value = fmtIn(cfg.band); $('cKm').value = fmtIn(cfg.km); $('cMin').value = fmtIn(cfg.min); $('cEsp').value = fmtIn(cfg.esp);
-  $('cArr').value = String(cfg.arred); $('cPar').value = String(cfg.par != null ? cfg.par : 3).replace('.', ','); $('cMsg').value = cfg.msg; $('cEmp').value = cfg.empresa || ''; $('cCnpj').value = cfg.cnpj || ''; $('cWhats').value = cfg.whats || ''; $('cDesc').value = String(cfg.desc != null ? cfg.desc : 5).replace('.', ','); $('cPix').value = cfg.pix || ''; $('cMeta').value = fmtIn(cfg.meta); $('cDiaV').value = cfg.diaV ? fmtIn(cfg.diaV) : ''; $('cDiaKm').value = cfg.diaKm ? String(cfg.diaKm).replace('.', ',') : ''; $('cDiaKmEx').value = cfg.diaKmEx ? fmtIn(cfg.diaKmEx) : ''; $('cDiaHx').value = fmtIn(cfg.diaHx != null ? cfg.diaHx : 300); $('cNot').value = String(cfg.noturno != null ? cfg.noturno : 30).replace('.', ',');
+  $('cArr').value = String(cfg.arred); $('cPar').value = String(cfg.par != null ? cfg.par : 3).replace('.', ','); $('cMsg').value = cfg.msg; $('cEmp').value = cfg.empresa || ''; $('cCnpj').value = cfg.cnpj || ''; $('cWhats').value = cfg.whats || ''; $('cDesc').value = String(cfg.desc != null ? cfg.desc : 5).replace('.', ','); $('cPix').value = cfg.pix || ''; $('cMeta').value = fmtIn(cfg.meta); $('cRisco').value = (cfg.risco || []).join('\n'); $('cDiaV').value = cfg.diaV ? fmtIn(cfg.diaV) : ''; $('cDiaKm').value = cfg.diaKm ? String(cfg.diaKm).replace('.', ',') : ''; $('cDiaKmEx').value = cfg.diaKmEx ? fmtIn(cfg.diaKmEx) : ''; $('cDiaHx').value = fmtIn(cfg.diaHx != null ? cfg.diaHx : 300); $('cNot').value = String(cfg.noturno != null ? cfg.noturno : 30).replace('.', ',');
   show('sCfg', true);
 }
 $('fCfg').onsubmit = e => {
   e.preventDefault();
   cfg = {nome:$('cfNome').value.trim(), placa:$('cfPlaca').value.trim().toUpperCase(), modelo:$('cModelo').value.trim(), band:numIn($('cBand').value),
-         km:numIn($('cKm').value), min:numIn($('cMin').value), esp:numIn($('cEsp').value), arred:Number($('cArr').value), msg:$('cMsg').value.trim(), empresa:$('cEmp').value.trim(), cnpj:$('cCnpj').value.trim(), whats:$('cWhats').value.replace(/\D/g,''), taxaDeb:0, taxaCre:0, semTaxa:true, desc:numIn($('cDesc').value), pix:$('cPix').value.trim(), meta:numIn($('cMeta').value), noturno:numIn($('cNot').value), par:numIn($('cPar').value), diaV:numIn($('cDiaV').value), diaKm:numIn($('cDiaKm').value), diaKmEx:numIn($('cDiaKmEx').value), diaHx:numIn($('cDiaHx').value), d10:1};
+         km:numIn($('cKm').value), min:numIn($('cMin').value), esp:numIn($('cEsp').value), arred:Number($('cArr').value), msg:$('cMsg').value.trim(), empresa:$('cEmp').value.trim(), cnpj:$('cCnpj').value.trim(), whats:$('cWhats').value.replace(/\D/g,''), taxaDeb:0, taxaCre:0, semTaxa:true, desc:numIn($('cDesc').value), pix:$('cPix').value.trim(), meta:numIn($('cMeta').value), noturno:numIn($('cNot').value), par:numIn($('cPar').value), diaV:numIn($('cDiaV').value), diaKm:numIn($('cDiaKm').value), diaKmEx:numIn($('cDiaKmEx').value), diaHx:numIn($('cDiaHx').value), risco:riscoLista(), d10:1};
   store.set('tx_cfg', cfg); show('sCfg', false); render();
   toast(ride && ride.fase !== 'fim' ? 'Tarifas salvas. Valem a partir da próxima corrida.' : 'Tarifas salvas');
 };
@@ -894,6 +897,7 @@ $('bLink').onclick = async () => {
   const n = s => String(s || '').replace('.', ',');
   const u = new URL('pedir.html', location.href);
   u.search = new URLSearchParams({w, n:($('cEmp').value.trim() || 'Stella Maris Logistics'), b:n(numIn($('cBand').value)), k:n(numIn($('cKm').value)), m:n(numIn($('cMin').value)), e:n(numIn($('cEsp').value)), nt:n(numIn($('cNot').value)), dd:n(numIn($('cDesc').value))}); if(numIn($('cDiaV').value) > 0){ const dq = {dv:numIn($('cDiaV').value), dk:numIn($('cDiaKm').value), dke:numIn($('cDiaKmEx').value), dhx:numIn($('cDiaHx').value)}; Object.keys(dq).forEach(k => u.searchParams.set(k, n(dq[k]))); } u.search = u.searchParams.toString();
+  { const rl = riscoLista(); if(rl.length) u.searchParams.set('ar', rl.join('|')); }
   try{ await navigator.clipboard.writeText(u.href); toast('Link copiado. Mande ao cliente.'); }catch(e){ prompt('Copie o link:', u.href); }
 };
 $('bCfg').onclick = openCfg; $('bCfg2').onclick = openCfg;
@@ -1244,14 +1248,14 @@ function baixar(nome, texto, tipo){
   if(navigator.canShare && navigator.canShare({files:[f]})) return navigator.share({files:[f], title:nome}).catch(e => { if(e.name !== 'AbortError') toast('Não foi possível enviar o arquivo'); });
   const a = document.createElement('a'); a.href = URL.createObjectURL(f); a.download = nome; document.body.append(a); a.click(); a.remove(); toast('Arquivo salvo nos downloads');
 }
-$('bBkp').onclick = () => baixar(`backup-taximetro-${new Date().toISOString().slice(0, 10)}.json`, JSON.stringify({v:1, cfg, hist:store.get('tx_hist', []), desp:store.get('tx_desp', []), cli:store.get('tx_cli', [])}), 'application/json');
+$('bBkp').onclick = () => baixar(`backup-taximetro-${new Date().toISOString().slice(0, 10)}.json`, JSON.stringify({v:1, cfg, hist:store.get('tx_hist', []), desp:store.get('tx_desp', []), cli:store.get('tx_cli', []), pax:store.get('tx_pax', {})}), 'application/json');
 $('bRest').onclick = () => $('fRest').click();
 $('fRest').onchange = async () => {
   const f = $('fRest').files[0]; if(!f) return;
   try{
     const d = JSON.parse(await f.text()); if(!Array.isArray(d.hist)) throw new Error('x');
     if(!confirm(`Restaurar backup com ${d.hist.length} corridas? Isso substitui o histórico atual.`)){ $('fRest').value = ''; return; }
-    store.set('tx_hist', d.hist); store.set('tx_desp', d.desp || []); store.set('tx_cli', d.cli || cliList()); if(d.cfg){ cfg = Object.assign({}, DEF, d.cfg); store.set('tx_cfg', cfg); }
+    store.set('tx_hist', d.hist); store.set('tx_desp', d.desp || []); store.set('tx_cli', d.cli || cliList()); store.set('tx_pax', d.pax || {}); if(d.cfg){ cfg = Object.assign({}, DEF, d.cfg); store.set('tx_cfg', cfg); }
     renderRep(); render(); toast('Backup restaurado');
   }catch(e){ toast('Arquivo de backup inválido'); }
   $('fRest').value = '';
@@ -1265,7 +1269,7 @@ $('bCsv').onclick = () => {
 };
 $('bClear').onclick = () => { if(confirm('Apagar TODO o histórico de corridas? Isso não pode ser desfeito.')){ store.set('tx_hist', []); renderRep(); } };
 
-const MOTIVOS = ['Cliente não veio', 'Cliente desistiu', 'Cliente não atende', 'Endereço ou local errado', 'Valor não combinado', 'Problema no veículo', 'Outro'];
+const MOTIVOS = ['Cliente não veio', 'Cliente desistiu', 'Cliente não atende', 'Endereço ou local errado', 'Valor não combinado', 'Passageiro bloqueado', 'Área de risco', 'Problema no veículo', 'Outro'];
 function pedirMotivo(titulo, ok, extra){
   const o = document.createElement('div'); o.className = 'mdl';
   const bx = document.createElement('div'); bx.className = 'mbox'; o.append(bx);
@@ -1467,6 +1471,7 @@ function irDestino(f){
 }
 function aceitar(sid){
   const it = filaData[sid]; if(!it || it.s !== 'aguardando') return;
+  { const pb = paxDe(it.passageiro ? it.foneP : it.fone), rz = riscoDe(it); if((pb.bloq || rz) && !confirm((pb.bloq ? 'Este passageiro está BLOQUEADO' + (pb.motivo ? ' (' + pb.motivo + ')' : '') + '. ' : '') + (rz ? 'Há área de risco no pedido (' + rz + '). ' : '') + 'Aceitar mesmo assim?')) return; }
   if(it.a){ setStatus(sid, it.pid, 'aceito').then(() => { toast('Agendamento confirmado para ' + fmtAg(it.a) + '.'); emailConfirmado(it); }).catch(() => toast('Falha ao confirmar. Tente de novo.')); return; }
   const pri = proxAg(sid);
   if(pri && !confirm('Há corrida AGENDADA (prioridade) às ' + hhmm(pri.a) + '. Aceitar este pedido mesmo assim?')) return;
@@ -1478,6 +1483,30 @@ function aceitar(sid){
   toast('Pedido aceito. Toque em "Ir até o cliente".'); aplicarEmpresa(Object.assign({sid}, it));
 }
 const fmtAg = ts => new Date(ts).toLocaleString('pt-BR', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'});
+const riscoLista = () => $('cRisco').value.split('\n').map(s => s.trim().replace(/\|/g, ' ').slice(0, 40)).filter(Boolean).slice(0, 40);
+const nzTxt = s => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+const riscoDe = it => (cfg.risco || []).find(a => { const k = nzTxt(a); return k && [it.partida, it.destino, it.parada].some(t => nzTxt(t).includes(k)); });
+const paxAll = () => store.get('tx_pax', {});
+const paxKey = f => foneWa(f).slice(-11);
+const paxDe = f => paxAll()[paxKey(f)] || {};
+const nPedidos = f => { const k = paxKey(f); return k.length < 8 ? 0 : store.get('tx_hist', []).filter(x => x.fone && paxKey(x.fone) === k && x.fase === 'fim' && !x.cancelada && !x.noshow).length; };
+function abrirPax(it){
+  const f = it.passageiro ? it.foneP : it.fone, k = paxKey(f); if(k.length < 8){ toast('Este pedido não tem telefone para cadastrar.'); return; }
+  const p = paxDe(f), o = document.createElement('div'); o.className = 'mdl';
+  const bx = document.createElement('div'); bx.className = 'mbox'; o.append(bx);
+  bx.innerHTML = '<h3></h3><p></p><textarea maxlength="300" placeholder="Observações sobre o passageiro (só você vê)"></textarea><textarea class="mm" maxlength="140" placeholder="Motivo do bloqueio (opcional)"></textarea><div class="macts"><button class="btn ghost" type="button">Fechar</button><button class="btn primary" type="button">Salvar</button></div><button class="btn ghost" type="button" style="border-color:#e5484d;color:#e5484d"></button>';
+  const [ta, tm] = bx.querySelectorAll('textarea'), [bf, bs] = bx.querySelectorAll('.macts button'), bb = bx.lastElementChild;
+  bx.querySelector('h3').textContent = it.passageiro || it.nome || 'Passageiro';
+  bx.querySelector('p').textContent = nPedidos(f) ? nPedidos(f) + ' corrida(s) concluída(s) neste aparelho.' : 'Nenhuma corrida concluída ainda neste aparelho.';
+  ta.value = p.obs || ''; tm.value = p.motivo || ''; let bloq = !!p.bloq;
+  const pinta = () => { bb.textContent = bloq ? 'Desbloquear passageiro' : 'Bloquear passageiro'; };
+  const grava = () => { const all = paxAll(), n = {obs: ta.value.trim(), bloq, motivo: bloq ? tm.value.trim() : ''}; if(n.obs || n.bloq) all[k] = n; else delete all[k]; store.set('tx_pax', all); };
+  pinta(); bb.onclick = () => { bloq = !bloq; pinta(); };
+  bf.onclick = () => o.remove(); bs.onclick = () => { grava(); o.remove(); drawFila(); toast(bloq ? 'Passageiro bloqueado.' : 'Ficha salva.'); };
+  document.body.append(o);
+}
+const msgConfirma = it => { const n = String(it.passageiro || it.nome || '').trim().split(' ')[0], eu = String(cfg.nome || '').trim().split(' ')[0];
+  return [`Olá${n ? ', ' + n : ''}! Aqui é ${eu ? eu + ', ' : ''}da Stella Maris Ride. Recebi o seu pedido:`, it.quando ? `Quando: ${it.quando}` : '', it.partida ? `Partida: ${it.partida}` : '', it.destino ? `Destino: ${it.destino}` : '', it.estim ? `Valor: ${it.estim}` : '', it.pag ? `Pagamento: ${it.pag}` : '', 'Pode confirmar respondendo SIM?'].filter(Boolean).join('\n'); };
 function proxAg(skip){
   const t = Date.now();
   return Object.keys(filaData).map(k => Object.assign({sid: k}, filaData[k])).filter(x => x.sid !== skip && x.a && ['aguardando', 'aceito'].includes(x.s) && x.a - 45*60000 <= t && x.a + 20*60000 >= t).sort((p, q) => p.a - q.a)[0];
@@ -1712,14 +1741,17 @@ function drawFila(){
     const nome = x.passageiro ? `${escapeHtml(x.passageiro)} <small>(pedido por ${escapeHtml(x.nome)})</small>` : escapeHtml(x.nome);
     const fone = foneWa(x.passageiro ? x.foneP : x.fone);
     let a = '';
-    if(x.s === 'aguardando') a += `<button class="btn primary" data-a="ac" data-k="${x.sid}">${x.a ? 'Confirmar agendamento' : 'Aceitar'}</button><button class="btn ghost" data-a="rc" data-k="${x.sid}">Cancelar</button>`;
+    if(x.s === 'aguardando') a += `<button class="btn primary" data-a="ac" data-k="${x.sid}">${x.a ? 'Confirmar agendamento' : 'Aceitar'}</button><button class="btn ghost" data-a="rc" data-k="${x.sid}">Recusar</button>`;
     else if(x.a && x.s === 'aceito' && !meu) a += `<button class="btn primary" data-a="ia" data-k="${x.sid}">Iniciar atendimento</button><button class="btn ghost" data-a="rc" data-k="${x.sid}">Cancelar</button>`;
     else if(meu) a += `<button class="btn primary full" data-a="vc" data-k="${x.sid}">Ir até o cliente</button>`;
     else a += `<button class="btn ghost" data-a="vc" data-k="${x.sid}">Ir até o cliente</button><button class="btn ghost" data-a="rc" data-k="${x.sid}">Cancelar</button>`;
-    if(fone) a += `<button class="btn wa full" data-a="wa" data-k="${x.sid}">WhatsApp</button>`;
+    if(fone) a += `<button class="btn wa full" data-a="wa" data-k="${x.sid}">${x.s === 'aguardando' ? 'Confirmar pelo WhatsApp' : 'WhatsApp'}</button>`;
+    a += `<button class="btn ghost full" data-a="px" data-k="${x.sid}">Passageiro: ficha / bloquear</button>`;
+    const pf = x.passageiro ? x.foneP : x.fone, px = paxDe(pf), np = nPedidos(pf), rz = riscoDe(x);
+    const info = `<p><small>${np ? np + ' corrida(s) concluída(s) com este cliente' : 'Primeiro pedido deste cliente (neste aparelho)'}</small></p>` + (px.bloq ? `<p style="color:#e5484d;font-weight:700">⛔ Passageiro bloqueado${px.motivo ? ': ' + escapeHtml(px.motivo) : ''}</p>` : '') + (px.obs ? `<p style="color:#e0a800"><small>Obs. do passageiro:</small> ${escapeHtml(px.obs)}</p>` : '') + (rz ? `<p style="color:#e5484d;font-weight:700">⚠ Área de risco: ${escapeHtml(rz)}</p>` : '');
     const prox = x.dist != null && x.s === 'aguardando' ? `<p class="prox">${kmFila(x.dist)} de onde você termina${x.furou ? ' · passou na frente por proximidade' : ''}</p>` : '';
     return `<div class="fcard${x.a ? ' ag' : ''}"><div class="st">${x.a ? '<span class="agblink">' + (x.dia ? 'RESERVA DIA TODO' : 'AGENDADA') + '</span> ' + fmtAg(x.a) + ' · prioridade · ' : ''}${FLBL[x.s]}${meu ? ' · sua corrida atual' : ''}</div><h3><span class="pos">${i + 1}º</span>${nome}</h3>
-      <small>Pedido às ${hora} · ${escapeHtml(x.quando || 'Agora')}</small>
+      <small>Pedido às ${hora} · ${escapeHtml(x.quando || 'Agora')}</small>${info}
       ${(x.cp || x.ci) ? `<p style="color:#0a9d63;font-weight:700">🎟️ Cupom do cliente: ${[x.cp ? x.cp + '% (' + (x.uc === 'niv' ? 'aniversário' : 'crédito de indicação') + ')' : '', x.ci ? x.ci + '% (cupom de amigo)' : ''].filter(Boolean).join(' + ')} — conferido ao aceitar</p>` : ''}
       ${x.edc ? `<p style="color:#e0a800;font-weight:700">✎ Alterado pelo cliente às ${new Date(x.edc).toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'})}</p>` : ''}
       <p><b>De:</b> ${escapeHtml(x.partida)}<br><b>Para:</b> ${escapeHtml(x.destino)}${x.parada ? '<br><b>Parada:</b> ' + escapeHtml(x.parada) : ''}</p>
@@ -1740,9 +1772,10 @@ $('fList').onclick = $('agList').onclick = e => {
   if(b.dataset.a === 'ac') aceitar(k);
   else if(b.dataset.a === 'ia') iniciarAg(k);
   else if(b.dataset.a === 'rc') recusar(k);
+  else if(b.dataset.a === 'px') abrirPax(it);
   else if(b.dataset.a === 'vc') irCliente(it);
   else if(b.dataset.a === 'ed') abrirEnd(k);
-  else if(b.dataset.a === 'wa') window.open('https://wa.me/' + foneWa(it.passageiro ? it.foneP : it.fone), '_blank');
+  else if(b.dataset.a === 'wa') window.open('https://wa.me/' + foneWa(it.passageiro ? it.foneP : it.fone) + (it.s === 'aguardando' ? '?text=' + encodeURIComponent(msgConfirma(it)) : ''), '_blank');
 };
 setTimeout(() => fbInit().catch(() => { $('fMsg').textContent = 'Sem conexão com o serviço. Verifique a internet.'; }), 400);
 setInterval(() => { try{ drawFila(); }catch(e){} }, 30000);
